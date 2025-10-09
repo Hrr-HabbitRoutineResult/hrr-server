@@ -39,3 +39,7 @@ out/
 ### secure ###
 application-local.yml
 .env
+
+### Log Files ###
+*.log
+logs/
