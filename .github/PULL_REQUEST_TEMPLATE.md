@@ -1,10 +1,3 @@
----
-name: Pull Request
-about: PR 생성 시 이 템플릿을 사용해 주세요.
-title: "[PR] "
-labels: []
----
-
 ## #️⃣ 연관된 이슈
 
 > 관련된 이슈 번호를 적어주세요.\
