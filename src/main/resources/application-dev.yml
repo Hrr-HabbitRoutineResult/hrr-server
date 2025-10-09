@@ -13,5 +13,4 @@ spring:
     password: ${DEV_DB_PASSWORD}
 
 springdoc:
-  swagger-ui:
-    url: ${DEV_BASE_URL}
+  server-url: ${DEV_BASE_URL}

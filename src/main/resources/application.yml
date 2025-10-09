@@ -25,3 +25,11 @@ spring:
 
   config:
     import: optional:env[.env]
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    url: /v3/api-docs
+    enabled: ${SWAGGER_ENABLED:true}   # 필요 시 프로필에서 덮어쓰기
+
