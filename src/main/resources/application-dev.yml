@@ -17,3 +17,9 @@ spring:
 
 springdoc:
   server-url: ${DEV_BASE_URL}
+
+jwt:
+  secret : ${JWT_SECRET}
+  access-token-validity : 2592000000           # 임시
+  refresh-token-validity : 2592000000       # 임시
+
