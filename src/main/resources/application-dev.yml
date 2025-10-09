@@ -6,6 +6,9 @@ spring:
     hibernate:
       ddl-auto: update
 
+  flyway:
+    locations: classpath:db/migration, classpath:db/seed/dev
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DEV_DB_URL}
