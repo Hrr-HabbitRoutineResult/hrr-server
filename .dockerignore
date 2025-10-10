@@ -1,0 +1,24 @@
+# 빌드 부산물 (이미 JAR 파일만 COPY 명령어로 복사할 거라 나머지는 무시)
+build/
+target/
+
+# Gradle 관련 파일
+.gradle
+!gradle/wrapper/gradle-wrapper.jar # wrapper JAR 파일은 포함 (환경 통일성 유지)
+
+# IDE 설정 파일 (로컬에서만 필요한 파일)
+.idea/
+*.iml
+.vscode/
+
+# Git 관련 파일
+.git
+.gitignore
+
+# 로그 파일
+*.log
+logs/
+
+# 환경 변수 관련
+.env
+application-local.yml
