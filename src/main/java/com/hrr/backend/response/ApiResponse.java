@@ -27,7 +27,7 @@ public class ApiResponse<T> {
 	}
 
 	// 실패 응답 생성
-	public static ApiResponse<Void> onFailure(ErrorCode code) {
-		return new ApiResponse<>(false, code.getHttpStatus().name(), code.getCode(), code.getMessage(), null);
+	public static <T> ApiResponse<T> onFailure(ErrorCode code, T data) {
+		return new ApiResponse<>(false, code.getHttpStatus().name(), code.getCode(), code.getMessage(), data);
 	}
 }

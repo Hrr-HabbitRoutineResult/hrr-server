@@ -14,4 +14,12 @@ public class TestResponse {
 	public static class TempDto{
 		String testString;
 	}
+
+	@Builder
+	@Getter
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static class ExceptionDto{
+		String content;
+	}
 }

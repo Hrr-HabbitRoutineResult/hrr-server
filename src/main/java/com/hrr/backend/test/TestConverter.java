@@ -7,4 +7,10 @@ public class TestConverter {
 			.testString("api 테스트 중입니다.")
 			.build();
 	}
+
+	public static TestResponse.ExceptionDto toExceptionDto(){
+		return TestResponse.ExceptionDto.builder()
+			.content("에러 발생 테스트")
+			.build();
+	}
 }
