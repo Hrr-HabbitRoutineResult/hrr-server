@@ -1,0 +1,37 @@
+services:
+  app: # 나중에 베포용에 써먹을 용도,,
+    image: hrr/backend
+    build: .
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: ${LOCAL_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${LOCAL_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD" ]
+      timeout: 20s
+      retries: 5
+      interval: 5s
+      start_period: 20s
+    image: mysql:latest
+    container_name: hrr-local_db
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD : ${LOCAL_DB_PASSWORD}
+      MYSQL_DATABASE : hrr-server
+
+    volumes:
+      - db-data:/var/lib/mysql
+volumes:
+  db-data:
