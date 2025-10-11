@@ -1,0 +1,24 @@
+spring:
+  config:
+    activate:
+      on-profile: "docker"
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  flyway:
+    locations: classpath:db/migration, classpath:db/seed/local
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${LOCAL_DB_URL_DOCKER}
+    username: ${LOCAL_DB_USERNAME}
+    password: ${LOCAL_DB_PASSWORD}
+
+springdoc:
+  server-url: ${LOCAL_BASE_URL}
+
+jwt:
+  secret : ${JWT_SECRET}
+  access-token-validity : 2592000000           # 임시
+  refresh-token-validity : 2592000000       # 임시
