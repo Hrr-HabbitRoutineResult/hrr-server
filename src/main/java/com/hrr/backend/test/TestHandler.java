@@ -1,7 +1,7 @@
 package com.hrr.backend.test;
 
-import com.hrr.backend.exception.GlobalException;
-import com.hrr.backend.response.ErrorCode;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 
 public class TestHandler extends GlobalException {
 

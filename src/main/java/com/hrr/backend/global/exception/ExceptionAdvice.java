@@ -1,4 +1,4 @@
-package com.hrr.backend.exception;
+package com.hrr.backend.global.exception;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -16,8 +16,8 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import com.hrr.backend.response.ApiResponse;
-import com.hrr.backend.response.ErrorCode;
+import com.hrr.backend.global.response.ApiResponse;
+import com.hrr.backend.global.response.ErrorCode;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;

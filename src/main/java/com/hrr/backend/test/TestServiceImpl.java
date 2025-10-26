@@ -2,7 +2,7 @@ package com.hrr.backend.test;
 
 import org.springframework.stereotype.Service;
 
-import com.hrr.backend.response.ErrorCode;
+import com.hrr.backend.global.response.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 

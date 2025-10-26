@@ -1,4 +1,4 @@
-package com.hrr.backend.response;
+package com.hrr.backend.global.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
