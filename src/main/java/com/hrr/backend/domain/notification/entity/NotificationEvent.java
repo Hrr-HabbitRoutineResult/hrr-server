@@ -26,9 +26,9 @@ public class NotificationEvent extends BaseEntity {
     @JoinColumn(name = "type_id", nullable = false)
     private NotificationType type;
 
-    @NotNull
+    // 유발자가 시스템인 경우 null
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id", nullable = false)
+    @JoinColumn(name = "actor_id", nullable = true)
     private User actor;
 
     @NotNull
