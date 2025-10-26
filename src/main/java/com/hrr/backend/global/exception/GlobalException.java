@@ -1,6 +1,6 @@
-package com.hrr.backend.exception;
+package com.hrr.backend.global.exception;
 
-import com.hrr.backend.response.ErrorCode;
+import com.hrr.backend.global.response.ErrorCode;
 
 import lombok.Getter;
 
