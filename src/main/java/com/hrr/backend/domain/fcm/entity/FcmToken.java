@@ -15,7 +15,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "fcm_token")
+@Table(
+        name = "fcm_token",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "token"})
+)
 public class FcmToken extends BaseEntity {
 
     @Id
@@ -26,7 +29,7 @@ public class FcmToken extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(name = "token", length = 255, nullable = false)
+    @Column(name = "token", length = 512, nullable = false)
     private String token;
 
     @Column(name = "registered_at", nullable = false)
@@ -35,4 +38,22 @@ public class FcmToken extends BaseEntity {
     // 활성 여부(로그아웃/토큰만료 시 false)
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
+
+    // FCM 토큰을 다시 활성화
+    public void activateToken() {
+        // isActive가 false일 때만 모든 업데이트 수행
+        if (!this.isActive) {
+            this.isActive = true;
+            this.registeredAt = LocalDateTime.now();
+        }
+        // 이미 활성화된 토큰의 경우, registeredAt만 갱신
+        else {
+            this.registeredAt = LocalDateTime.now(); // 토큰 사용 시점 갱신
+        }
+    }
+
+    // 로그아웃 등으로 비활성화
+    public void deactivateToken() {
+        this.isActive = false;
+    }
 }
