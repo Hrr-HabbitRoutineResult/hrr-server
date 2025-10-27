@@ -51,4 +51,9 @@ public class FcmToken extends BaseEntity {
             this.registeredAt = LocalDateTime.now(); // 토큰 사용 시점 갱신
         }
     }
+
+    // 로그아웃 등으로 비활성화
+    public void deactivateToken() {
+        this.isActive = false;
+    }
 }
