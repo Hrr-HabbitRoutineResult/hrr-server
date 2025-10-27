@@ -24,4 +24,11 @@ public class FcmController {
         fcmService.registerFcmToken(request);
         return ApiResponse.onSuccess(SuccessCode.OK, null);
     }
+
+    @PatchMapping("/token")
+    @Operation(summary = "FCM 토큰 해제", description = "유저의 FCM 토큰을 비활성화합니다.")
+    public ApiResponse<Void> unregisterFcmToken(@Valid @RequestBody FcmRequest.UnregisterDto request) {
+        fcmService.unregisterFcmToken(request);
+        return ApiResponse.onSuccess(SuccessCode.OK, null);
+    }
 }
