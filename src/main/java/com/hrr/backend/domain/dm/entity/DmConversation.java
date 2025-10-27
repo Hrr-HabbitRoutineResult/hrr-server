@@ -14,7 +14,12 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "dm_conversation")
+@Table(
+        name = "dm_conversation",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"user1_id", "user2_id"})
+        }
+)
 public class DmConversation extends BaseEntity {
 
     @Id
