@@ -23,7 +23,7 @@ public class FcmServiceImpl implements FcmService {
     @Transactional
     public void registerFcmToken(FcmRequest.RegisterDto request) {
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new GlobalException(ErrorCode._USER_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         fcmTokenRepository.findByUserAndToken(user, request.getFcmToken())
                 .ifPresentOrElse(
