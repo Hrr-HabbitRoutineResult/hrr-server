@@ -39,6 +39,7 @@ out/
 ### secure ###
 application-local.yml
 .env
+src/main/resources/firebase/*.json
 
 ### Log Files ###
 *.log
