@@ -16,6 +16,9 @@ public enum ErrorCode implements BaseCode{
 	// user
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER404", "존재하지 않는 유저입니다."),
 
+	// fcm
+	FCM_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "FCM404", "존재하지 않는 FCM 토큰입니다."),
+
 	;
 
 	private final HttpStatus status;
