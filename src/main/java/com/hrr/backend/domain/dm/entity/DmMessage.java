@@ -19,9 +19,7 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "dm_message",
         indexes = {
-                @Index(name = "ix_dm_msg_conv_id", columnList = "conversation_id,id"),
-                @Index(name = "ix_dm_msg_sender", columnList = "sender_id"),
-                @Index(name = "ix_dm_msg_client_uuid", columnList = "client_message_uuid")
+                @Index(name = "ix_dm_msg_conv_id", columnList = "conversation_id,id")
         }
 )
 public class DmMessage extends BaseEntity {
