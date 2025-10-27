@@ -16,7 +16,12 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "dm_read")
+@Table(
+        name = "dm_read",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"conversation_id", "user_id"})
+        }
+)
 public class DmRead extends BaseEntity {
 
     @Id
