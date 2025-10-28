@@ -19,6 +19,9 @@ public enum ErrorCode implements BaseCode{
 	// fcm
 	FCM_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "FCM404", "존재하지 않는 FCM 토큰입니다."),
 
+	// dm
+	DM_CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, "DM404", "존재하지 않는 대화방입니다."),
+
 	;
 
 	private final HttpStatus status;
