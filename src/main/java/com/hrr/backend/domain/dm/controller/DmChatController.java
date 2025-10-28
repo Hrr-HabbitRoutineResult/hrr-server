@@ -2,6 +2,7 @@ package com.hrr.backend.domain.dm.controller;
 
 import com.hrr.backend.domain.dm.dto.DmMessageSocketDto;
 import com.hrr.backend.domain.dm.service.message.DmMessageService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
@@ -15,7 +16,7 @@ public class DmChatController {
     private final DmMessageService dmMessageService;
 
     @MessageMapping("/dm.send")
-    public void sendMessage(DmMessageSocketDto messageDto) {
+    public void sendMessage(@Valid DmMessageSocketDto messageDto) {
         // 메시지를 DB에 저장
         DmMessageSocketDto saved = dmMessageService.saveMessage(messageDto);
 

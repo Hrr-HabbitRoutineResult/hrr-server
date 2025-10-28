@@ -14,6 +14,7 @@ public class DmConverter {
                 .sender(sender)
                 .content(dto.getContent())
                 .messageType(dto.getMessageType())
+                .clientMessageUuid(dto.getClientMessageUuid())
                 .build();
     }
 
@@ -23,6 +24,7 @@ public class DmConverter {
                 .senderId(entity.getSender().getId())
                 .content(entity.getContent())
                 .messageType(entity.getMessageType())
+                .clientMessageUuid(entity.getClientMessageUuid())
                 .build();
     }
 }
