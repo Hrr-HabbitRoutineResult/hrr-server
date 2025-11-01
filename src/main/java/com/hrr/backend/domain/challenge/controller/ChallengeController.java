@@ -36,7 +36,7 @@ public class ChallengeController {
 		@RequestParam(name = "category", required = false) Category category,
 		@RequestParam(name = "isUpcoming", required = false) Boolean isUpcoming,
 		@RequestParam(name = "sortType", defaultValue = "POPULAR", required = false) SortType sortType,
-		@RequestParam(name = "days", required = false) List<ChallengeDays> day,
+		@RequestParam(name = "day", required = false) List<ChallengeDays> day,
 		@RequestParam(name = "title", required = false) String title,
 
 		// 페이징
