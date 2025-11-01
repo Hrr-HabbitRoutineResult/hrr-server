@@ -1,6 +1,9 @@
 package com.hrr.backend.domain.challenge.entity;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.hrr.backend.global.common.BaseEntity;
 import com.hrr.backend.global.common.enums.Category;
@@ -55,10 +58,10 @@ public class Challenge extends BaseEntity {
 	private VerificationType verificationType;
 
 	@Column(name = "verify_start_time", nullable = false)
-	private LocalDateTime verifyStartTime;
+	private LocalTime verifyStartTime;
 
 	@Column(name = "verify_end_time", nullable = false)
-	private LocalDateTime verifyEndTime;
+	private LocalTime verifyEndTime;
 
 	@Lob // Text 타입 매핑
 	@Column(name = "rule", columnDefinition = "TEXT")
@@ -68,7 +71,8 @@ public class Challenge extends BaseEntity {
 	private Integer currentParticipants;
 
 	@Enumerated(EnumType.STRING)
-	@Column(name = "status", nullable = false)
+	@Column(name = "status", nullable = false, length = 20)
+	@Builder.Default
 	private ChallengeStatus status=ChallengeStatus.UPCOMING;
 
 	@Column(name = "imageUrl")
@@ -76,4 +80,9 @@ public class Challenge extends BaseEntity {
 
 	@Column(name = "like_count")
 	private Integer likeCount;	// 좋아요 수; 집계용
+
+	@OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true)
+	@Builder.Default
+	private List<ChallengeDayJoin> challengeDays = new ArrayList<>();
+
 }

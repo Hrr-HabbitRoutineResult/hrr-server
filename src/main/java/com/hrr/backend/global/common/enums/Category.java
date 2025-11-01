@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Category {
 
+	ALL("전체"),
 	HEALTH("운동"),
 	STUDY("학업"),
 	HOBBY("취미"),
