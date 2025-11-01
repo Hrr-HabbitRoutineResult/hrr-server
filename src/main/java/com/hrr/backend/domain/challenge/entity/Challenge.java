@@ -73,4 +73,7 @@ public class Challenge extends BaseEntity {
 
 	@Column(name = "imageUrl")
 	private String imageUrl;
+
+	@Column(name = "like_count")
+	private Integer likeCount;	// 좋아요 수; 집계용
 }
