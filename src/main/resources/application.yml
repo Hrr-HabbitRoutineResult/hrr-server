@@ -24,8 +24,7 @@ spring:
     time-zone: Asia/Seoul
 
   config:
-    import: optional:file:.env[.properties]
-    #import: optional:env[.env]
+    import: optional:env[.env]
 
 
   flyway:

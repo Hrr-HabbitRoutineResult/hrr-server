@@ -1,54 +1,41 @@
 package com.hrr.backend.domain.auth.controller;
 
-import com.hrr.backend.domain.auth.dto.KakaoTokenResponse;
-import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
-import com.hrr.backend.domain.auth.service.KakaoAuthService;
-import com.hrr.backend.domain.auth.service.SocialUserService;
-import com.hrr.backend.domain.user.entity.User;
-import com.hrr.backend.domain.auth.service.JwtService;
+import com.hrr.backend.domain.auth.dto.AuthRequestDto;
+import com.hrr.backend.domain.auth.dto.AuthResponseDto;
+import com.hrr.backend.domain.auth.service.AuthService;
+import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Auth", description = "인증 관련 API")
 @RestController
-@RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final KakaoAuthService kakaoAuthService;
-    private final SocialUserService socialUserService;
-    private final JwtService JwtService;
+    private final AuthService authService;
 
-    /**
-     * 프론트에서 전달받은 인가코드로 카카오 로그인 처리
-     */
-    @Operation(summary = "카카오 로그인", description = "프론트/앱에서 받은 인가코드를 사용해 카카오 로그인 후 JWT를 발급합니다.")
-    @ApiResponse(responseCode = "200", description = "로그인 성공")
-    @PostMapping("/kakao/login")
-    public ResponseEntity<?> kakaoLogin(@RequestParam("code") String code) {
-        // 인가코드로 액세스 토큰 요청
-        KakaoTokenResponse token = kakaoAuthService.exchangeToken(code);
-
-        // 카카오 유저 정보 조회
-        KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(token.getAccessToken());
-
-        // 우리 DB에 유저 upsert
-        User user = socialUserService.upsertKakaoUser(kakaoUser);
-
-        // 우리 서비스 JWT 생성
-        String accessToken = JwtService.generateAccessToken(user.getId());
-        String refreshToken = JwtService.generateRefreshToken(user.getId());
-
-        // 결과 반환
-        return ResponseEntity.ok().body(
-                new LoginResponse(accessToken, refreshToken, user.getNickname())
-        );
+    @Operation(
+            summary = "소셜 로그인",
+            description = "카카오, 네이버, 애플 소셜 로그인 중 선택하여 로그인합니다. (현재는 Kakao만 지원)"
+    )
+    @PostMapping(value = "/social-login/{socialType}", produces = "application/json")
+    public com.hrr.backend.global.response.ApiResponse<AuthResponseDto.LoginResponse> socialLogin(
+            @Parameter(
+                    description = "소셜 로그인 타입 (kakao, naver, apple)",
+                    required = true,
+                    schema = @Schema(type = "string", allowableValues = {"kakao", "naver", "apple"}, example = "kakao")
+            )
+            @PathVariable("socialType") String socialType,
+            @Valid @RequestBody AuthRequestDto.SocialLoginRequest request
+    ) {
+        AuthResponseDto.LoginResponse response = authService.socialLogin(socialType, request);
+        return com.hrr.backend.global.response.ApiResponse.onSuccess(SuccessCode.OK, response);
     }
-
-    // 응답 DTO (Swagger에서도 자동 표시됨)
-    record LoginResponse(String accessToken, String refreshToken, String nickname) {}
-
 }
 
