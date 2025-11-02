@@ -5,15 +5,12 @@ import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
 import com.hrr.backend.domain.auth.service.KakaoAuthService;
 import com.hrr.backend.domain.auth.service.SocialUserService;
 import com.hrr.backend.domain.user.entity.User;
-import com.hrr.backend.global.security.JwtService;
+import com.hrr.backend.domain.auth.service.JwtService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,27 +21,34 @@ public class AuthController {
     private final SocialUserService socialUserService;
     private final JwtService JwtService;
 
-    @PostMapping("/kakao/callback")
-    public ResponseEntity<?> kakao(@RequestBody Map<String,String> body) {
-        String code = body.get("code");
-
-        // code → 토큰
+    /**
+     * 프론트에서 전달받은 인가코드로 카카오 로그인 처리
+     */
+    @Operation(summary = "카카오 로그인", description = "프론트/앱에서 받은 인가코드를 사용해 카카오 로그인 후 JWT를 발급합니다.")
+    @ApiResponse(responseCode = "200", description = "로그인 성공")
+    @PostMapping("/kakao/login")
+    public ResponseEntity<?> kakaoLogin(@RequestParam("code") String code) {
+        // 인가코드로 액세스 토큰 요청
         KakaoTokenResponse token = kakaoAuthService.exchangeToken(code);
 
-        // 토큰 → 유저정보
+        // 카카오 유저 정보 조회
         KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(token.getAccessToken());
 
-        // upsert
+        // 우리 DB에 유저 upsert
         User user = socialUserService.upsertKakaoUser(kakaoUser);
 
-        // (임시) 우리 AccessToken 발급
-        String access = JwtService.generateAccessToken(user.getId());
+        // 우리 서비스 JWT 생성
+        String accessToken = JwtService.generateAccessToken(user.getId());
+        String refreshToken = JwtService.generateRefreshToken(user.getId());
 
-        return ResponseEntity.ok(Map.of(
-                "accessToken", access,
-                "userId", user.getId(),
-                "nickname", user.getNickname()
-        ));
+        // 결과 반환
+        return ResponseEntity.ok().body(
+                new LoginResponse(accessToken, refreshToken, user.getNickname())
+        );
     }
+
+    // 응답 DTO (Swagger에서도 자동 표시됨)
+    record LoginResponse(String accessToken, String refreshToken, String nickname) {}
+
 }
 
