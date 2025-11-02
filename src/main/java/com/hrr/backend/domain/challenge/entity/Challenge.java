@@ -75,7 +75,7 @@ public class Challenge extends BaseEntity {
 	@Builder.Default
 	private ChallengeStatus status=ChallengeStatus.UPCOMING;
 
-	@Column(name = "imageUrl")
+	@Column(name = "image_url")
 	private String imageUrl;
 
 	@Column(name = "like_count")
