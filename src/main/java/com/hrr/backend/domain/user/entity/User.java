@@ -17,4 +17,25 @@ public class User extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private Long kakaoId;
+    private String nickname;
+    private String profileImage;
+    // 카카오 로그인용 팩토리 메서드
+    public static User newKakao(Long kakaoId, String nickname, String profileImage) {
+        User user = new User();
+        user.kakaoId = kakaoId;
+        user.nickname = nickname;
+        user.profileImage = profileImage;
+        return user;
+    }
+
+    //닉네임 업데이트
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+    //프로필 이미지 업데이트
+    public void updateProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
 }

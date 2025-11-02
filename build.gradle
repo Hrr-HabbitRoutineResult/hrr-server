@@ -30,6 +30,7 @@ dependencies {
 
     // WEB
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux' //카카오 로그인 API 통신용
 
     // LOMBOK
 	compileOnly 'org.projectlombok:lombok'
