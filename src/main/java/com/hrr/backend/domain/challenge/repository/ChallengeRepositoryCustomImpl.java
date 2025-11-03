@@ -18,6 +18,7 @@ import com.hrr.backend.global.common.enums.SortType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
@@ -55,14 +56,12 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 				qChallenge.startDate
 			))
 			.from(qChallenge)
-			.leftJoin(qChallenge.challengeDays, qChallengeDayJoin)
 			.where(
 				categoryEq(category),
 				startDateBetween(upcomingStartDate, upcomingEndDate),
 				titleContains(title),
-				dayIn(days)
+				dayInExists(days)
 			)
-			.distinct()
 			.orderBy(getOrderSpecifier(sortType))
 			.offset(pageable.getOffset())
 			.limit(pageable.getPageSize() + 1)
@@ -99,10 +98,12 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 		return qChallenge.startDate.between(upcomingStartDate, upcomingEndDate);
 	}
 
+	// 검색어가 챌린지명에 포함되는지 판단
 	private BooleanExpression titleContains(String title) {
 		return StringUtils.hasText(title) ? qChallenge.title.contains(title) : null;
 	}
 
+	// queryDsl의 정렬을 위한 메소드
 	private OrderSpecifier<?> getOrderSpecifier(SortType sortType) {
 		// 정렬 필터 없을 때 기본 인기순 적용
 		SortType finalSortType = (sortType != null) ? sortType : SortType.POPULAR;
@@ -122,5 +123,19 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 		}
 
 		return qChallengeDayJoin.dayOfWeek.in(days);
+	}
+
+	// 요일 필터에 해당하는 챌린지인지 판단
+	private BooleanExpression dayInExists(List<ChallengeDays> days) {
+		if (days == null || days.isEmpty()) {
+			return null;
+		}
+
+		return JPAExpressions
+			.selectOne()
+			.from(qChallengeDayJoin)
+			.where(qChallengeDayJoin.challenge.eq(qChallenge),
+				qChallengeDayJoin.dayOfWeek.in(days))
+			.exists();
 	}
 }
