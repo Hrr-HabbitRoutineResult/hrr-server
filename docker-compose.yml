@@ -30,6 +30,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD : ${LOCAL_DB_PASSWORD}
       MYSQL_DATABASE : hrr-server
+      MYSQL_DEFAULT_AUTHENTICATION_PLUGIN: caching_sha2_password
 
     volumes:
       - db-data:/var/lib/mysql
