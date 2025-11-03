@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.challenge.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -43,8 +44,8 @@ public class ChallengeResponseDto {
 		@Schema(description = "챌린지 시작까지 남은 일수 (D-Day=0, 미래만 양수)", example = "3")
 		private Integer dDayUntilStart;
 
-		@Schema(description = "챌린지 인증 요일 (MONDAY, TUESDAY 등)", example = "MONDAY")
-		private ChallengeDays daysOfWeek;
+		@Schema(description = "챌린지 인증 요일 목록", example = "['MONDAY', 'WEDNESDAY']")
+		private List<ChallengeDays> daysOfWeek;
 
 		@Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/images/thumb.jpg")
 		private String thumbnailUrl;
