@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface DmMessageRepository extends JpaRepository<DmMessage, Long> {
     Optional<DmMessage> findByClientMessageUuid(String clientMessageUuid);
+
+    Optional<DmMessage> findByIdAndConversation_Id(Long id, Long conversationId);
 }
