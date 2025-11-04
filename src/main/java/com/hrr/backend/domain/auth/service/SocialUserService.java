@@ -2,6 +2,7 @@ package com.hrr.backend.domain.auth.service;
 
 import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.LoginStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class SocialUserService {
                 .map(user -> {
                     user.updateNickname(nickname);
                     user.updateProfileImage(profileImage);
+                    user.updateLoginStatus(LoginStatus.EXISTING);
                     return user;
                 })
                 .orElseGet(() -> userRepository.save(User.newKakao(kakaoId, nickname, profileImage)));

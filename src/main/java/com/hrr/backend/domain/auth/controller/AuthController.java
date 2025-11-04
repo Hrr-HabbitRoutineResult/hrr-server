@@ -28,9 +28,9 @@ public class AuthController {
     @PostMapping(value = "/social-login/{socialType}", produces = "application/json")
     public com.hrr.backend.global.response.ApiResponse<AuthResponseDto.LoginResponse> socialLogin(
             @Parameter(
-                    description = "소셜 로그인 타입 (kakao, naver, apple)",
+                    description = "소셜 로그인 타입 (KAKAO, NAVER, APPLE)",
                     required = true,
-                    schema = @Schema(type = "string", allowableValues = {"kakao", "naver", "apple"}, example = "kakao")
+                    schema = @Schema(type = "string", allowableValues = {"KAKAO", "NAVER", "APPLE"}, example = "KAKAO")
             )
             @PathVariable("socialType") SocialType socialType,
             @Valid @RequestBody AuthRequestDto.SocialLoginRequest request

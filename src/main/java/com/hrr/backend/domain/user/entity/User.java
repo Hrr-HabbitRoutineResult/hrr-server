@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.user.entity;
 
+import com.hrr.backend.domain.user.entity.enums.LoginStatus;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,11 @@ public class User extends BaseEntity {
     private Long kakaoId;
     private String nickname;
     private String profileImage;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private LoginStatus loginStatus;
+
     // 카카오 로그인용 팩토리 메서드
     public static User newKakao(Long kakaoId, String nickname, String profileImage) {
         User user = new User();
@@ -38,4 +44,8 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    // 로그인 상태 변경
+    public void updateLoginStatus(LoginStatus status) {
+        this.loginStatus = status;
+    }
 }

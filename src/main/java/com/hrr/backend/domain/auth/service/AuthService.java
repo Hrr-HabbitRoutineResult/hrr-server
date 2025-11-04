@@ -39,6 +39,6 @@ public class AuthService {
         String refreshToken = jwtService.generateRefreshToken(user.getId());
 
         // 5. 응답 DTO로 반환
-        return new AuthResponseDto.LoginResponse(accessToken, refreshToken, user.getNickname());
+        return new AuthResponseDto.LoginResponse(user.getId(), accessToken, refreshToken, user.getNickname(), user.getLoginStatus());
     }
 }
