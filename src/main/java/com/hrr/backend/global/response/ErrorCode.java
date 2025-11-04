@@ -25,6 +25,7 @@ public enum ErrorCode implements BaseCode{
 
     // auth
     AUTH_INVALID_SOCIAL_TYPE(HttpStatus.BAD_REQUEST, "AUTH400", "지원하지 않는 소셜 로그인 타입입니다."),
+    AUTH_UNSUPPORTED_SOCIAL_TYPE(HttpStatus.BAD_REQUEST, "AUTH401", "현재는 Kakao 로그인만 지원합니다."),
 
 
     ;
