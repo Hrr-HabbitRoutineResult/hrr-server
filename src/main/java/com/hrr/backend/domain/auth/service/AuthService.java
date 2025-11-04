@@ -4,6 +4,8 @@ import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
 import com.hrr.backend.domain.auth.dto.KakaoTokenResponse;
 import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
+
+import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,8 +18,8 @@ public class AuthService {
     private final SocialUserService socialUserService;
     private final JwtService jwtService;
 
-    public AuthResponseDto.LoginResponse socialLogin(String socialType, AuthRequestDto.SocialLoginRequest request) {
-        if (!socialType.equalsIgnoreCase("kakao")) {
+    public AuthResponseDto.LoginResponse socialLogin(SocialType socialType, AuthRequestDto.SocialLoginRequest request) {
+        if (socialType != SocialType.KAKAO) {
             throw new IllegalArgumentException("현재는 kakao 로그인만 지원합니다.");
         }
 

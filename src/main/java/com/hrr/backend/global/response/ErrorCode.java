@@ -23,7 +23,11 @@ public enum ErrorCode implements BaseCode{
 	DM_CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, "DM404", "존재하지 않는 대화방입니다."),
 	DM_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "DM404", "존재하지 않는 대화입니다."),
 
-	;
+    // auth
+    AUTH_INVALID_SOCIAL_TYPE(HttpStatus.BAD_REQUEST, "AUTH400", "지원하지 않는 소셜 로그인 타입입니다."),
+
+
+    ;
 
 	private final HttpStatus status;
 	private final String code;

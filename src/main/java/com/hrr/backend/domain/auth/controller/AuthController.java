@@ -2,6 +2,7 @@ package com.hrr.backend.domain.auth.controller;
 
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
+import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.service.AuthService;
 import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,11 +32,10 @@ public class AuthController {
                     required = true,
                     schema = @Schema(type = "string", allowableValues = {"kakao", "naver", "apple"}, example = "kakao")
             )
-            @PathVariable("socialType") String socialType,
+            @PathVariable("socialType") SocialType socialType,
             @Valid @RequestBody AuthRequestDto.SocialLoginRequest request
     ) {
         AuthResponseDto.LoginResponse response = authService.socialLogin(socialType, request);
         return com.hrr.backend.global.response.ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 }
-
