@@ -26,7 +26,9 @@ public enum ErrorCode implements BaseCode{
     // auth
     AUTH_INVALID_SOCIAL_TYPE(HttpStatus.BAD_REQUEST, "AUTH400", "지원하지 않는 소셜 로그인 타입입니다."),
     AUTH_UNSUPPORTED_SOCIAL_TYPE(HttpStatus.BAD_REQUEST, "AUTH401", "현재는 Kakao 로그인만 지원합니다."),
-    AUTH_EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "AUTH_004", "외부 인증 서버와 통신 중 오류가 발생했습니다."),
+    AUTH_EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "AUTH402", "외부 인증 서버와 통신 중 오류가 발생했습니다."),
+    AUTH_KAKAO_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "AUTH403", "카카오 토큰 요청 중 오류가 발생했습니다."),
+    AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH404", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
 
 
     ;

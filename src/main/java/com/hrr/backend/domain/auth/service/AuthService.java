@@ -46,8 +46,10 @@ public class AuthService {
                     user.getNickname(),
                     user.getLoginStatus()
             );
-
-        } catch (org.springframework.web.reactive.function.client.WebClientResponseException ex) {
+        } catch (GlobalException e) {
+            // KakaoAuthService 내부에서 GlobalException 이미 던지면 그대로 전달
+            throw e;
+        } catch (Exception e) {
             // 외부 카카오 서버 통신 오류 처리
             throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
         }

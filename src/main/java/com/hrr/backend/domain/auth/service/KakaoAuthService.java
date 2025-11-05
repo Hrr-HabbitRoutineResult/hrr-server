@@ -2,6 +2,8 @@ package com.hrr.backend.domain.auth.service;
 
 import com.hrr.backend.domain.auth.dto.KakaoTokenResponse;
 import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
@@ -22,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 @Slf4j
 public class KakaoAuthService {
-    //private final WebClient webClient = WebClient.create();
     private  final WebClient webClient;
     public KakaoAuthService() {
         // 타임아웃 설정 (5초 연결, 5초 읽기/쓰기)
@@ -39,28 +40,60 @@ public class KakaoAuthService {
                 .build();
     }
 
-    @Value("${kakao.client-id}")  private String clientId;       // REST API 키
-    @Value("${kakao.redirect-uri}") private String redirectUri;  // hrr://oauth/kakao
-    @Value("${KAKAO_CLIENT_SECRET}") private String clientSecret;
+    @Value("${kakao.client-id}")
+    private String clientId;       // REST API 키
+
+    @Value("${kakao.redirect-uri}")
+    private String redirectUri;  // hrr://oauth/kakao
+
+    @Value("${KAKAO_CLIENT_SECRET}")
+    private String clientSecret;
+
+    /*카카오 인가코드로 토큰 발급*/
     public KakaoTokenResponse exchangeToken(String code) {
+        try {
             return webClient.post()
-                    .uri("https://kauth.kakao.com/oauth/token")
+                    .uri("/oauth/token")
                     .body(BodyInserters.fromFormData("grant_type", "authorization_code")
                             .with("client_id", clientId)
                             .with("redirect_uri", redirectUri)
                             .with("code", code)
                             .with("client_secret", clientSecret))
-                    .retrieve() // webClient.post() 바로 뒤에 와야 함
+                    .retrieve()
+                    // 상태 코드별 에러 처리
+                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                            response -> response.bodyToMono(String.class)
+                                    .map(body -> {
+                                        log.error("Kakao token API error: {}", body);
+                                        return new RuntimeException("카카오 토큰 요청 실패");
+                                    }))
                     .bodyToMono(KakaoTokenResponse.class)
-                    .block();
+                    .block(Duration.ofSeconds(5)); // 블록에도 최대 대기시간 명시
+        } catch (Exception e) {
+            throw new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR);
+        }
     }
 
+    /**
+     * 카카오 사용자 정보 조회
+     */
     public KakaoUserResponse fetchUser(String accessToken) {
-        return webClient.get()
-                .uri("https://kapi.kakao.com/v2/user/me")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                .retrieve()
-                .bodyToMono(KakaoUserResponse.class)
-                .block();
+        try {
+            return webClient.get()
+                    .uri("https://kapi.kakao.com/v2/user/me")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                            response -> response.bodyToMono(String.class)
+                                    .map(body -> {
+                                        log.error("[Kakao User API Error] status={}, body={}",
+                                                response.statusCode(), body);
+                                        return new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR);
+                                    }))
+                    .bodyToMono(KakaoUserResponse.class)
+                    .block(Duration.ofSeconds(5));
+        } catch (Exception e) {
+            throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR);
+        }
     }
 }
