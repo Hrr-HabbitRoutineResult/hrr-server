@@ -25,20 +25,31 @@ public class AuthService {
             throw new GlobalException(ErrorCode.AUTH_UNSUPPORTED_SOCIAL_TYPE);
         }
 
-        // 1. 카카오 인가 코드로 토큰 발급
-        KakaoTokenResponse token = kakaoAuthService.exchangeToken(request.code());
+        try {
+            // 1. 카카오 인가 코드로 토큰 발급
+            KakaoTokenResponse token = kakaoAuthService.exchangeToken(request.code());
 
-        // 2. 카카오 유저 정보 조회
-        KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(token.getAccessToken());
+            // 2. 카카오 유저 정보 조회
+            KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(token.getAccessToken());
 
-        // 3. DB에 유저 upsert
-        User user = socialUserService.upsertKakaoUser(kakaoUser);
+            // 3. DB에 유저 upsert
+            User user = socialUserService.upsertKakaoUser(kakaoUser);
 
-        // 4. JWT 생성
-        String accessToken = jwtService.generateAccessToken(user.getId());
-        String refreshToken = jwtService.generateRefreshToken(user.getId());
+            // 4. JWT 생성
+            String accessToken = jwtService.generateAccessToken(user.getId());
+            String refreshToken = jwtService.generateRefreshToken(user.getId());
 
-        // 5. 응답 DTO로 반환
-        return new AuthResponseDto.LoginResponse(user.getId(), accessToken, refreshToken, user.getNickname(), user.getLoginStatus());
+            return new AuthResponseDto.LoginResponse(
+                    user.getId(),
+                    accessToken,
+                    refreshToken,
+                    user.getNickname(),
+                    user.getLoginStatus()
+            );
+
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException ex) {
+            // 외부 카카오 서버 통신 오류 처리
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+        }
     }
 }
