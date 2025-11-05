@@ -9,3 +9,7 @@ spring:
   config:
     activate:
       on-profile: "test"
+
+firebase:
+  config:
+    path: firebase/hrr-server-firebase-adminsdk-fbsvc-4630feba48.json
