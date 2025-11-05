@@ -1,5 +1,7 @@
 package com.hrr.backend.global.config;
 
+import com.hrr.backend.global.config.jwt.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -7,10 +9,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -24,15 +30,8 @@ public class SecurityConfig {
             //폼 로그인 비활성화(OAuth, JWT로만 처리)
             .formLogin(AbstractHttpConfigurer::disable)
 
-			// 모든 요청 허용(임시)
-			// TODO: role 부여 후, 권한별 요청 통제 필요
-			.authorizeHttpRequests(auth -> auth
-				.anyRequest().permitAll()
-			);
-
             //실제 서비스용
-            /*
-            * .authorizeHttpRequests(auth -> auth
+             .authorizeHttpRequests(auth -> auth
                     // Swagger 및 카카오 인증 엔드포인트는 모두 허용
                     .requestMatchers(
                         "/api/auth/**",
@@ -43,8 +42,9 @@ public class SecurityConfig {
                     ).permitAll()
                     // 그 외 요청은 JWT 인증 필요
                     .anyRequest().authenticated()
-                );
-            * */
+            );
+            //필터 등록 -> Spring Security 로그인 필터 전에 JwtAuthenticationFilter 실행하도록 등록함
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}

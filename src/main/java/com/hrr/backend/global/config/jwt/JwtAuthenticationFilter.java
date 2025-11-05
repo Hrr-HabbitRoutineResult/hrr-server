@@ -66,7 +66,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .password("") // JWT 기반이므로 비밀번호는 불필요
                     .authorities("ROLE_USER")
                     .build();
-
+            //인증 객체 구성
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             userDetails,
