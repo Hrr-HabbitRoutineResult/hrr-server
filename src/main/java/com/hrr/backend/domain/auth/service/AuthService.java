@@ -54,4 +54,20 @@ public class AuthService {
             throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
         }
     }
+    /** Refresh Token 기반 Access Token 재발급 */
+    public AuthResponseDto.TokenReissueResponse reissueToken(String refreshHeader) {
+        // "Bearer " 접두사 제거
+        String refreshToken = refreshHeader.startsWith("Bearer ")
+                ? refreshHeader.substring(7)
+                : refreshHeader;
+
+        // Refresh Token 유효성 검증
+        jwtService.validateToken(refreshToken);
+
+        // userId 추출 후 새 Access Token 발급
+        Long userId = jwtService.extractUserId(refreshToken);
+        String newAccessToken = jwtService.generateAccessToken(userId);
+
+        return new AuthResponseDto.TokenReissueResponse(newAccessToken);
+    }
 }

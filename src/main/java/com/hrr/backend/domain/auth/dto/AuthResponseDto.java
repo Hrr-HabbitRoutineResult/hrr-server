@@ -12,4 +12,9 @@ public class AuthResponseDto {
             String nickname,
             LoginStatus loginStatus
     ) {}
+
+    @Builder
+    public record TokenReissueResponse(
+            String accessToken
+    ) {}
 }

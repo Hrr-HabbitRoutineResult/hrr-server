@@ -34,14 +34,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain)
+                                    FilterChain chain)
             throws ServletException, IOException {
+        String uri = request.getRequestURI();
 
+        //인증 불필요 구간은 필터 완전 우회
+        if (uri.startsWith("/api/v1/auth")) {
+            chain.doFilter(request, response);
+            return;
+        }
         String token = jwtService.resolveToken(request);
 
         // 헤더에 토큰이 없으면 그냥 다음 필터로 진행
         if (token == null) {
-            filterChain.doFilter(request, response);
+            chain.doFilter(request, response);
             return;
         }
 
@@ -86,6 +92,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("jwtException", e);
         }
 
-        filterChain.doFilter(request, response);
+        chain.doFilter(request, response);
     }
 }
