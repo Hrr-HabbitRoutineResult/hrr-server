@@ -83,6 +83,7 @@ public class User extends BaseEntity {
     @Column(name = "status")
     private Status status;
 
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NotificationSetting> notificationSettings = new ArrayList<>();
 }

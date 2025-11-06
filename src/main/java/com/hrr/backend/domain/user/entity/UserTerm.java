@@ -37,7 +37,6 @@ public class UserTerm {
     @Column(name = "is_agreed", nullable = false)
     private Boolean isAgreed;
 
-    @NotNull
     @CreationTimestamp
     @Column(name = "agreed_at", nullable = false, updatable = false)
     private LocalDateTime agreedAt;

@@ -32,13 +32,14 @@ public class UserChallenge extends BaseEntity {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "challenge_id", nullable = false)
-    private Challenge challenge; // (7. Challenge 엔티티 참조)
+    private Challenge challenge;
 
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    @ColumnDefault("'CHALLENGER'") // (8. DB 기본값 'challenger' 설정)
-    private ChallengeRole role;
+    @ColumnDefault("'CHALLENGER'")
+    @Builder.Default
+    private ChallengeRole role = ChallengeRole.CHALLENGER;
 
     @NotNull
     @Enumerated(EnumType.STRING)
