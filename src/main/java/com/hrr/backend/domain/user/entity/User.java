@@ -40,7 +40,7 @@ public class User extends BaseEntity {
     private String phoneNumber;
 
     @NotNull
-    @Column(name = "password", length = 225, nullable = false)
+    @Column(name = "password", length = 225, nullable = true)
     private String password;
 
     @Column(name = "deleted_at")
@@ -50,13 +50,14 @@ public class User extends BaseEntity {
     private String profilePhoto;
 
     @NotNull
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "level", nullable = false)
-    private Level level;
+    private Level level = Level.BRONZE;
 
-    @NotNull // 1. NOT NULL 제약조건 추가 (DB상에서도)
-    @Builder.Default // 2. 빌더 기본값 추가
-    @Column(name = "follower_count", nullable = false) // 3. nullable = false 추가
+    @NotNull
+    @Builder.Default
+    @Column(name = "follower_count", nullable = false)
     private Long followerCount = 0L;
 
     @NotNull
@@ -74,7 +75,7 @@ public class User extends BaseEntity {
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = true;
 
-    @Builder.Default // 1. 빌더 패턴을 위한 기본값
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private Role role = Role.USER;

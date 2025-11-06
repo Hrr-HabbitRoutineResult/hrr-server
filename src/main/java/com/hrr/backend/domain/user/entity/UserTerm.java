@@ -34,8 +34,9 @@ public class UserTerm {
     private Term term;
 
     @NotNull
+    @Builder.Default
     @Column(name = "is_agreed", nullable = false)
-    private Boolean isAgreed;
+    private Boolean isAgreed = false;
 
     @CreationTimestamp
     @Column(name = "agreed_at", nullable = false, updatable = false)
