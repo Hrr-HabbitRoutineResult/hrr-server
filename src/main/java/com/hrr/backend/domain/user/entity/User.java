@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.user.entity;
 
 import com.hrr.backend.global.common.BaseEntity;
+import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,4 +18,12 @@ public class User extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private UserFavor userFavor;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private RecommendationResult recommendationResult;
+
+
 }
