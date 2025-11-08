@@ -41,8 +41,8 @@ public class RecommendationResult extends BaseEntity {
     @Column(name = "cosine_score")
     private Float cosineScore;
 
-    @Column(name = "rank", nullable = false)
-    private Integer rank;
+    @Column(name = "ranking", nullable = false)
+    private Integer ranking;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
