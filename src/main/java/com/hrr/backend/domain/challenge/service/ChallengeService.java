@@ -22,4 +22,7 @@ public interface ChallengeService {
 		int size
 	);
 
+	// 챌린지 프로필 조회
+	Integer getChallengeProfile(Long challengeId);
+
 }

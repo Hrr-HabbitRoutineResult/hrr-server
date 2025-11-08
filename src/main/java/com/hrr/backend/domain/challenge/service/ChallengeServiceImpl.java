@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
@@ -30,7 +31,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final ChallengeRepository challengeRepository;
 	private final ChallengeDayJoinRepository challengeDayJoinRepository;
 
+	private final RedisTemplate<String, String> redisTemplate;
+
 	private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
+
+	// 오늘의 클릭수를 저장할 Redis Key
+	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -105,5 +111,21 @@ public class ChallengeServiceImpl implements ChallengeService {
 		});
 
 		return new SliceResponseDto<>(finalDtoSlice);
+	}
+
+	@Override
+	public Integer getChallengeProfile(Long challengeId) {
+
+		// 클릭 수 증가 로직
+		Double updatedScore = redisTemplate.opsForZSet().incrementScore(
+			TODAY_CHALLENGE_RANKING_KEY,
+			String.valueOf(challengeId), // 챌린지 아이디를 key로 사용
+			1.0 // 클릭 수 1.0 증가(redis sorted set의 메서드 정의 상 double 타입 필요)
+		);
+
+		// TODO: 챌린지 프로필 조회 구현
+
+		// 임시로 로직 실행 후 클릭 수를 반환(정수 변환)
+		return Math.toIntExact((updatedScore != null) ? updatedScore.longValue() : 0L);
 	}
 }
