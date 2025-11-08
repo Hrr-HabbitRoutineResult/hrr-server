@@ -59,6 +59,7 @@ public class ChallengeController {
 	}
 
 	@GetMapping("/{challengeId}")
+	@Operation(summary = "챌린지 프로필 조회", description = "챌린지 프로필을 조회합니다.")
 	public Integer getChallengeProfile(@PathVariable("challengeId") Long challengeId) {
 
 		// 챌린지 프로필 조회 api 내부에 챌린지 클릭 수 증가 로직을 구현하기 위해 임시로 스켈레톤 코드 작성
