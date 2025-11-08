@@ -23,6 +23,11 @@ public interface ChallengeService {
 	);
 
 	// 챌린지 프로필 조회
-	Integer getChallengeProfile(Long challengeId);
+	//Integer getChallengeProfile(Long challengeId);
+
+	// 챌린지 클릭 처리
+	Long clickChallenge(Long challengeId);
+
+
 
 }

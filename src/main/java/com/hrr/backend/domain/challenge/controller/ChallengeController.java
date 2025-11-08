@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -60,12 +61,16 @@ public class ChallengeController {
 
 	@GetMapping("/{challengeId}")
 	@Operation(summary = "챌린지 프로필 조회", description = "챌린지 프로필을 조회합니다.")
-	public Integer getChallengeProfile(@PathVariable("challengeId") Long challengeId) {
+	public void getChallengeProfile(@PathVariable("challengeId") Long challengeId) {
 
-		// 챌린지 프로필 조회 api 내부에 챌린지 클릭 수 증가 로직을 구현하기 위해 임시로 스켈레톤 코드 작성
+	}
+
+	@PostMapping("/{challengeId}/click")
+	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
+	public Long clickChallenge(@PathVariable("challengeId") Long challengeId) {
+
 		// 테스트를 위해 임시로 클릭 수 반환
-		// TODO: 로직 제대로 구현
 
-		return challengeService.getChallengeProfile(challengeId);
+		return challengeService.clickChallenge(challengeId);
 	}
 }

@@ -20,6 +20,8 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.SortType;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 import lombok.RequiredArgsConstructor;
@@ -113,19 +115,27 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return new SliceResponseDto<>(finalDtoSlice);
 	}
 
+	// @Override
+	// public Integer getChallengeProfile(Long challengeId) {
+	//
+	// 	// TODO: 챌린지 프로필 조회 구현
+	//
+	// 	return Math.toIntExact((updatedScore != null) ? updatedScore.longValue() : 0L);
+	// }
+
 	@Override
-	public Integer getChallengeProfile(Long challengeId) {
+	public Long clickChallenge(Long challengeId) {
+		// 챌린지 유효성 검사
+		challengeRepository.findById(challengeId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
 		// 클릭 수 증가 로직
 		Double updatedScore = redisTemplate.opsForZSet().incrementScore(
 			TODAY_CHALLENGE_RANKING_KEY,
 			String.valueOf(challengeId), // 챌린지 아이디를 key로 사용
-			1.0 // 클릭 수 1.0 증가(redis sorted set의 메서드 정의 상 double 타입 필요)
+			1.0 // 클릭 수 1.0 증가 (redis sorted set의 메서드 정의 상 double 타입 필요)
 		);
 
-		// TODO: 챌린지 프로필 조회 구현
-
-		// 임시로 로직 실행 후 클릭 수를 반환(정수 변환)
-		return Math.toIntExact((updatedScore != null) ? updatedScore.longValue() : 0L);
+		return (updatedScore != null) ? updatedScore.longValue() : 0L;
 	}
 }
