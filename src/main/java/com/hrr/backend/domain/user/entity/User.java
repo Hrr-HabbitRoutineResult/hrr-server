@@ -1,12 +1,15 @@
 package com.hrr.backend.domain.user.entity;
 
 import com.hrr.backend.global.common.BaseEntity;
-import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
+import com.hrr.backend.domain.user.entity.UserFavor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -19,11 +22,9 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private UserFavor userFavor;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private RecommendationResult recommendationResult;
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserFavor> userFavors = new ArrayList<>();
 
 
 }

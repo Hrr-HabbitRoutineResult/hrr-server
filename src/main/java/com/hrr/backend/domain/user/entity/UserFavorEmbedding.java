@@ -3,8 +3,6 @@ package com.hrr.backend.domain.user.entity;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -23,14 +21,11 @@ public class UserFavorEmbedding extends BaseEntity {
     private UserFavor userFavor;
 
     @Lob
-    @Column(name = "favor_text")
+    @Column(name = "favor_text", nullable = false)
     private String favorText;
 
     @Lob
     @Column(name = "favor_embedding")
     private byte[] favorEmbedding;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 }

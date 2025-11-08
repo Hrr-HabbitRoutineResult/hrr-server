@@ -89,7 +89,8 @@ public class Challenge extends BaseEntity {
     @OneToOne(mappedBy = "challenge", cascade = CascadeType.ALL)
     private ChallengeEmbedding embedding;
 
+    @Builder.Default
     @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = false)
-    private java.util.List<RecommendationResult> recommendationResults = new java.util.ArrayList<>();
+    private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
 }

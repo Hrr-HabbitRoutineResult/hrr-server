@@ -5,11 +5,10 @@ import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
 import com.hrr.backend.global.common.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -18,13 +17,14 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @Table(name = "user_favor")
+@ToString(exclude = {"user", "userFavorEmbedding", "recommendationResults"})
 public class UserFavor extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Enumerated(EnumType.STRING)
@@ -65,15 +65,11 @@ public class UserFavor extends BaseEntity {
     @Column(name = "goal", nullable = false)
     private Goal goal;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @OneToOne(mappedBy = "userFavor", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = true)
     private UserFavorEmbedding userFavorEmbedding;
 
+    @Builder.Default
     @OneToMany(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = false)
-    private java.util.List<RecommendationResult> recommendationResults = new java.util.ArrayList<>();
-
+    private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
 }
