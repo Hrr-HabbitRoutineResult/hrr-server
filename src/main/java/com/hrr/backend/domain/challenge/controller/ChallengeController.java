@@ -3,6 +3,7 @@ package com.hrr.backend.domain.challenge.controller;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +56,15 @@ public class ChallengeController {
 		);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, challenges);
+	}
+
+	@GetMapping("/{challengeId}")
+	public Integer getChallengeProfile(@PathVariable("challengeId") Long challengeId) {
+
+		// 챌린지 프로필 조회 api 내부에 챌린지 클릭 수 증가 로직을 구현하기 위해 임시로 스켈레톤 코드 작성
+		// 테스트를 위해 임시로 클릭 수 반환
+		// TODO: 로직 제대로 구현
+
+		return challengeService.getChallengeProfile(challengeId);
 	}
 }
