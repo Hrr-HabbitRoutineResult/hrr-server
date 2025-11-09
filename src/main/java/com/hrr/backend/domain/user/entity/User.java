@@ -39,7 +39,6 @@ public class User extends BaseEntity {
     @Column(name = "phone_number", length = 15)
     private String phoneNumber;
 
-    @NotNull
     @Column(name = "password", length = 225, nullable = true)
     private String password;
 
