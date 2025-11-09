@@ -45,7 +45,6 @@ public class SecurityConfig {
                     // Swagger 및 카카오 인증 엔드포인트는 모두 허용
                     .requestMatchers(
                         "/api/v1/auth/**",
-                        "/api/v1/auth/kakao/callback",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/swagger-resources/**",
