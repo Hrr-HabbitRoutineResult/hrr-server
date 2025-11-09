@@ -1,5 +1,6 @@
 package com.hrr.backend.global.config;
 
+import com.hrr.backend.global.config.jwt.JwtAuthenticationEntryPoint;
 import com.hrr.backend.global.config.jwt.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -53,8 +55,9 @@ public class SecurityConfig {
                     .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
-                    .authenticationEntryPoint((req, res, ex1) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
-                    .accessDeniedHandler((req, res, ex1) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                    //.authenticationEntryPoint((req, res, ex1) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                    //.accessDeniedHandler((req, res, ex1) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
             );;
             //필터 등록 -> Spring Security 로그인 필터 전에 JwtAuthenticationFilter 실행하도록 등록함
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
