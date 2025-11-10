@@ -47,13 +47,13 @@ public class UserChallenge extends BaseEntity {
 
     @NotNull
     @Column(name = "verification_count", nullable = false)
-    private Integer verificationCount;
+    private Integer verificationCount = 0;
 
     @NotNull
     @Column(name = "verification_uncount", nullable = false)
-    private Integer verificationUncount;
+    private Integer verificationUncount = 0;
 
     @NotNull
     @Column(name = "warn_count", nullable = false)
-    private Integer warnCount;
+    private Integer warnCount = 0;
 }
