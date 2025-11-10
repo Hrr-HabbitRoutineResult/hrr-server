@@ -2,7 +2,6 @@ package com.hrr.backend.global.config;
 
 import com.hrr.backend.global.config.jwt.JwtAuthenticationEntryPoint;
 import com.hrr.backend.global.config.jwt.JwtAuthenticationFilter;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +30,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 			// CSRF 보호 비활성화
 			.csrf(AbstractHttpConfigurer::disable)
 			// JWT 토큰 기반이므로 세션 사용 안 함

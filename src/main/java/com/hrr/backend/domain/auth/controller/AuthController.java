@@ -29,7 +29,7 @@ public class AuthController {
             @Parameter(
                     description = "소셜 로그인 타입 (KAKAO, NAVER, APPLE)",
                     required = true,
-                    schema = @Schema(type = "string", allowableValues = {"KAKAO", "NAVER", "APPLE"}, example = "KAKAO")
+                    schema = @Schema(implementation = SocialType.class, example = "KAKAO")
             )
             @PathVariable("socialType") SocialType socialType,
             @Valid @RequestBody AuthRequestDto.SocialLoginRequest request
@@ -42,8 +42,9 @@ public class AuthController {
     @GetMapping("/kakao/callback")
     @Operation(summary = "카카오 인가코드 콜백 (Swagger 테스트용)",
             description = "카카오 로그인 후 인가코드를 수신하고 바로 로그인 처리합니다.")
-    public ApiResponse<AuthResponseDto.LoginResponse> kakaoCallback(@RequestParam("code") String code) {
-        AuthRequestDto.SocialLoginRequest request = new AuthRequestDto.SocialLoginRequest(code);
+    public ApiResponse<AuthResponseDto.LoginResponse> kakaoCallback(
+            @Valid @ModelAttribute AuthRequestDto.SocialLoginRequest request
+    ) {
         AuthResponseDto.LoginResponse response = authService.socialLogin(SocialType.KAKAO, request);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
