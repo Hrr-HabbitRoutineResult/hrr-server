@@ -1,7 +1,7 @@
 package com.hrr.backend.domain.user.entity;
 
-import com.hrr.backend.domain.user.entity.enums.ReportStatus;
-import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.global.common.enums.ReportStatus;
+import com.hrr.backend.global.common.enums.ReportReason;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -31,11 +31,13 @@ public class UserReport extends BaseEntity {
     @JoinColumn(name = "reported_id", nullable = false)
     private User reported;
 
-    @Column(name = "reason")
-    private String reason;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reason", nullable = false)
+    private ReportReason reason;
 
     @Lob
-    @Column(name = "reason_text", columnDefinition = "TEXT") // ERD에 text(NULL)
+    @Column(name = "reason_text", columnDefinition = "TEXT")
     private String reasonText;
 
     @Enumerated(EnumType.STRING)

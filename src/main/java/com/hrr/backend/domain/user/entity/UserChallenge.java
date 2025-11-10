@@ -3,7 +3,6 @@ package com.hrr.backend.domain.user.entity;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeRole;
 import com.hrr.backend.domain.user.entity.enums.VerificationStatus;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
