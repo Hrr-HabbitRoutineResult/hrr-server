@@ -3,6 +3,8 @@ package com.hrr.backend.domain.challenge.controller;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +57,27 @@ public class ChallengeController {
 		);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, challenges);
+	}
+
+	@GetMapping("/{challengeId}")
+	@Operation(summary = "챌린지 프로필 조회", description = "챌린지 프로필을 조회합니다.")
+	public void getChallengeProfile(@PathVariable("challengeId") Long challengeId) {
+
+	}
+
+	@PostMapping("/{challengeId}/click")
+	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
+	public Long clickChallenge(@PathVariable("challengeId") Long challengeId) {
+
+		// 테스트를 위해 임시로 클릭 수 반환
+
+		return challengeService.clickChallenge(challengeId);
+	}
+
+	@GetMapping("/daily-top")
+	@Operation(summary = "오늘의 인기 챌린지 조회", description = "오늘의 클릭 수를 기준으로 상위 3개 챌린지를 조회합니다.")
+	public ApiResponse<List<ChallengeResponseDto.DailyTopDto>> getDailyTopChallenges() {
+
+		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.getDailyTopChallenges());
 	}
 }
