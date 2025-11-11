@@ -1,6 +1,6 @@
 package com.hrr.backend.domain.user.entity.enums;
 
-public enum Level {
+public enum UserLevel {
     BRONZE,
     SILVER,
     GOLD,

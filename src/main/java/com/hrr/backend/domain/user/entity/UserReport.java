@@ -44,13 +44,4 @@ public class UserReport extends BaseEntity {
     @Column(name = "status", nullable = false)
     private ReportStatus status = ReportStatus.PENDING;
 
-    // 자기 자신 신고 방지 검증
-    @PrePersist
-    @PreUpdate
-    private void validateReporter() {
-        if (reporter != null && reported != null
-                && reporter.getId().equals(reported.getId())) {
-            throw new IllegalArgumentException("자기 자신을 신고할 수 없습니다.");
-        }
-    }
 }

@@ -1,9 +1,9 @@
 package com.hrr.backend.domain.user.entity;
 
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
-import com.hrr.backend.domain.user.entity.enums.Level;
-import com.hrr.backend.domain.user.entity.enums.Role;
-import com.hrr.backend.domain.user.entity.enums.Status;
+import com.hrr.backend.domain.user.entity.enums.UserLevel;
+import com.hrr.backend.domain.user.entity.enums.UserRole;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -52,7 +52,7 @@ public class User extends BaseEntity {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "level", nullable = false)
-    private Level level = Level.BRONZE;
+    private UserLevel userLevel = UserLevel.BRONZE;
 
     @NotNull
     @Builder.Default
@@ -77,11 +77,11 @@ public class User extends BaseEntity {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    private Role role = Role.USER;
+    private UserRole userRole = UserRole.USER;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private Status status;
+    private UserStatus userStatus;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

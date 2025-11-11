@@ -1,8 +1,8 @@
 package com.hrr.backend.domain.user.entity;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
-import com.hrr.backend.domain.user.entity.enums.ChallengeRole;
-import com.hrr.backend.domain.user.entity.enums.VerificationStatus;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.entity.enums.UserVerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -38,22 +38,25 @@ public class UserChallenge extends BaseEntity {
     @Column(name = "role", nullable = false)
     @ColumnDefault("'CHALLENGER'")
     @Builder.Default
-    private ChallengeRole role = ChallengeRole.CHALLENGER;
+    private UserChallengeRole role = UserChallengeRole.CHALLENGER;
 
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", nullable = false)
-    private VerificationStatus verificationStatus;
+    private UserVerificationStatus userVerificationStatus = UserVerificationStatus.PENDING;
 
     @NotNull
     @Column(name = "verification_count", nullable = false)
+    @Builder.Default
     private Integer verificationCount = 0;
 
     @NotNull
     @Column(name = "verification_uncount", nullable = false)
+    @Builder.Default
     private Integer verificationUncount = 0;
 
     @NotNull
     @Column(name = "warn_count", nullable = false)
+    @Builder.Default
     private Integer warnCount = 0;
 }
