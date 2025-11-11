@@ -87,7 +87,7 @@ public class User extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NotificationSetting> notificationSettings = new ArrayList<>();
-}
+
     @Column(unique = true)
     private Long kakaoId;
 
