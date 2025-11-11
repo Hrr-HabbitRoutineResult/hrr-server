@@ -5,6 +5,7 @@ import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import com.hrr.backend.domain.user.entity.enums.UserRole;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.global.common.BaseEntity;
+import com.hrr.backend.domain.user.entity.UserFavor;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -86,4 +87,10 @@ public class User extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NotificationSetting> notificationSettings = new ArrayList<>();
+}
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserFavor> userFavors = new ArrayList<>();
+
+
 }
