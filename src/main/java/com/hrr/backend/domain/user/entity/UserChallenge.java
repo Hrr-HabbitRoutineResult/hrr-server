@@ -41,6 +41,7 @@ public class UserChallenge extends BaseEntity {
     private UserChallengeRole role = UserChallengeRole.CHALLENGER;
 
     @NotNull
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", nullable = false)
     private UserVerificationStatus userVerificationStatus = UserVerificationStatus.PENDING;
