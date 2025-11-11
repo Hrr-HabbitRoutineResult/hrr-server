@@ -23,3 +23,10 @@ jwt:
   access-token-validity : 2592000000           # 임시
   refresh-token-validity : 2592000000       # 임시
 
+#카카오 로그인
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  redirect-uri: ${DEV_KAKAO_REDIRECT_URI}  # 예: https://api.hrr-dev.com/api/auth/kakao/callback
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me

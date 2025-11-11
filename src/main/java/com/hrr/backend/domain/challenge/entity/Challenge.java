@@ -9,6 +9,7 @@ import com.hrr.backend.global.common.BaseEntity;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
+import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -84,5 +85,12 @@ public class Challenge extends BaseEntity {
 	@OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true)
 	@Builder.Default
 	private List<ChallengeDayJoin> challengeDays = new ArrayList<>();
+
+    @OneToOne(mappedBy = "challenge", cascade = CascadeType.ALL)
+    private ChallengeEmbedding embedding;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = false)
+    private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
 }
