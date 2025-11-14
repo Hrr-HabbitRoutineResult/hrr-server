@@ -1,7 +1,11 @@
 package com.hrr.backend.global.config;
 
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.servers.Server;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +17,13 @@ import java.util.List;
 
 @Profile("!test")
 @Configuration
+@SecurityScheme(
+        name = "Bearer Authentication",           // Swagger UI에서 표시될 이름
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT",
+        in = SecuritySchemeIn.HEADER
+)
 public class SwaggerConfig {
 
 	@Value("${springdoc.server-url}")
@@ -29,6 +40,9 @@ public class SwaggerConfig {
 
 		return new OpenAPI()
 			.info(info)
+            .addSecurityItem(
+                    new SecurityRequirement().addList("Bearer Authentication")
+            ) // JWT 인증 스키마 적용
 			.servers(List.of(new Server().url(serverUrl)));
 	}
 

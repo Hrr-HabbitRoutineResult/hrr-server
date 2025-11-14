@@ -23,4 +23,7 @@ public interface ChallengeRepositoryCustom {
 		String title,
 		Pageable pageable
 	);
+
+	// 챌린지 id 목록으로 정보 조회
+	List<ChallengeResponseDto.InfoDto> findChallengesByIds(List<Long> ids);
 }

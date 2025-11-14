@@ -18,6 +18,7 @@ import com.hrr.backend.global.common.enums.SortType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -77,7 +78,26 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 	}
 
 
-	//-------동적 쿼리 관련 메소드들------------
+	@Override
+	public List<ChallengeResponseDto.InfoDto> findChallengesByIds(List<Long> ids) {
+		return jpaQueryFactory
+			.select(Projections.bean(ChallengeResponseDto.InfoDto.class,
+				qChallenge.id.as("challengeId"),
+				qChallenge.title,
+				qChallenge.description,
+				qChallenge.currentParticipants.as("currentParticipantCount"),
+				qChallenge.maxParticipants.as("maxParticipantCount"),
+				qChallenge.imageUrl.as("thumbnailUrl"),
+				qChallenge.startDate
+				// DB에 없는 isUpcoming, dDayUntilStart, daysOfWeek 필드 제외
+
+			))
+			.from(qChallenge)
+			.where(qChallenge.id.in(ids))
+			.fetch();
+	}
+
+	//-------필터링 동적 쿼리 관련 메소드들------------
 	// 필터링 및 정렬 조건이 없을 경우, null을 반환하여 WHERE 절에서 자동 제외 처리
 
 	private BooleanExpression categoryEq(Category category) {
@@ -117,13 +137,13 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 		};
 	}
 
-	private BooleanExpression dayIn(List<ChallengeDays> days) {
-		if (days == null || days.isEmpty()) {
-			return null;
-		}
-
-		return qChallengeDayJoin.dayOfWeek.in(days);
-	}
+	// private BooleanExpression dayIn(List<ChallengeDays> days) {
+	// 	if (days == null || days.isEmpty()) {
+	// 		return null;
+	// 	}
+	//
+	// 	return qChallengeDayJoin.dayOfWeek.in(days);
+	// }
 
 	// 요일 필터에 해당하는 챌린지인지 판단
 	private BooleanExpression dayInExists(List<ChallengeDays> days) {

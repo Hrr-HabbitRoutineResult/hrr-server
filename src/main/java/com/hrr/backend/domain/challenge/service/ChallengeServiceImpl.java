@@ -3,13 +3,20 @@ package com.hrr.backend.domain.challenge.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
@@ -19,6 +26,8 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.SortType;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 import lombok.RequiredArgsConstructor;
@@ -30,7 +39,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final ChallengeRepository challengeRepository;
 	private final ChallengeDayJoinRepository challengeDayJoinRepository;
 
+	private final RedisTemplate<String, String> redisTemplate;
+
 	private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
+
+	// 오늘의 클릭수를 저장할 Redis Key
+	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -70,9 +84,155 @@ public class ChallengeServiceImpl implements ChallengeService {
 			pageable
 		);
 
+		// // ---응답 dto에 추가할 요일 정보 조회---
+		// // 모든 challengeId 추출
+		// List<Long> challengeIds = tempDtoSlice.getContent().stream()
+		// 	.map(ChallengeResponseDto.InfoDto::getChallengeId)
+		// 	.toList();
+		//
+		// // 해당 challenge들을 가진 ChallengeDayJoin 엔티티 조회
+		// List<ChallengeDayJoin> allDays = challengeDayJoinRepository.findByChallengeIdIn(challengeIds);
+		//
+		// // 챌린지 아이디-요일 리스트 매핑
+		// Map<Long, List<ChallengeDays>> daysMap = allDays.stream()
+		// 	.collect(Collectors.groupingBy(
+		// 		dayJoin -> dayJoin.getChallenge().getId(), // key: 챌린지 아이디
+		// 		Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList()) // value: 요일 리스트
+		// 	));
+		//
+		//
+		// // Repository에서 조회해 온 dto 기반으로 결과 dto 필드 일부 채우기
+		// Slice<ChallengeResponseDto.InfoDto> finalDtoSlice = tempDtoSlice.map(tempDto -> {
+		//
+		// 	LocalDate challengeStartDate = tempDto.getStartDate().toLocalDate();
+		// 	LocalDate today = LocalDate.now();
+		//
+		// 	long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
+		// 	boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
+		//
+		// 	// dto 나머지 필드 채우기(isUpcoming, dDayUntilStart, dayOfWeek)
+		// 	tempDto.setIsUpcoming(isUpcomingResult);
+		// 	tempDto.setDDayUntilStart((int)Math.max(0, dDay));	// 시작 전일 경우에만 남은 날짜를 set, else 0
+		// 	tempDto.setDaysOfWeek(daysMap.getOrDefault(tempDto.getChallengeId(), List.of()));
+		//
+		// 	return tempDto;
+		// });
+
+		// dto 나머지 필드 보강 (isUpcoming, dDayUntilStart, dayOfWeek)
+		List<ChallengeResponseDto.InfoDto> rawContent = tempDtoSlice.getContent();
+		List<ChallengeResponseDto.InfoDto> enrichedContent = enrichChallengeInfo(rawContent);
+
+		Slice<ChallengeResponseDto.InfoDto> finalDtoSlice = new SliceImpl<>(
+			enrichedContent,
+			pageable,
+			tempDtoSlice.hasNext()
+		);
+
+		return new SliceResponseDto<>(finalDtoSlice);
+	}
+
+	// @Override
+	// public Integer getChallengeProfile(Long challengeId) {
+	//
+	// 	// TODO: 챌린지 프로필 조회 구현
+	//
+	// 	return Math.toIntExact((updatedScore != null) ? updatedScore.longValue() : 0L);
+	// }
+
+	@Override
+	public Long clickChallenge(Long challengeId) {
+		// 챌린지 유효성 검사
+		challengeRepository.findById(challengeId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// 클릭 수 증가 로직
+		Double updatedScore = redisTemplate.opsForZSet().incrementScore(
+			TODAY_CHALLENGE_RANKING_KEY,
+			String.valueOf(challengeId), // 챌린지 아이디를 key로 사용
+			1.0 // 클릭 수 1.0 증가 (redis sorted set의 메서드 정의 상 double 타입 필요)
+		);
+
+		return (updatedScore != null) ? updatedScore.longValue() : 0L;
+	}
+
+	@Override
+	public List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges() {
+
+		// Top 3 조회
+		Set<ZSetOperations.TypedTuple<String>> topRankings = redisTemplate.opsForZSet().reverseRangeWithScores(
+			TODAY_CHALLENGE_RANKING_KEY,
+			0, 2
+		);
+
+		// 데이터가 없을 경우 (아마 00시 직후) 빈 리스트 반환
+		if (topRankings == null || topRankings.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// <챌린지 id, 클릭 수> 로딩
+		Map<Long, Long> clicksMap = topRankings.stream()
+			.collect(Collectors.toMap(
+				tuple -> Long.parseLong(Objects.requireNonNull(tuple.getValue())),
+				tuple -> (tuple.getScore() != null) ? tuple.getScore().longValue() : 0L
+			));
+
+		// 해당 챌린지들 DB에서 조회
+		List<Long> challengeIds = topRankings.stream()
+			.map(tuple -> Long.parseLong(Objects.requireNonNull(tuple.getValue())))
+			.toList();
+
+		List<ChallengeResponseDto.InfoDto> rawInfosFromRDB = challengeRepository.findChallengesByIds(challengeIds);
+
+		// D-Day, isUpcoming, daysOfWeek 추가
+		List<ChallengeResponseDto.InfoDto> enrichedInfos = enrichChallengeInfo(rawInfosFromRDB);
+
+		Map<Long, ChallengeResponseDto.InfoDto> infoMap = enrichedInfos.stream()
+			.collect(Collectors.toMap(
+				ChallengeResponseDto.InfoDto::getChallengeId,
+				Function.identity() // Identity function: InfoDto 객체 자체를 값으로 사용
+			));
+
+		// 최종 DTO
+		List<ChallengeResponseDto.DailyTopDto> results = topRankings.stream()
+			.map(tuple -> {
+				Long id = Long.parseLong(Objects.requireNonNull(tuple.getValue()));
+
+				// DB에서 받아온 챌린지 정보와 클릭 수 조회
+				ChallengeResponseDto.InfoDto info = infoMap.get(id);
+				Long clickCount = clicksMap.getOrDefault(id, 0L);
+
+				// 챌린지 정보가 조회되지 않으면 패스
+				if (info == null) return null;
+
+				return ChallengeResponseDto.DailyTopDto.builder()
+					.clickCount(clickCount)
+					.info(info)
+					.build();
+			})
+			.filter(Objects::nonNull)
+			.toList();
+
+		// 랭킹 정보 추가
+		for (int i = 0; i < results.size(); i++) {
+			results.get(i).setRanking(i + 1);
+		}
+
+		return results;
+	}
+
+	/**
+	 * DB에서 조회해 온 Challenge InfoDto에 누락되어있는 D-Day, isUpcoming, daysOfWeek 정보를 추가
+	 * @param rawInfos DB에서 조회된 ChallengeResponseDto.InfoDto 리스트
+	 */
+	private List<ChallengeResponseDto.InfoDto> enrichChallengeInfo(List<ChallengeResponseDto.InfoDto> rawInfos) {
+
+		if (rawInfos.isEmpty()) {
+			return rawInfos;
+		}
+
 		// ---응답 dto에 추가할 요일 정보 조회---
 		// 모든 challengeId 추출
-		List<Long> challengeIds = tempDtoSlice.getContent().stream()
+		List<Long> challengeIds = rawInfos.stream()
 			.map(ChallengeResponseDto.InfoDto::getChallengeId)
 			.toList();
 
@@ -86,24 +246,21 @@ public class ChallengeServiceImpl implements ChallengeService {
 				Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList()) // value: 요일 리스트
 			));
 
-
 		// Repository에서 조회해 온 dto 기반으로 결과 dto 필드 일부 채우기
-		Slice<ChallengeResponseDto.InfoDto> finalDtoSlice = tempDtoSlice.map(tempDto -> {
+		return rawInfos.stream()
+			.map(infoDto -> {
+				LocalDate challengeStartDate = infoDto.getStartDate().toLocalDate();
+				LocalDate today = LocalDate.now();
 
-			LocalDate challengeStartDate = tempDto.getStartDate().toLocalDate();
-			LocalDate today = LocalDate.now();
+				long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
+				boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
-			long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
-			boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
+				// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
+				infoDto.setIsUpcoming(isUpcomingResult);
+				infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
+				infoDto.setDaysOfWeek(daysMap.getOrDefault(infoDto.getChallengeId(), List.of()));
 
-			// dto 나머지 필드 채우기(isUpcoming, dDayUntilStart, dayOfWeek)
-			tempDto.setIsUpcoming(isUpcomingResult);
-			tempDto.setDDayUntilStart((int)Math.max(0, dDay));	// 시작 전일 경우에만 남은 날짜를 set, else 0
-			tempDto.setDaysOfWeek(daysMap.getOrDefault(tempDto.getChallengeId(), List.of()));
-
-			return tempDto;
-		});
-
-		return new SliceResponseDto<>(finalDtoSlice);
+				return infoDto;
+			}).toList();
 	}
 }

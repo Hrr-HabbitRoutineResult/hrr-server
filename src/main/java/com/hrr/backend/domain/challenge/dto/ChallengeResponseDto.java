@@ -54,5 +54,23 @@ public class ChallengeResponseDto {
 		private LocalDateTime startDate;	// Querydsl로 조회하고 Service에서 사용 후 버릴 필드라 ignore 처리
 	}
 
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "오늘의 인기 챌린지 DTO")
+	public static class DailyTopDto {
+
+		@Setter
+		@Schema(description = "랭킹", example = "1")
+		private Integer ranking;
+
+		@Schema(description = "클릭 수", example = "1500")
+		private Long clickCount;
+
+		@Schema(description = "챌린지 정보")
+		private InfoDto info;
+
+	}
+
 
 }

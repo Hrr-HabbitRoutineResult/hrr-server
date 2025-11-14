@@ -9,5 +9,6 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
 
     // ID로 유저 조회 (soft delete 미적용)
     Optional<User> findById(Long id);
-
+    // Kakao ID
+    Optional<User> findByKakaoId(Long kakaoId);
 }
