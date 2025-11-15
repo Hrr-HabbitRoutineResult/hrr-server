@@ -74,7 +74,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 				userMission.setMission(randomMission);	// 미션만 할당
 			}
 		} catch (DataIntegrityViolationException e) {
-			// 동시성 충돌 발생 시: DB에 이미  저장된 레코드를 재조회하여 복구
+			// 동시성 충돌 발생 시: DB에 이미 저장된 레코드를 재조회하여 복구
 			userMission = userMissionRepository.findByUserAndDate(user, today)
 				.orElseThrow(() -> {
 					log.error("동시성 충돌 복구 실패: UserMission 레코드를 찾을 수 없음. User ID: {}, Date: {}, DB Error: {}",
@@ -82,6 +82,11 @@ public class UserMissionServiceImpl implements UserMissionService {
 
 					return new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
 				});
+
+			// 재조회한 레코드에 미션이 없는 경우 할당
+			if (userMission.getMission() == null) {
+				userMission.setMission(selectRandomMission(user));
+			}
 		}
 
 		return convertToDetailDto(userMission);
