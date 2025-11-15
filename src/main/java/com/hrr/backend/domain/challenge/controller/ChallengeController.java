@@ -19,6 +19,7 @@ import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -67,11 +68,11 @@ public class ChallengeController {
 
 	@PostMapping("/{challengeId}/click")
 	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
-	public Long clickChallenge(@PathVariable("challengeId") Long challengeId) {
+	public ApiResponse<Long> clickChallenge(@PathVariable("challengeId") Long challengeId) {
 
 		// 테스트를 위해 임시로 클릭 수 반환
 
-		return challengeService.clickChallenge(challengeId);
+		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.clickChallenge(challengeId));
 	}
 
 	@GetMapping("/daily-top")

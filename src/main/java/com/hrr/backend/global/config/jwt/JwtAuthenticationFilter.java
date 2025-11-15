@@ -3,6 +3,7 @@ package com.hrr.backend.global.config.jwt;
 import com.hrr.backend.domain.auth.service.JwtService;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import jakarta.servlet.FilterChain;
@@ -66,12 +67,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             User user = optionalUser.get();
 
-            // Spring Security 인증 객체 생성
-            UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                    .username(String.valueOf(user.getId()))
-                    .password("") // JWT 기반이므로 비밀번호는 불필요
-                    .authorities("ROLE_USER")
-                    .build();
+			// CustomUserDetails 객체로 userDetails를 대신함
+			UserDetails userDetails = new CustomUserDetails(user);
+
             //인증 객체 구성
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
