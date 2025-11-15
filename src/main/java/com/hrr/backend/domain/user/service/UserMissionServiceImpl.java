@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -132,7 +133,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 		}
 
 		// 랜덤 인덱스 생성
-		int randomIndex = new Random().nextInt(missionList.size());
+		int randomIndex = ThreadLocalRandom.current().nextInt(missionList.size());
 		return missionList.get(randomIndex);
 	}
 }
