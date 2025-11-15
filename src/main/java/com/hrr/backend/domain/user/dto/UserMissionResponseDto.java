@@ -17,8 +17,8 @@ public class UserMissionResponseDto {
 	@Schema(description = "오늘의 랜덤미션 상세정보 DTO")
 	public static class DetailDto {
 
-		@Schema(description = "유저-미션 아이디", example = "101")
-		private Long userMissionId;
+		@Schema(description = "미션 아이디", example = "101")
+		private Long missionId;
 
 		@Schema(description = "미션 제목", example = "오운완")
 		private String title;

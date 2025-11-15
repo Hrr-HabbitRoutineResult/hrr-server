@@ -102,7 +102,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 	// 사용 빈도가 적을 것 같아 별도의 클래스가 아닌 private 메소드로 생성
 	private UserMissionResponseDto.DetailDto convertToDetailDto(UserMission userMission) {
 		return UserMissionResponseDto.DetailDto.builder()
-			.userMissionId(userMission.getId())
+			.missionId(userMission.getMission().getId())
 			.title(userMission.getMission().getTitle())
 			.content(userMission.getMission().getContent())
 			.isCompleted(userMission.getIsCompleted())
