@@ -156,12 +156,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	@Override
-	public List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges() {
+	public List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number) {
 
 		// Top 3 조회
 		Set<ZSetOperations.TypedTuple<String>> topRankings = redisTemplate.opsForZSet().reverseRangeWithScores(
 			TODAY_CHALLENGE_RANKING_KEY,
-			0, 2
+			0, number-1
 		);
 
 		// 데이터가 없을 경우 (아마 00시 직후) 빈 리스트 반환

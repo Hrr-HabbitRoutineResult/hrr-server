@@ -29,7 +29,7 @@ public interface ChallengeService {
 	Long clickChallenge(Long challengeId);
 
 	// 오늘의 인기 챌린지 조회
-	List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges();
+	List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number);
 
 
 

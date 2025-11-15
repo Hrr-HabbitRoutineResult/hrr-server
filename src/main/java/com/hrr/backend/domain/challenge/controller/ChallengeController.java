@@ -76,9 +76,9 @@ public class ChallengeController {
 	}
 
 	@GetMapping("/daily-top")
-	@Operation(summary = "오늘의 인기 챌린지 조회", description = "오늘의 클릭 수를 기준으로 상위 3개 챌린지를 조회합니다.")
-	public ApiResponse<List<ChallengeResponseDto.DailyTopDto>> getDailyTopChallenges() {
+	@Operation(summary = "오늘의 인기 챌린지 조회", description = "오늘의 클릭 수를 기준으로 상위 n개 챌린지를 조회합니다.")
+	public ApiResponse<List<ChallengeResponseDto.DailyTopDto>> getDailyTopChallenges(@RequestParam("number") int number) {
 
-		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.getDailyTopChallenges());
+		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.getDailyTopChallenges(number));
 	}
 }

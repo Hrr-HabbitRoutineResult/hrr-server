@@ -20,8 +20,8 @@ springdoc:
 
 jwt:
   secret : ${JWT_SECRET}
-  access-token-validity : 1800000L           # 1000L * 60 * 30 (30분)
-  refresh-token-validity : 604800000L       # 1000L * 60 * 60 * 24 * 7 (7일)
+  access-token-validity : 1800000           # 1000L * 60 * 30 (30분)
+  refresh-token-validity : 604800000       # 1000L * 60 * 60 * 24 * 7 (7일)
 
 #카카오 로그인
 kakao:
