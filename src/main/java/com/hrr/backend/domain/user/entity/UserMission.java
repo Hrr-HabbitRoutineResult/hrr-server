@@ -30,8 +30,9 @@ public class UserMission {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
+	@Setter
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "mission_id", nullable = false)
+	@JoinColumn(name = "mission_id")
 	private RandomMission mission;
 
 	@Column(name = "date", nullable = false)

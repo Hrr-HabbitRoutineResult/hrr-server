@@ -5,12 +5,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
+import com.hrr.backend.domain.user.dto.UserMissionResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserMissionService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
-import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,11 +26,12 @@ public class UserMissionController {
 
 	@GetMapping("")
 	@Operation(summary = "오늘의 랜덤미션 조회", description = "오늘의 랜덤미션을 조회합니다. ")
-	public ApiResponse<SliceResponseDto<ChallengeResponseDto.InfoDto>> getRandomMission(
+	public ApiResponse<UserMissionResponseDto.DetailDto> getRandomMission(
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
 	) {
+		User user = customUserDetails.getUser();
 
-		return null;
+		return ApiResponse.onSuccess(SuccessCode.OK, userMissionService.getRandomMission(user));
 	}
 
 	@GetMapping("/completed")
