@@ -25,11 +25,8 @@ public class CustomUserDetails implements UserDetails {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		// 모든 인증된 사용자에게 'ROLE_USER' 권한을 부여(임시)
-		return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
-
-/*		// User에서 권한을 가져와 부여
-		return Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()));*/
+		// User에서 권한을 가져와 부여
+		return Collections.singletonList(new SimpleGrantedAuthority(user.getUserRole().name()));
 	}
 
 	@Override
@@ -40,7 +37,7 @@ public class CustomUserDetails implements UserDetails {
 
 	@Override
 	public String getUsername() {
-		// 여기서의 name=사용자를 식별하는 고유값이기 떄문에 user_id를 사용
+		// 여기서의 name=사용자를 식별하는 고유값이기 때문에 user_id를 사용
 		return String.valueOf(user.getId());
 	}
 

@@ -67,13 +67,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             User user = optionalUser.get();
 
-            // Spring Security 인증 객체 생성
-/*            UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                    .username(String.valueOf(user.getId()))
-                    .password("") // JWT 기반이므로 비밀번호는 불필요
-                    .authorities("ROLE_USER")
-                    .build();*/
-
 			// CustomUserDetails 객체로 userDetails를 대신함
 			UserDetails userDetails = new CustomUserDetails(user);
 
