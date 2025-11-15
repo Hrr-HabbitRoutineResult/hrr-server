@@ -7,6 +7,7 @@ import java.util.Random;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.user.dto.UserMissionResponseDto;
@@ -20,7 +21,6 @@ import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,7 +71,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 			} else {
 				// --- 데이터는 있는데, 미션 할당이 안 된 경우 ---
 				userMission = optionalUserMission.get();
-				userMission.setMission(selectRandomMission(user));	// 미션만 할당
+				userMission.setMission(randomMission);	// 미션만 할당
 			}
 		} catch (DataIntegrityViolationException e) {
 			// 동시성 충돌 발생 시: DB에 이미  저장된 레코드를 재조회하여 복구
@@ -88,6 +88,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public Boolean getRandomMissionStatus(User user) {
 		LocalDate today = LocalDate.now();
 
