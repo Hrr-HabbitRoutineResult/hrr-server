@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.function.Function;
@@ -156,18 +157,26 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	@Override
-	public List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges() {
+	public List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number) {
 
-		// Top 3 조회
-		Set<ZSetOperations.TypedTuple<String>> topRankings = redisTemplate.opsForZSet().reverseRangeWithScores(
-			TODAY_CHALLENGE_RANKING_KEY,
-			0, 2
-		);
+		// 현재 목록 개수 범위를 넘어서면 있는 만큼 반환(UX 고려)
+		long currentListSize = Optional.ofNullable(
+			redisTemplate.opsForZSet().size(TODAY_CHALLENGE_RANKING_KEY)).orElse(0L);
 
 		// 데이터가 없을 경우 (아마 00시 직후) 빈 리스트 반환
-		if (topRankings == null || topRankings.isEmpty()) {
+		if (currentListSize == 0) {
 			return Collections.emptyList();
 		}
+
+		if(number > currentListSize){
+			number = (int)currentListSize;
+		}
+
+		// Top N 조회
+		Set<ZSetOperations.TypedTuple<String>> topRankings = redisTemplate.opsForZSet().reverseRangeWithScores(
+			TODAY_CHALLENGE_RANKING_KEY,
+			0, number-1
+		);
 
 		// <챌린지 id, 클릭 수> 로딩
 		Map<Long, Long> clicksMap = topRankings.stream()
