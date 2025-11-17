@@ -15,6 +15,11 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -44,6 +49,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final ChallengeRepository challengeRepository;
 	private final ChallengeDayJoinRepository challengeDayJoinRepository;
 	private final ChallengeConverter challengeConverter;
+
+	private final UserRepository userRepository;
+	private final UserChallengeRepository userChallengeRepository;
 
 	private final RedisTemplate<String, String> redisTemplate;
 
@@ -283,16 +291,15 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public ChallengeResponseDto.CreateChallengeResDto createChallenge(ChallengeRequestDto.CreateChallengeDto req) {
-
-		// DTO(@Valid)에서 1차 검증 후, 비즈니스 룰 추가 검증
+	public ChallengeResponseDto.CreateChallengeResDto createChallenge(
+			Long userId,
+			ChallengeRequestDto.CreateChallengeDto req
+	) {
+		// 비즈니스 룰 검증
 		validateBusinessRules(req);
 
 		boolean isPublic = req.getIsPublic();
-		// 비공개면 관찰자 모드는 무조건 false (기획에 따라 수정 예정)
 		boolean isViewerMode = isPublic && req.getIsViewerMode();
-
-		// 공개 챌린지는 password 사용 안 함
 		String password = isPublic ? null : req.getPassword();
 
 		String imageUrl = req.getImageUrl();
@@ -300,6 +307,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 			imageUrl = DEFAULT_CHALLENGE_IMAGE_URL;
 		}
 
+		// 챌린지 엔티티 생성
 		Challenge challenge = challengeConverter.toChallengeEntity(
 				req,
 				isPublic,
@@ -307,8 +315,22 @@ public class ChallengeServiceImpl implements ChallengeService {
 				password,
 				imageUrl
 		);
-
 		Challenge saved = challengeRepository.save(challenge);
+
+		// 유저 조회
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+
+		// UserChallenge 생성
+		UserChallenge userChallenge = UserChallenge.builder()
+				.user(user)
+				.challenge(saved)
+				.role(UserChallengeRole.OWNER)	// 생성자를 OWNER로 세팅
+				.build();
+
+		userChallengeRepository.save(userChallenge);
+
+		// 응답 반환
 		return challengeConverter.toCreateResponseDto(saved);
 	}
 

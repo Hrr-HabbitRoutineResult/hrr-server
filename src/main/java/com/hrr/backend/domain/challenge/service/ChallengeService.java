@@ -33,6 +33,9 @@ public interface ChallengeService {
 	List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number);
 
 	// 챌린지 생성
-	ChallengeResponseDto.CreateChallengeResDto createChallenge(ChallengeRequestDto.CreateChallengeDto requestDto);
+	ChallengeResponseDto.CreateChallengeResDto createChallenge(
+			Long userId,
+			ChallengeRequestDto.CreateChallengeDto requestDto
+	);
 
 }

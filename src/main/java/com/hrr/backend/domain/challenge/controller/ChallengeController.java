@@ -3,9 +3,12 @@ package com.hrr.backend.domain.challenge.controller;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
+import com.hrr.backend.global.config.CustomUserDetails;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -116,10 +119,16 @@ public class ChallengeController {
 					)
 			)
 	)
-	@PostMapping("/api/v1/challenges")
+	@PostMapping("")
 	public ApiResponse<ChallengeResponseDto.CreateChallengeResDto> createChallenge(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@Valid @RequestBody ChallengeRequestDto.CreateChallengeDto request
 	) {
-		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.createChallenge(request));
+		Long userId = userDetails.getUser().getId();
+		return ApiResponse.onSuccess(
+				SuccessCode.OK,
+				challengeService.createChallenge(userId, request)
+		);
 	}
 }
