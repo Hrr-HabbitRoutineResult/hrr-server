@@ -15,6 +15,7 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
@@ -52,6 +53,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final UserRepository userRepository;
 	private final UserChallengeRepository userChallengeRepository;
+	private final UserChallengeConverter userChallengeConverter;
 
 	private final RedisTemplate<String, String> redisTemplate;
 
@@ -322,12 +324,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
 
 		// UserChallenge 생성
-		UserChallenge userChallenge = UserChallenge.builder()
-				.user(user)
-				.challenge(saved)
-				.role(UserChallengeRole.OWNER)	// 생성자를 OWNER로 세팅
-				.build();
-
+		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
 		// 응답 반환
