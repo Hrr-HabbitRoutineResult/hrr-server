@@ -14,9 +14,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis-server # Redis 서비스 이름(컨테이너 간 통신에 사용)
       SPRING_DATA_REDIS_PORT: 6379
+
+      MODEL_API_URL: http://model-api:8000/recommend
+
     depends_on:
       db:
         condition: service_healthy
+      model-api:
+        condition: service_started
 
   db:
     healthcheck:
@@ -45,6 +50,17 @@ services:
     restart: always
     volumes:
       - redis_data:/data    # 영속성 유지
+
+  model-api:
+    build: ../Hrr-model/hrr-RecSys
+    image: hrr/model-api
+    container_name: hrr-model-api
+    platform: linux/amd64
+    ports:
+      - "8000:8000"         # 필요 없으면 빼도 됨 (외부에서 직접 안 쏠 거면)
+    env_file:
+      - .env                # 모델 쪽에서 쓸 환경변수 있으면
+    restart: always
 
 volumes:
   db-data:

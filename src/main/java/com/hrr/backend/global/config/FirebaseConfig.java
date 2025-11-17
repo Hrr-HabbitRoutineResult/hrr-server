@@ -20,7 +20,7 @@ public class FirebaseConfig {
     @Value("${spring.profiles.active:dev}")
     private String activeProfile;
 
-    @Value("${firebase.config.path:firebase/hrr-server-firebase-adminsdk-fbsvc-4630feb.json}")
+    @Value("${firebase.config.path:firebase/hrr-server-firebase-adminsdk-fbsvc-4630feba48.json}")
     private String firebaseConfigPath;
 
     @PostConstruct
