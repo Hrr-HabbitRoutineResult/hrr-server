@@ -12,6 +12,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.function.Function;
 
+import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
+import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -32,6 +35,7 @@ import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +43,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final ChallengeRepository challengeRepository;
 	private final ChallengeDayJoinRepository challengeDayJoinRepository;
+	private final ChallengeConverter challengeConverter;
 
 	private final RedisTemplate<String, String> redisTemplate;
 
@@ -46,6 +51,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
+
+	// 기본 이미지 URL
+	private static final String DEFAULT_CHALLENGE_IMAGE_URL = "https://example.com/images/challenge-default.png";
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -272,4 +280,61 @@ public class ChallengeServiceImpl implements ChallengeService {
 				return infoDto;
 			}).toList();
 	}
+
+	@Override
+	@Transactional
+	public ChallengeResponseDto.CreateChallengeResDto createChallenge(ChallengeRequestDto.CreateChallengeDto req) {
+
+		// DTO(@Valid)에서 1차 검증 후, 비즈니스 룰 추가 검증
+		validateBusinessRules(req);
+
+		boolean isPublic = req.getIsPublic();
+		// 비공개면 관찰자 모드는 무조건 false (기획에 따라 수정 예정)
+		boolean isViewerMode = isPublic && req.getIsViewerMode();
+
+		// 공개 챌린지는 password 사용 안 함
+		String password = isPublic ? null : req.getPassword();
+
+		String imageUrl = req.getImageUrl();
+		if (imageUrl == null || imageUrl.isBlank()) {
+			imageUrl = DEFAULT_CHALLENGE_IMAGE_URL;
+		}
+
+		Challenge challenge = challengeConverter.toChallengeEntity(
+				req,
+				isPublic,
+				isViewerMode,
+				password,
+				imageUrl
+		);
+
+		Challenge saved = challengeRepository.save(challenge);
+		return challengeConverter.toCreateResponseDto(saved);
+	}
+
+	private void validateBusinessRules(ChallengeRequestDto.CreateChallengeDto req) {
+		// 인증 시간 검증: 종료 시간 > 시작 시간
+		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
+			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_VERIFY_TIME);
+		}
+
+		// 공개/비공개 및 비밀번호, 관찰자 모드 검증
+		if (!req.getIsPublic()) {
+			// 비공개인데 비밀번호가 없거나 4자리 숫자가 아닌 경우
+			if (req.getPassword() == null || !req.getPassword().matches("^\\d{4}$")) {
+				throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED);
+			}
+
+			// 비공개 챌린지인데 관찰자 모드를 설정한 경우
+			if (req.getIsViewerMode()) {
+				throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED);
+			}
+		} else {
+			// 공개인데 비밀번호가 입력된 경우
+			if (req.getPassword() != null && !req.getPassword().isBlank()) {
+				throw new GlobalException(ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT);
+			}
+		}
+	}
+
 }

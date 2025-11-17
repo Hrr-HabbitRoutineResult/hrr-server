@@ -25,7 +25,13 @@ public enum ErrorCode implements BaseCode{
 
 	// challenge
 	CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE404", "존재하지 않는 챌린지입니다."),
-    // auth
+	CHALLENGE_INVALID_VERIFY_TIME(HttpStatus.BAD_REQUEST, "CHALLENGE401", "인증 종료 시간은 시작 시간보다 늦어야 합니다."),
+	CHALLENGE_PRIVATE_PASSWORD_REQUIRED(HttpStatus.BAD_REQUEST, "CHALLENGE402", "비공개 챌린지는 4자리 숫자 비밀번호가 필요합니다."),
+	CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CHALLENGE403", "비공개 챌린지는 관찰자 모드를 사용할 수 없습니다."),
+	CHALLENGE_INVALID_MAX_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CHALLENGE404", "참가자 수는 1명 이상이어야 합니다."),
+	CHALLENGE_PUBLIC_PASSWORD_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE405", "공개 챌린지는 비밀번호를 설정할 수 없습니다."),
+
+	// auth
     AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH001", "유효하지 않은 토큰입니다."),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH002", "토큰이 만료되었습니다."),
     AUTH_USER_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH003", "해당 사용자를 찾을 수 없습니다."),
