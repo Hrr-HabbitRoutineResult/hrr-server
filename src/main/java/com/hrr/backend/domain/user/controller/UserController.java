@@ -5,32 +5,32 @@ import com.hrr.backend.domain.user.service.UserService;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "User", description ="사용자 정보 관련 API")
+@Tag(name = "User", description ="사용자 관련 API")
 @RestController
-@RequestMapping("/api/v1/user") // (API 스펙은 users/인데 사진은 user/네요. 통일 필요)
+@RequestMapping("/api/v1/user")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
     @GetMapping("/{userId}")
-    @Operation(summary = "타인 사용자 기본 정보 조회", ...)
-    public ApiResponse<UserResponseDto> getUserProfile(
-            @PathVariable Long userId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails //
+    @Operation(summary = "타인 사용자 기본 정보 조회", description = "특정 사용자의 프로필 정보를 조회합니다.\n")
+    public ApiResponse<UserResponseDto.ProfileDto> getUserProfile(
+            @PathVariable
+            @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
+            @RequestParam(required = false)
+            @Parameter(description = "현재 로그인한 사용자 ID (팔로잉 여부 확인용)") Long currentUserId
     ) {
-        UserResponseDto response = userService.getUserProfile(
-                userDetails.getUser().getId(),
-                userId
-        );
-        return ApiResponse.onSuccess(SuccessCode.OK, response);
+        UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, currentUserId);
+        return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
 }
