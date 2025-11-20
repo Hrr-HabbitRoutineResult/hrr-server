@@ -21,6 +21,7 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -350,8 +351,13 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// 참가 처리
 		UserChallenge userChallenge = userChallengeConverter.toChallenger(user, challenge);
-		userChallengeRepository.save(userChallenge);
 
+		try {
+			userChallengeRepository.save(userChallenge);
+		} catch (DataIntegrityViolationException e) {
+			// DB 수준에서 중복(Unique 제약조건 위배) 발생 시, 우리가 정의한 에러로 변환
+			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
+		}
 		// 챌린지 인원 업데이트
 		challenge.increaseCurrentParticipants();
 
