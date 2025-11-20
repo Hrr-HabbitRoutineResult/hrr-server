@@ -298,7 +298,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 			ChallengeRequestDto.CreateChallengeDto req
 	) {
 		// 비즈니스 룰 검증
-		validateBusinessRules(req);
+		validateCreateRequest(req);
 
 		boolean isPublic = req.getIsPublic();
 		boolean isViewerMode = isPublic && req.getIsViewerMode();
@@ -358,7 +358,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return new ChallengeResponseDto.JoinChallengeResDto(challenge.getId());
 	}
 
-	private void validateBusinessRules(ChallengeRequestDto.CreateChallengeDto req) {
+	/**
+	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
+	 */
+	private void validateCreateRequest(ChallengeRequestDto.CreateChallengeDto req) {
 		// 인증 시간 검증: 종료 시간 > 시작 시간
 		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
 			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_VERIFY_TIME);
