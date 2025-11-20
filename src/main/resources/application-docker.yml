@@ -30,4 +30,4 @@ kakao:
   client-secret: ${KAKAO_CLIENT_SECRET}
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
-  #redirect-uri: ${DOCKER_KAKAO_REDIRECT_URI:hrr://oauth/kakao}
+#  redirect-uri: ${DOCKER_KAKAO_REDIRECT_URI:hrr://oauth/kakao}
