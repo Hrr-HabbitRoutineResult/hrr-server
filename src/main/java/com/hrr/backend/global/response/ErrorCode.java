@@ -30,6 +30,10 @@ public enum ErrorCode implements BaseCode{
 	CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CHALLENGE4003", "비공개 챌린지는 관찰자 모드를 사용할 수 없습니다."),
 	CHALLENGE_INVALID_MAX_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CHALLENGE4004", "참가자 수는 1명 이상이어야 합니다."),
 	CHALLENGE_PUBLIC_PASSWORD_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4005", "공개 챌린지는 비밀번호를 설정할 수 없습니다."),
+	CHALLENGE_ALREADY_JOINED(HttpStatus.CONFLICT, "CHALLENGE4091", "이미 참가한 챌린지입니다."),
+	CHALLENGE_FULL(HttpStatus.CONFLICT, "CHALLENGE4092", "챌린지 정원이 초과되었습니다."),
+	CHALLENGE_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "CHALLENGE4006", "비밀번호가 일치하지 않습니다."),
+	CHALLENGE_NOT_RECRUITING(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "모집 중인 챌린지가 아닙니다."),
 
 	// auth
     AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH001", "유효하지 않은 토큰입니다."),
