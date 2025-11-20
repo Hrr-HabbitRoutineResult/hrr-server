@@ -291,6 +291,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 			}).toList();
 	}
 
+	/**
+	 * Create a new challenge and register the specified user as its owner.
+	 *
+	 * @param userId the ID of the user who will own the created challenge
+	 * @param req    the request DTO containing challenge properties and visibility settings
+	 * @return       a DTO representing the created challenge
+	 * @throws GlobalException if the request validation fails or the user cannot be found
+	 */
 	@Override
 	@Transactional
 	public ChallengeResponseDto.CreateChallengeDto createChallenge(
@@ -331,6 +339,18 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toCreateResponseDto(saved);
 	}
 
+	/**
+	 * Registers the specified user as a participant in the specified challenge.
+	 *
+	 * Performs existence and business-rule validation, creates the participant record,
+	 * and increments the challenge's current participant count.
+	 *
+	 * @param userId      the ID of the user attempting to join
+	 * @param challengeId the ID of the challenge to join
+	 * @param req         join request data (may contain a password for private challenges)
+	 * @return JoinChallengeDto with the joined challenge's id
+	 * @throws GlobalException if the challenge or user does not exist or if join validation fails
+	 */
 	@Override
 	@Transactional
 	public ChallengeResponseDto.JoinChallengeDto joinChallenge(
@@ -359,7 +379,13 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	/**
-	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
+	 * Validate business rules for a challenge creation request.
+	 *
+	 * @param req the create-challenge request DTO to validate
+	 * @throws GlobalException with ErrorCode.CHALLENGE_INVALID_VERIFY_TIME if verify end time is not after verify start time
+	 * @throws GlobalException with ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED if the challenge is private and the password is missing or not a 4-digit numeric string
+	 * @throws GlobalException with ErrorCode.CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED if the challenge is private and viewer mode is enabled
+	 * @throws GlobalException with ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT if the challenge is public and a password is provided
 	 */
 	private void validateCreateRequest(ChallengeRequestDto.CreateChallengeDto req) {
 		// 인증 시간 검증: 종료 시간 > 시작 시간
@@ -387,7 +413,16 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	/**
-	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
+	 * Validates business rules for a user attempting to join a challenge.
+	 *
+	 * @param challenge     the challenge the user is attempting to join
+	 * @param user          the user attempting to join the challenge
+	 * @param inputPassword the password provided by the user; may be null and is validated only for private challenges
+	 * @throws GlobalException when:
+	 *         - the challenge is not in UPCOMING status (ErrorCode.CHALLENGE_NOT_RECRUITING),
+	 *         - the user has already joined the challenge (ErrorCode.CHALLENGE_ALREADY_JOINED),
+	 *         - the challenge has reached its maximum participants (ErrorCode.CHALLENGE_FULL),
+	 *         - the provided password is missing or incorrect for a private challenge (ErrorCode.CHALLENGE_PASSWORD_MISMATCH)
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
 		// 모집 상태 검증 (UPCOMING 상태인지)

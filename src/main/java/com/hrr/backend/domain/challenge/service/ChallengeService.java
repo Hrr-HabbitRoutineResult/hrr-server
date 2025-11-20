@@ -29,16 +29,34 @@ public interface ChallengeService {
 	// 챌린지 클릭 처리
 	Long clickChallenge(Long challengeId);
 
-	// 오늘의 인기 챌린지 조회
+	/**
+ * Retrieves today's most popular challenges limited to the specified count.
+ *
+ * @param number the maximum number of top challenges to return
+ * @return a list of ChallengeResponseDto.DailyTopDto representing today's top challenges, up to {@code number} items
+ */
 	List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number);
 
-	// 챌린지 생성
+	/**
+	 * Creates a new challenge for the specified user.
+	 *
+	 * @param userId     the ID of the user who creates the challenge
+	 * @param requestDto the details of the challenge to create
+	 * @return           the created challenge details
+	 */
 	ChallengeResponseDto.CreateChallengeDto createChallenge(
 			Long userId,
 			ChallengeRequestDto.CreateChallengeDto requestDto
 	);
 
-	// 챌린지 참가
+	/**
+	 * Processes a user's request to join a challenge.
+	 *
+	 * @param userId      the ID of the user who is joining the challenge
+	 * @param challengeId the ID of the challenge to join
+	 * @param requestDto  details required to join the challenge
+	 * @return            a JoinChallengeDto containing the resulting membership details
+	 */
 	ChallengeResponseDto.JoinChallengeDto joinChallenge(
 			Long userId,
 			Long challengeId,

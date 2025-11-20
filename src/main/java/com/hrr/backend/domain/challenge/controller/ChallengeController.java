@@ -90,6 +90,12 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.getDailyTopChallenges(number));
 	}
 
+	/**
+	 * Create a new challenge for the authenticated user.
+	 *
+	 * @param request the payload containing challenge properties such as title, description, visibility and password, category, verificationType, startDate, maxParticipants, viewer mode, rule, verification window (verifyStartTime/verifyEndTime), daysOfWeek, and imageUrl
+	 * @return the created challenge data including its generated identifier and provided attributes
+	 */
 	@Operation(
 			summary = "챌린지 생성",
 			requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -131,6 +137,13 @@ public class ChallengeController {
 		);
 	}
 
+	/**
+	 * Register the authenticated user as a participant in the specified challenge.
+	 *
+	 * @param challengeId the ID of the challenge to join
+	 * @param request the join request payload (for private challenges this may include the password)
+	 * @return `ChallengeResponseDto.JoinChallengeDto` containing the created participation details
+	 */
 	@Operation(
 			summary = "챌린지 참가",
 			description = "사용자가 특정 챌린지에 참가합니다. 비공개 챌린지인 경우 비밀번호 검증이 수행됩니다."
