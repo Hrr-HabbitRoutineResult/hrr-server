@@ -18,9 +18,9 @@ import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
-import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.global.common.enums.ChallengeStatus;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -331,6 +331,33 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toCreateResponseDto(saved);
 	}
 
+	@Override
+	@Transactional
+	public ChallengeResponseDto.JoinChallengeResDto joinChallenge(
+			Long userId,
+			Long challengeId,
+			ChallengeRequestDto.JoinChallengeDto req
+	) {
+		// 엔티티 조회
+		Challenge challenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+
+		// 비즈니스 룰 검증
+		validateJoinRequest(challenge, user, req.getPassword());
+
+		// 참가 처리
+		UserChallenge userChallenge = userChallengeConverter.toChallenger(user, challenge);
+		userChallengeRepository.save(userChallenge);
+
+		// 챌린지 인원 업데이트
+		challenge.increaseCurrentParticipants();
+
+		return new ChallengeResponseDto.JoinChallengeResDto(challenge.getId());
+	}
+
 	private void validateBusinessRules(ChallengeRequestDto.CreateChallengeDto req) {
 		// 인증 시간 검증: 종료 시간 > 시작 시간
 		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
@@ -352,6 +379,33 @@ public class ChallengeServiceImpl implements ChallengeService {
 			// 공개인데 비밀번호가 입력된 경우
 			if (req.getPassword() != null && !req.getPassword().isBlank()) {
 				throw new GlobalException(ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT);
+			}
+		}
+	}
+
+	/**
+	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
+	 */
+	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
+		// 모집 상태 검증 (UPCOMING 상태인지)
+		if (challenge.getStatus() != ChallengeStatus.UPCOMING) {
+			throw new GlobalException(ErrorCode.CHALLENGE_NOT_RECRUITING);
+		}
+
+		// 중복 참가 검증
+		if (userChallengeRepository.existsByUserAndChallenge(user, challenge)) {
+			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
+		}
+
+		// 정원 초과 검증
+		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
+			throw new GlobalException(ErrorCode.CHALLENGE_FULL);
+		}
+
+		// 비밀번호 검증 (비공개 챌린지인 경우)
+		if (!challenge.getIsPublic()) {
+			if (inputPassword == null || !inputPassword.equals(challenge.getPassword())) {
+				throw new GlobalException(ErrorCode.CHALLENGE_PASSWORD_MISMATCH);
 			}
 		}
 	}

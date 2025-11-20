@@ -38,4 +38,11 @@ public interface ChallengeService {
 			ChallengeRequestDto.CreateChallengeDto requestDto
 	);
 
+	// 챌린지 참가
+	ChallengeResponseDto.JoinChallengeResDto joinChallenge(
+			Long userId,
+			Long challengeId,
+			ChallengeRequestDto.JoinChallengeDto requestDto
+	);
+
 }
