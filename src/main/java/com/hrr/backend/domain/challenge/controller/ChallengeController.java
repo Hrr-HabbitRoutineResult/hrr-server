@@ -139,10 +139,8 @@ public class ChallengeController {
 	public ApiResponse<ChallengeResponseDto.JoinChallengeDto> joinChallenge(
 			@Parameter(hidden = true)
 			@AuthenticationPrincipal CustomUserDetails userDetails,
-
 			@PathVariable("challengeId") Long challengeId,
-
-			@RequestBody ChallengeRequestDto.JoinChallengeDto request
+			@Valid @RequestBody ChallengeRequestDto.JoinChallengeDto request
 	) {
 		Long userId = userDetails.getUser().getId();
 

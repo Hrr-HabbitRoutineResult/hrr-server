@@ -86,6 +86,7 @@ public class ChallengeRequestDto {
     public static class JoinChallengeDto {
 
         @Schema(description = "비공개 챌린지 비밀번호 (공개일 경우 null 또는 빈 값)", example = "1234")
+        @Size(max = 4)
         private String password;
     }
 }
