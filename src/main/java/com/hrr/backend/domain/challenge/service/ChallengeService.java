@@ -33,13 +33,13 @@ public interface ChallengeService {
 	List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number);
 
 	// 챌린지 생성
-	ChallengeResponseDto.CreateChallengeResDto createChallenge(
+	ChallengeResponseDto.CreateChallengeDto createChallenge(
 			Long userId,
 			ChallengeRequestDto.CreateChallengeDto requestDto
 	);
 
 	// 챌린지 참가
-	ChallengeResponseDto.JoinChallengeResDto joinChallenge(
+	ChallengeResponseDto.JoinChallengeDto joinChallenge(
 			Long userId,
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto requestDto

@@ -293,7 +293,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public ChallengeResponseDto.CreateChallengeResDto createChallenge(
+	public ChallengeResponseDto.CreateChallengeDto createChallenge(
 			Long userId,
 			ChallengeRequestDto.CreateChallengeDto req
 	) {
@@ -333,7 +333,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public ChallengeResponseDto.JoinChallengeResDto joinChallenge(
+	public ChallengeResponseDto.JoinChallengeDto joinChallenge(
 			Long userId,
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto req
@@ -355,7 +355,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 챌린지 인원 업데이트
 		challenge.increaseCurrentParticipants();
 
-		return new ChallengeResponseDto.JoinChallengeResDto(challenge.getId());
+		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
 	}
 
 	/**

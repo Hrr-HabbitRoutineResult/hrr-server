@@ -75,7 +75,7 @@ public class ChallengeResponseDto {
 	@Getter
 	@AllArgsConstructor
 	@Schema(description = "챌린지 개설 응답 DTO")
-	public static class CreateChallengeResDto {
+	public static class CreateChallengeDto {
 
 		@Schema(description = "생성된 챌린지 ID", example = "1")
 		private Long id;
@@ -84,7 +84,7 @@ public class ChallengeResponseDto {
 	@Getter
 	@AllArgsConstructor
 	@Schema(description = "챌린지 참가 응답 DTO")
-	public static class JoinChallengeResDto {
+	public static class JoinChallengeDto {
 
 		@Schema(description = "참가한 챌린지 ID", example = "1")
 		private Long challengeId;
