@@ -35,7 +35,7 @@ public class SocialUserService {
                 .map(user -> {
                     user.updateNickname(nickname);
                     user.updateProfileImage(profileImage);
-                    user.updateLoginStatus(LoginStatus.EXISTING);
+                    user.updateLoginStatus(LoginStatus.ACTIVE);
                     return user;
                 })
                 .orElseGet(() -> userRepository.save(User.newKakao(kakaoId, nickname, profileImage)));
