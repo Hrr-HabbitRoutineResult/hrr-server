@@ -31,7 +31,7 @@ public class TermServiceImpl implements TermService {
     @Override
     public TermResponseDto.TermDetail getTermDetail(Long termId) {
         Term term = termRepository.findById(termId)
-                .orElseThrow(() -> new GlobalException(ErrorCode._BAD_REQUEST));
+                .orElseThrow(() -> new GlobalException(ErrorCode.TERM_NOT_FOUND));
 
         return new TermResponseDto.TermDetail(
                 term.getId(),

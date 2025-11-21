@@ -41,4 +41,8 @@ public class UserTerm {
     @CreationTimestamp
     @Column(name = "agreed_at", nullable = false, updatable = false)
     private LocalDateTime agreedAt;
+
+    public void updateIsAgreed(Boolean isAgreed) {
+        this.isAgreed = isAgreed;
+    }
 }

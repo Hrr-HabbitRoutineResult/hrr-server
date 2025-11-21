@@ -42,7 +42,14 @@ public enum ErrorCode implements BaseCode{
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH5023", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
 
 	// mission
-	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다.")
+	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
+
+    // term
+    TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM4041", "존재하지 않는 약관입니다."),
+    REQUIRED_TERM_NOT_AGREED(HttpStatus.BAD_REQUEST, "TERM4002", "필수 약관에 모두 동의해야 합니다."),
+    TERM_ALREADY_AGREED(HttpStatus.BAD_REQUEST, "TERM4003", "이미 약관 동의를 완료한 사용자입니다."),
+    INVALID_TERM_ID_IN_REQUEST(HttpStatus.BAD_REQUEST, "TERM4004", "요청에 유효하지 않은 약관 ID가 포함되어 있습니다."),
+    TERM_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "TERM5005", "약관 동의 저장 중 오류가 발생했습니다."),
 
     ;
 
