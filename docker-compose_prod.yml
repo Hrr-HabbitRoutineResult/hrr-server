@@ -1,0 +1,56 @@
+services:
+  # Nginx 리버스 프록시 서비스 (HTTPS 종료 및 Spring Boot 연결 담당)
+  nginx-proxy:
+    image: nginx:stable-alpine
+    container_name: hrr_nginx_prod
+    # 외부 80, 443 포트를 컨테이너에 바인딩
+    ports:
+      - "80:80"   # HTTP -> HTTPS 리다이렉트용
+      - "443:443" # HTTPS 트래픽 수신용
+    volumes:
+      # Nginx 설정 파일 마운트 (HTTPS 및 Proxy 설정 포함)
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # Certbot 인증서 파일 마운트 (호스트 OS의 인증서를 컨테이너로 전달): HTTPS를 위한 인증서
+      - /etc/letsencrypt/live/www.hrr-umc7.store/:/etc/nginx/ssl/:ro
+    restart: always
+    depends_on:
+      - app
+
+# ---- nginx 외 다른 서비스들은 외부 포트 사용 x ---
+
+  # Spring Boot 애플리케이션 서비스
+  app:
+    image: ychan0/hrr-server:v20251121_01
+    container_name: hrr_app_prod
+    environment:
+      # Secrets Manager에서 가져온 환경 변수 사용
+      SPRING_PROFILES_ACTIVE: prod
+
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true'
+      SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis-server
+      SPRING_DATA_REDIS_PORT: 6379
+
+      JWT_SECRET: ${JWT_SECRET}
+
+      PROD_BASE_URL: ${PROD_BASE_URL}
+
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      PROD_KAKAO_REDIRECT_URI: ${PROD_KAKAO_REDIRECT_URI}
+
+    restart: always
+
+  # Redis 서비스
+  redis-server:
+    image: redis:7.4.2-alpine
+    container_name: hrr_redis_prod
+    restart: always
+    volumes:
+      - redis_data:/data
+
+volumes:
+  db-data:
+  redis_data:
