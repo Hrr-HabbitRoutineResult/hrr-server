@@ -10,8 +10,8 @@ services:
     volumes:
       # Nginx 설정 파일 마운트 (HTTPS 및 Proxy 설정 포함)
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      # Certbot 인증서 파일 마운트 (호스트 OS의 인증서를 컨테이너로 전달): HTTPS를 위한 인증서
-      - /etc/letsencrypt/live/www.hrr-umc7.store/:/etc/nginx/ssl/:ro
+      # /etc/letsencrypt 폴더 전체를 마운트 (호스트 OS의 인증서를 컨테이너로 전달하기 위함)
+      - /etc/letsencrypt/:/etc/letsencrypt/:ro
     restart: always
     depends_on:
       - app
@@ -20,7 +20,7 @@ services:
 
   # Spring Boot 애플리케이션 서비스
   app:
-    image: ychan0/hrr-server:v20251121_01
+    image: ychan0/hrr-server:latest
     container_name: hrr_app_prod
     environment:
       # Secrets Manager에서 가져온 환경 변수 사용
@@ -40,6 +40,13 @@ services:
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       PROD_KAKAO_REDIRECT_URI: ${PROD_KAKAO_REDIRECT_URI}
+
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/firebase-key.json
+
+    volumes:
+      # EC2에 있는 키 파일을 컨테이너 내부의 위 경로로 마운트
+      # 호스트경로 : 컨테이너경로 : 읽기전용
+      - /home/ubuntu/firebase-key.json:/app/secrets/firebase-key.json:ro
 
     restart: always
 
