@@ -35,9 +35,11 @@ public class SocialUserService {
                 .map(user -> {
                     user.updateNickname(nickname);
                     user.updateProfileImage(profileImage);
-                    user.updateLoginStatus(LoginStatus.ACTIVE);
                     return user;
                 })
-                .orElseGet(() -> userRepository.save(User.newKakao(kakaoId, nickname, profileImage)));
+                .orElseGet(() -> {
+                    // 신규 유저는 NEW 상태로 생성되게 변경
+                    return userRepository.save(User.newKakao(kakaoId, nickname, profileImage));
+                });
     }
 }
