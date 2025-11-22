@@ -15,6 +15,8 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeEmbedding;
+import com.hrr.backend.domain.challenge.repository.ChallengeEmbeddingRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -57,7 +59,11 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-	private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
+    private final EmbeddingClient embeddingClient;
+    private final ChallengeEmbeddingRepository challengeEmbeddingRepository;
+
+
+    private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
 
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
@@ -327,6 +333,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
+        // 챌린지 텍스트 생성
+        String challengeText = saved.getTitle() + " " + saved.getDescription() + " " + saved.getRule();
+
+        // 임베딩 계산
+        float[] embedding = embeddingClient.getEmbedding(challengeText);
+
+        // float[] → byte[] 변환
+        byte[] embeddingBytes = floatArrayToByteArray(embedding);
+
+        // ChallengeEmbedding 저장
+        ChallengeEmbedding embeddingEntity = ChallengeEmbedding.builder()
+                .challenge(saved)
+                .challengeText(challengeText)
+                .challengeEmbedding(embeddingBytes)
+                .build();
+
+        challengeEmbeddingRepository.save(embeddingEntity);
+
 		// 응답 반환
 		return challengeConverter.toCreateResponseDto(saved);
 	}
@@ -355,5 +379,19 @@ public class ChallengeServiceImpl implements ChallengeService {
 			}
 		}
 	}
+
+    private byte[] floatArrayToByteArray(float[] floats) {
+        int length = floats.length;
+        byte[] bytes = new byte[length * 4];
+
+        for (int i = 0; i < length; i++) {
+            int bits = Float.floatToIntBits(floats[i]);
+            bytes[i * 4]     = (byte) (bits >> 24);
+            bytes[i * 4 + 1] = (byte) (bits >> 16);
+            bytes[i * 4 + 2] = (byte) (bits >> 8);
+            bytes[i * 4 + 3] = (byte) (bits);
+        }
+        return bytes;
+    }
 
 }
