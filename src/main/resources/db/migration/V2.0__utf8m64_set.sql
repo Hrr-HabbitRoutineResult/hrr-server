@@ -2,7 +2,7 @@
 SET foreign_key_checks = 0;
 
 -- 데이터베이스 자체의 기본 문자셋도 변경 (앞으로 생성될 테이블에도 적용)
-ALTER DATABASE hrr_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 -- 테이블별 변환
 ALTER TABLE recommendation_result CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
