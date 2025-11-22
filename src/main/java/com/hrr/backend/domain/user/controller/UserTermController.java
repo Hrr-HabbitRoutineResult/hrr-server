@@ -3,7 +3,6 @@ package com.hrr.backend.domain.user.controller;
 import com.hrr.backend.domain.user.dto.UserTermRequestDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserTermService;
-import com.hrr.backend.global.annotation.CurrentUser;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
