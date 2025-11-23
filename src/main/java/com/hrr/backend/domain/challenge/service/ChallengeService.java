@@ -38,4 +38,10 @@ public interface ChallengeService {
 			ChallengeRequestDto.CreateChallengeDto requestDto
 	);
 
+	// 챌린지 공석 알림 신청
+	void registerChallengeWait(Long userId, Long challengeId);
+
+	// 챌린지 공석 알림 취소
+	void cancelChallengeWait(Long userId, Long challengeId);
+
 }

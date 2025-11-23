@@ -15,6 +15,8 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeWait;
+import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -50,6 +52,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final ChallengeRepository challengeRepository;
 	private final ChallengeDayJoinRepository challengeDayJoinRepository;
 	private final ChallengeConverter challengeConverter;
+
+	private final ChallengeWaitRepository challengeWaitRepository;
 
 	private final UserRepository userRepository;
 	private final UserChallengeRepository userChallengeRepository;
@@ -331,6 +335,51 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toCreateResponseDto(saved);
 	}
 
+	@Override
+	public void registerChallengeWait(Long userId, Long challengeId) {
+		// 유저 및 챌린지 조회
+		User user = findUser(userId);
+		Challenge challenge = findChallenge(challengeId);
+
+		// 챌린지 참여 여부 확인
+		if (userChallengeRepository.existsByUserAndChallenge(user, challenge)) {
+			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
+		}
+
+		// 이미 신청했는지 확인
+		if (challengeWaitRepository.existsByUserAndChallenge(user, challenge)) {
+			throw new GlobalException(ErrorCode.CHALLENGE_WAIT_ALREADY_EXIST);
+		}
+
+		// 자리가 남아있는 경우 대기 신청 불가
+		if (challenge.getCurrentParticipants() < challenge.getMaxParticipants()) {
+			throw new GlobalException(ErrorCode.CHALLENGE_NOT_FULL);
+		}
+
+		// 저장
+		ChallengeWait challengeWait = ChallengeWait.builder()
+				.user(user)
+				.challenge(challenge)
+				.build();
+
+		challengeWaitRepository.save(challengeWait);
+
+	}
+
+	@Override
+	public void cancelChallengeWait(Long userId, Long challengeId) {
+		// 유저 및 챌린지 조회
+		User user = findUser(userId);
+		Challenge challenge = findChallenge(challengeId);
+
+		// 대기 내역 조회
+		ChallengeWait challengeWait = challengeWaitRepository.findByUserAndChallenge(user, challenge)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_WAIT_NOT_FOUND));
+
+		// 삭제
+		challengeWaitRepository.delete(challengeWait);
+	}
+
 	private void validateBusinessRules(ChallengeRequestDto.CreateChallengeDto req) {
 		// 인증 시간 검증: 종료 시간 > 시작 시간
 		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
@@ -354,6 +403,18 @@ public class ChallengeServiceImpl implements ChallengeService {
 				throw new GlobalException(ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT);
 			}
 		}
+	}
+
+	// 유저 조회 헬퍼 메서드
+	private User findUser(Long userId) {
+		return userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+	}
+
+	// 챌린지 조회 헬퍼 메서드
+	private Challenge findChallenge(Long challengeId) {
+		return challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 	}
 
 }
