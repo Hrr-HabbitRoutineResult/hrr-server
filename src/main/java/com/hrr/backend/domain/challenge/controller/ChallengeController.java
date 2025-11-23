@@ -131,4 +131,26 @@ public class ChallengeController {
 				challengeService.createChallenge(userId, request)
 		);
 	}
+
+	@PostMapping("/{challengeId}/wait")
+	@Operation(summary = "챌린지 공석 알림 신청", description = "참여 인원이 마감된 챌린지에 공석이 생길 시 알림을 받기 위해 대기 신청을 합니다.")
+	public ApiResponse<Void> registerChallengeWait(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		challengeService.registerChallengeWait(userDetails.getUser().getId(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_REGISTER_OK, null);
+	}
+
+	@DeleteMapping("/{challengeId}/wait")
+	@Operation(summary = "챌린지 공석 알림 취소", description = "신청했던 챌린지 오픈 알림을 취소합니다.")
+	public ApiResponse<Void> cancelChallengeWait(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		challengeService.cancelChallengeWait(userDetails.getUser().getId(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_CANCEL_OK, null);
+	}
 }
