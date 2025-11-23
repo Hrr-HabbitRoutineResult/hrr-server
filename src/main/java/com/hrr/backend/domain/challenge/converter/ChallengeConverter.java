@@ -55,4 +55,13 @@ public class ChallengeConverter {
     public ChallengeResponseDto.CreateChallengeResDto toCreateResponseDto(Challenge challenge) {
         return new ChallengeResponseDto.CreateChallengeResDto(challenge.getId());
     }
+
+    // 좋아요 응답 DTO 변환 메서드
+    public ChallengeResponseDto.ChallengeLikeDto toChallengeLikeDto(Challenge challenge, Boolean isLiked) {
+        return ChallengeResponseDto.ChallengeLikeDto.builder()
+                .challengeId(challenge.getId())
+                .isLiked(isLiked)
+                .likeCount(challenge.getLikeCount())
+                .build();
+    }
 }

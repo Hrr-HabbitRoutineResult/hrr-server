@@ -38,4 +38,9 @@ public interface ChallengeService {
 			ChallengeRequestDto.CreateChallengeDto requestDto
 	);
 
+	// 챌린지 좋아요 등록
+	ChallengeResponseDto.ChallengeLikeDto likeChallenge(Long userId, Long challengeId);
+
+	// 챌린지 좋아요 취소
+	ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(Long userId, Long challengeId);
 }

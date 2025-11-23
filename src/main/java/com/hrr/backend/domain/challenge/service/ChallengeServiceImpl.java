@@ -15,6 +15,8 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeLike;
+import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -50,6 +52,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final ChallengeRepository challengeRepository;
 	private final ChallengeDayJoinRepository challengeDayJoinRepository;
 	private final ChallengeConverter challengeConverter;
+
+	private final ChallengeLikeRepository challengeLikeRepository;
 
 	private final UserRepository userRepository;
 	private final UserChallengeRepository userChallengeRepository;
@@ -329,6 +333,60 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// 응답 반환
 		return challengeConverter.toCreateResponseDto(saved);
+	}
+
+	@Override
+	@Transactional
+	public ChallengeResponseDto.ChallengeLikeDto likeChallenge(Long userId, Long challengeId) {
+		// 엔티티 조회 (이전 PR 머지 후 수정)
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+
+		Challenge challenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// 중복 좋아요 방지 및 저장
+		if (!challengeLikeRepository.existsByUserAndChallenge(user, challenge)) {
+			ChallengeLike challengeLike = ChallengeLike.builder()
+					.user(user)
+					.challenge(challenge)
+					.build();
+			challengeLikeRepository.save(challengeLike);
+			challengeRepository.increaseLikeCount(challengeId);
+		}
+
+		// 최신 상태 조회
+		Challenge updatedChallenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// DTO 변환
+		return challengeConverter.toChallengeLikeDto(updatedChallenge, true);
+	}
+
+	@Override
+	@Transactional
+	public ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(Long userId, Long challengeId) {
+		// 엔티티 조회
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+
+		Challenge challenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		Optional<ChallengeLike> challengeLike = challengeLikeRepository.findByUserAndChallenge(user, challenge);
+
+		// 좋아요 취소
+		if (challengeLike.isPresent()) {
+			challengeLikeRepository.deleteByUserAndChallenge(user, challenge);
+			challengeRepository.decreaseLikeCount(challengeId);
+		}
+
+		// 최신 상태 조회
+		Challenge updatedChallenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// DTO 변환
+		return challengeConverter.toChallengeLikeDto(updatedChallenge, false);
 	}
 
 	private void validateBusinessRules(ChallengeRequestDto.CreateChallengeDto req) {
