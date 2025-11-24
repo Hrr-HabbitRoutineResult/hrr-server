@@ -51,18 +51,19 @@ echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
 echo "--- 4/4: Docker Compose 실행 및 배포 ---"
 
 # 최신 이미지 가져오기
-docker compose -f "${COMPOSE_FILE}" pull
+docker compose -f "${COMPOSE_FILE}" pull || {
+  echo "ERROR: docker compose pull 실패. 로그를 확인하세요." >&2
+  exit 1
+}
 
 # 컨테이너 실행 (재생성 강제)
-docker compose -f "${COMPOSE_FILE}" up --no-build -d --force-recreate
-
-# 미사용 이미지 정리 (디스크 공간 확보)
-docker image prune -f
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Docker Compose 실행 실패. 로그를 확인하세요." >&2
-    exit 1
+if ! docker compose -f "${COMPOSE_FILE}" up --no-build -d --force-recreate; then
+  echo "ERROR: docker compose up 실패. 로그를 확인하세요." >&2
+  exit 1
 fi
+
+# 미사용 이미지 정리 (디스크 공간 확보; 실패해도 배포 자체는 성공으로 간주)
+docker image prune -f || echo "WARN: docker image prune 실패(디스크 정리만 실패)."
 
 echo "배포 완료! 서비스가 백그라운드에서 실행되었습니다."
 echo "상태 확인: sudo docker ps"
