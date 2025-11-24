@@ -1,0 +1,36 @@
+spring:
+  config:
+    activate:
+      on-profile: "prod"
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  flyway:
+    locations: classpath:db/migration, classpath:db/seed/prod
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&sslMode=VERIFY_IDENTITY&allowPublicKeyRetrieval=true # 국제 표준시인 UTC 적용 및 UTF-8로 인코딩
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
+
+springdoc:
+  server-url: ${PROD_BASE_URL}
+
+jwt:
+  secret : ${JWT_SECRET}
+  access-token-validity : 1800000           # 1000L * 60 * 30 (30분) : 임시
+  refresh-token-validity : 604800000       # 1000L * 60 * 60 * 24 * 7 (7일) : 임시
+
+firebase:
+  config:
+    classpath: firebase/hrr-server-firebase-adminsdk-fbsvc-4630feba48.json
+
+#카카오 로그인
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  redirect-uri: ${PROD_KAKAO_REDIRECT_URI}  # 예: https://api.hrr-dev.com/api/auth/kakao/callback
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me
