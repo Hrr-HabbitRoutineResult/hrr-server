@@ -40,7 +40,7 @@ services:
       # Secrets Manager에서 가져온 환경 변수 사용
       SPRING_PROFILES_ACTIVE: prod
 
-      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true'
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&sslMode=VERIFY_IDENTITY&allowPublicKeyRetrieval=true'
       SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
 
