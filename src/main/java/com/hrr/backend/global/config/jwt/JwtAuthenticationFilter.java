@@ -32,18 +32,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
+	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) {
+		String path = request.getRequestURI();
+
+		// 모든 공개 경로를 명시적으로 true 반환(인증 불필요)
+		return path.equals("/") ||
+			path.startsWith("/api/v1/auth") ||
+			path.startsWith("/swagger-ui") ||
+			path.startsWith("/v3/api-docs") ||
+			path.startsWith("/swagger-resources") ||
+			path.startsWith("/webjars");
+	}
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain)
             throws ServletException, IOException {
-        String uri = request.getRequestURI();
 
-        //인증 불필요 구간은 필터 완전 우회
-        if (uri.startsWith("/api/v1/auth")) {
-            chain.doFilter(request, response);
-            return;
-        }
         String token = jwtService.resolveToken(request);
 
         // 헤더에 토큰이 있고, SecurityContext에 인증 정보가 없는 경우에만 인증 처리

@@ -52,7 +52,7 @@ public class ChallengeConverter {
         return challenge;
     }
 
-    public ChallengeResponseDto.CreateChallengeResDto toCreateResponseDto(Challenge challenge) {
-        return new ChallengeResponseDto.CreateChallengeResDto(challenge.getId());
+    public ChallengeResponseDto.CreateChallengeDto toCreateResponseDto(Challenge challenge) {
+        return new ChallengeResponseDto.CreateChallengeDto(challenge.getId());
     }
 }

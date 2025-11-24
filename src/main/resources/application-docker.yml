@@ -1,36 +1,3 @@
-spring:
-  config:
-    activate:
-      on-profile: "docker"
-  jpa:
-    hibernate:
-      ddl-auto: update
-
-  flyway:
-    locations: classpath:db/migration, classpath:db/seed/local
-
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${LOCAL_DB_URL_DOCKER}
-    username: ${LOCAL_DB_USERNAME}
-    password: ${LOCAL_DB_PASSWORD}
-
-springdoc:
-  server-url: ${LOCAL_BASE_URL}
-
-jwt:
-  secret : ${JWT_SECRET}
-  access-token-validity : 1800000           # 1000L * 60 * 30 (30분)
-  refresh-token-validity : 604800000       # 1000L * 60 * 60 * 24 * 7 (7일)
-
-#카카오 로그인
-kakao:
-  client-id: ${KAKAO_CLIENT_ID}
-  redirect-uri: ${DOCKER_KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
-  client-secret: ${KAKAO_CLIENT_SECRET}
-  token-uri: https://kauth.kakao.com/oauth/token
-  user-info-uri: https://kapi.kakao.com/v2/user/me
-  #redirect-uri: ${DOCKER_KAKAO_REDIRECT_URI:hrr://oauth/kakao}
 
 model:
   api:
