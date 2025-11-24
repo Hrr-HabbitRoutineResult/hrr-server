@@ -22,7 +22,6 @@ import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -120,7 +119,7 @@ public class ChallengeController {
 			)
 	)
 	@PostMapping("")
-	public ApiResponse<ChallengeResponseDto.CreateChallengeResDto> createChallenge(
+	public ApiResponse<ChallengeResponseDto.CreateChallengeDto> createChallenge(
 			@Parameter(hidden = true)
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@Valid @RequestBody ChallengeRequestDto.CreateChallengeDto request
@@ -129,6 +128,25 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(
 				SuccessCode.OK,
 				challengeService.createChallenge(userId, request)
+		);
+	}
+
+	@Operation(
+			summary = "챌린지 참가",
+			description = "사용자가 특정 챌린지에 참가합니다. 비공개 챌린지인 경우 비밀번호 검증이 수행됩니다."
+	)
+	@PostMapping("/{challengeId}/join")
+	public ApiResponse<ChallengeResponseDto.JoinChallengeDto> joinChallenge(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails,
+			@PathVariable("challengeId") Long challengeId,
+			@Valid @RequestBody ChallengeRequestDto.JoinChallengeDto request
+	) {
+		Long userId = userDetails.getUser().getId();
+
+		return ApiResponse.onSuccess(
+				SuccessCode.OK,
+				challengeService.joinChallenge(userId, challengeId, request)
 		);
 	}
 }
