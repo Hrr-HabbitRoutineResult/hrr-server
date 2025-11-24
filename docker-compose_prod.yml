@@ -55,13 +55,6 @@ services:
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       PROD_KAKAO_REDIRECT_URI: ${PROD_KAKAO_REDIRECT_URI}
 
-      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/firebase-key.json
-
-    volumes:
-      # EC2에 있는 키 파일을 컨테이너 내부의 위 경로로 마운트
-      # 호스트경로 : 컨테이너경로 : 읽기전용
-      - /home/ubuntu/firebase-key.json:/app/secrets/firebase-key.json:ro
-
     restart: always
 
   # Redis 서비스
