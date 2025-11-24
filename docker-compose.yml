@@ -1,4 +1,23 @@
 services:
+  app: # 나중에 베포용에 써먹을 용도,,
+    image: hrr/backend
+    build: .
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: ${LOCAL_DB_URL_DOCKER}
+      SPRING_DATASOURCE_USERNAME: ${LOCAL_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis-server # Redis 서비스 이름(컨테이너 간 통신에 사용)
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD" ]

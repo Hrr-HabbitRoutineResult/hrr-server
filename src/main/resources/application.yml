@@ -9,7 +9,7 @@ spring:
   profiles:
     group:
       local: "local"
-      prod: "prod"
+      dev: "dev"
       test: "test"
     default: local
 
