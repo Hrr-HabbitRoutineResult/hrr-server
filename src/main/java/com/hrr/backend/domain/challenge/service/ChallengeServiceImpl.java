@@ -30,6 +30,7 @@ import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
@@ -43,6 +44,7 @@ import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -333,27 +335,36 @@ public class ChallengeServiceImpl implements ChallengeService {
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
-        // 챌린지 텍스트 생성
-        String challengeText = saved.getTitle() + " " + saved.getDescription() + " " + saved.getRule();
+        // 임베딩 계산은 비동기로 처리
+        calculateAndSaveEmbeddingAsync(saved.getId());
 
-        // 임베딩 계산
-        float[] embedding = embeddingClient.getEmbedding(challengeText);
-
-        // float[] → byte[] 변환
-        byte[] embeddingBytes = floatArrayToByteArray(embedding);
-
-        // ChallengeEmbedding 저장
-        ChallengeEmbedding embeddingEntity = ChallengeEmbedding.builder()
-                .challenge(saved)
-                .challengeText(challengeText)
-                .challengeEmbedding(embeddingBytes)
-                .build();
-
-        challengeEmbeddingRepository.save(embeddingEntity);
-
-		// 응답 반환
-		return challengeConverter.toCreateResponseDto(saved);
+        return challengeConverter.toCreateResponseDto(saved);
 	}
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void calculateAndSaveEmbeddingAsync(Long challengeId) {
+        try {
+            Challenge challenge = challengeRepository.findById(challengeId)
+                    .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+            String challengeText = challenge.getTitle() + " " +
+                    challenge.getDescription() + " " +
+                    challenge.getRule();
+
+            float[] embedding = embeddingClient.getEmbedding(challengeText);
+            byte[] embeddingBytes = floatArrayToByteArray(embedding);
+
+            ChallengeEmbedding embeddingEntity = ChallengeEmbedding.builder()
+                    .challenge(challenge)
+                    .challengeText(challengeText)
+                    .challengeEmbedding(embeddingBytes)
+                    .build();
+
+            challengeEmbeddingRepository.save(embeddingEntity);
+        } catch (Exception e) {
+            throw new GlobalException(ErrorCode.CHALLENGE_CALCULATE_EMBEDDING);
+        }
+    }
 
 	private void validateBusinessRules(ChallengeRequestDto.CreateChallengeDto req) {
 		// 인증 시간 검증: 종료 시간 > 시작 시간
