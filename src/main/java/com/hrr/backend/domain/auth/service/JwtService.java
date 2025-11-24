@@ -17,12 +17,15 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
 
-    //액세스 토큰 만료시간 (예: 30분)
-    private final long ACCESS_TOKEN_VALIDITY = 1000L * 60 * 30;
-    // 리프레시 토큰 만료시간 (예: 7일)
-    private final long REFRESH_TOKEN_VALIDITY = 1000L * 60 * 60 * 24 * 7;
+	//액세스 토큰 만료시간
+	@Value("${jwt.access-token-validity}")
+	private long accessTokenValidity;
 
-    private SecretKey getSigningKey() {
+	// 리프레시 토큰 만료시간
+	@Value("${jwt.refresh-token-validity}")
+	private long refreshTokenValidity;
+
+	private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -32,7 +35,7 @@ public class JwtService {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + ACCESS_TOKEN_VALIDITY))
+                .setExpiration(new Date(now.getTime() + accessTokenValidity))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -44,7 +47,7 @@ public class JwtService {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_VALIDITY))
+                .setExpiration(new Date(now.getTime() + refreshTokenValidity))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
