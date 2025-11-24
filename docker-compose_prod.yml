@@ -34,7 +34,7 @@ services:
 
   # Spring Boot 애플리케이션 서비스
   app:
-    image: ychan0/hrr-server:latest
+    image: ychan0/hrr-server:v1.0.0
     container_name: hrr_app_prod
     environment:
       # Secrets Manager에서 가져온 환경 변수 사용
