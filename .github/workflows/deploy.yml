@@ -44,7 +44,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/hrr-server:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/hrr-server:v1.0.0
           platforms: linux/amd64
 
       # 설정 파일(docker-compose, nginx, deploy) EC2로 전송 (SCP)
