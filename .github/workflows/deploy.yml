@@ -56,7 +56,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           # source: 깃헙에 있는 파일 경로 / target: EC2 저장 경로
-          source: "docker-compose_prod.yml,nginx.conf, deploy.sh"
+          source: "docker-compose_prod.yml,nginx.conf,deploy.sh"
           target: "/home/ubuntu"
 
       # EC2 접속해서 deploy.sh(베포 스크립트) 실행
