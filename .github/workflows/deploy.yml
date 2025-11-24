@@ -3,8 +3,6 @@ name: Deploy to AWS EC2 with Docker
 on:
   push:
     branches: [ "develop" ] # develop 브랜치에 푸시하면 자동으로 배포 시작
-  pull_request:
-    branches: [ "develop" ] # PR 생성 시 빌드/테스트 진행
   workflow_dispatch:    # 수동 가능하게
 
 jobs:
