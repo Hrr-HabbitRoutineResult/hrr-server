@@ -15,7 +15,6 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
-import com.hrr.backend.domain.challenge.repository.ChallengeEmbeddingRepository;
 import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
@@ -70,7 +69,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 
     private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
-	private static final int UPCOMING_DAYS_CRITERIA = 5;   // '곧 시작' 챌린지 판단 기준 일자
 
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
@@ -304,7 +302,6 @@ public class ChallengeServiceImpl implements ChallengeService {
         );
 
         return challengeConverter.toCreateResponseDto(saved);
-		return challengeConverter.toCreateResponseDto(saved);
 	}
     private String buildChallengeText(Challenge challenge) {
         return challenge.getTitle() + " " +
