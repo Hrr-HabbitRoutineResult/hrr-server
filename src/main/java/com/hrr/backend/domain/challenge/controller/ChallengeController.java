@@ -125,10 +125,9 @@ public class ChallengeController {
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@Valid @RequestBody ChallengeRequestDto.CreateChallengeDto request
 	) {
-		Long userId = userDetails.getUser().getId();
 		return ApiResponse.onSuccess(
 				SuccessCode.OK,
-				challengeService.createChallenge(userId, request)
+				challengeService.createChallenge(userDetails.getUser(), request)
 		);
 	}
 
@@ -143,11 +142,9 @@ public class ChallengeController {
 			@PathVariable("challengeId") Long challengeId,
 			@Valid @RequestBody ChallengeRequestDto.JoinChallengeDto request
 	) {
-		Long userId = userDetails.getUser().getId();
-
 		return ApiResponse.onSuccess(
 				SuccessCode.OK,
-				challengeService.joinChallenge(userId, challengeId, request)
+				challengeService.joinChallenge(userDetails.getUser(), challengeId, request)
 		);
 	}
 
@@ -158,7 +155,7 @@ public class ChallengeController {
 			@Parameter(hidden = true)
 			@AuthenticationPrincipal CustomUserDetails userDetails
 	) {
-		challengeService.registerChallengeWait(userDetails.getUser().getId(), challengeId);
+		challengeService.registerChallengeWait(userDetails.getUser(), challengeId);
 		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_REGISTER_OK, null);
 	}
 
@@ -169,7 +166,7 @@ public class ChallengeController {
 			@Parameter(hidden = true)
 			@AuthenticationPrincipal CustomUserDetails userDetails
 	) {
-		challengeService.cancelChallengeWait(userDetails.getUser().getId(), challengeId);
+		challengeService.cancelChallengeWait(userDetails.getUser(), challengeId);
 		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_CANCEL_OK, null);
 	}
 }

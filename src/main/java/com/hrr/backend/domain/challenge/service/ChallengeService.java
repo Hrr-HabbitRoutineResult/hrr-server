@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.SortType;
@@ -34,21 +35,21 @@ public interface ChallengeService {
 
 	// 챌린지 생성
 	ChallengeResponseDto.CreateChallengeDto createChallenge(
-			Long userId,
+			User user,
 			ChallengeRequestDto.CreateChallengeDto requestDto
 	);
 
 	// 챌린지 참가
 	ChallengeResponseDto.JoinChallengeDto joinChallenge(
-			Long userId,
+			User user,
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto requestDto
 	);
 
 	// 챌린지 공석 알림 신청
-	void registerChallengeWait(Long userId, Long challengeId);
+	void registerChallengeWait(User user, Long challengeId);
 
 	// 챌린지 공석 알림 취소
-	void cancelChallengeWait(Long userId, Long challengeId);
+	void cancelChallengeWait(User user, Long challengeId);
 
 }

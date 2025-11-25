@@ -257,7 +257,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	@Override
 	@Transactional
 	public ChallengeResponseDto.CreateChallengeDto createChallenge(
-			Long userId,
+			User user,
 			ChallengeRequestDto.CreateChallengeDto req
 	) {
 		// 비즈니스 룰 검증
@@ -282,10 +282,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 		);
 		Challenge saved = challengeRepository.save(challenge);
 
-		// 유저 조회
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
-
 		// UserChallenge 생성
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
@@ -297,16 +293,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	@Override
 	@Transactional
 	public ChallengeResponseDto.JoinChallengeDto joinChallenge(
-			Long userId,
+			User user,
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto req
 	) {
-		// 엔티티 조회
-		Challenge challenge = challengeRepository.findById(challengeId)
-				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
-
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+		// 챌린지 조회
+		Challenge challenge = findChallenge(challengeId);
 
 		// 비즈니스 룰 검증
 		validateJoinRequest(challenge, user, req.getPassword());
@@ -317,7 +309,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 		try {
 			userChallengeRepository.save(userChallenge);
 		} catch (DataIntegrityViolationException e) {
-			// DB 수준에서 중복(Unique 제약조건 위배) 발생 시, 우리가 정의한 에러로 변환
 			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
 		}
 		// 챌린지 인원 업데이트
@@ -328,9 +319,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public void registerChallengeWait(Long userId, Long challengeId) {
-		// 유저 및 챌린지 조회
-		User user = findUser(userId);
+	public void registerChallengeWait(User user, Long challengeId) {
+
+		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
 		// 챌린지 참여 여부 확인
@@ -360,9 +351,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public void cancelChallengeWait(Long userId, Long challengeId) {
-		// 유저 및 챌린지 조회
-		User user = findUser(userId);
+	public void cancelChallengeWait(User user, Long challengeId) {
+
+		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
 		// 대기 내역 조회
@@ -426,12 +417,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 				throw new GlobalException(ErrorCode.CHALLENGE_PASSWORD_MISMATCH);
 			}
 		}
-	}
-
-	// 유저 조회 헬퍼 메서드
-	private User findUser(Long userId) {
-		return userRepository.findById(userId)
-				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 	}
 
 	// 챌린지 조회 헬퍼 메서드
