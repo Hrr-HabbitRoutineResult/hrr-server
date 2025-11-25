@@ -327,6 +327,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	@Override
+	@Transactional
 	public void registerChallengeWait(Long userId, Long challengeId) {
 		// 유저 및 챌린지 조회
 		User user = findUser(userId);
@@ -358,6 +359,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	@Override
+	@Transactional
 	public void cancelChallengeWait(Long userId, Long challengeId) {
 		// 유저 및 챌린지 조회
 		User user = findUser(userId);
