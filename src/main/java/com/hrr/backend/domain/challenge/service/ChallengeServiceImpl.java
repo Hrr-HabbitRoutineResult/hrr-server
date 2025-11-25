@@ -304,9 +304,11 @@ public class ChallengeServiceImpl implements ChallengeService {
         return challengeConverter.toCreateResponseDto(saved);
 	}
     private String buildChallengeText(Challenge challenge) {
-        return challenge.getTitle() + " " +
-                challenge.getDescription() + " " +
-                challenge.getRule();
+        return String.join(" ",
+                challenge.getTitle(),
+                Objects.toString(challenge.getDescription(), ""),
+                Objects.toString(challenge.getRule(), "")
+        ).replaceAll("\\s+", " ").trim();
     }
 
 	@Override
