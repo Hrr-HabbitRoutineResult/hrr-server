@@ -177,7 +177,7 @@ public class ChallengeController {
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@PathVariable("challengeId") Long challengeId
 	) {
-		ChallengeResponseDto.ChallengeLikeDto response = challengeService.likeChallenge(userDetails.getUser().getId(), challengeId);
+		ChallengeResponseDto.ChallengeLikeDto response = challengeService.likeChallenge(userDetails.getUser(), challengeId);
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
@@ -188,7 +188,7 @@ public class ChallengeController {
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@PathVariable("challengeId") Long challengeId
 	) {
-		ChallengeResponseDto.ChallengeLikeDto response = challengeService.unlikeChallenge(userDetails.getUser().getId(), challengeId);
+		ChallengeResponseDto.ChallengeLikeDto response = challengeService.unlikeChallenge(userDetails.getUser(), challengeId);
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 }

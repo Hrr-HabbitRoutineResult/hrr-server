@@ -53,8 +53,8 @@ public interface ChallengeService {
 	void cancelChallengeWait(User user, Long challengeId);
 
 	// 챌린지 좋아요 등록
-	ChallengeResponseDto.ChallengeLikeDto likeChallenge(Long userId, Long challengeId);
+	ChallengeResponseDto.ChallengeLikeDto likeChallenge(User user, Long challengeId);
 
 	// 챌린지 좋아요 취소
-	ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(Long userId, Long challengeId);
+	ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(User user, Long challengeId);
 }

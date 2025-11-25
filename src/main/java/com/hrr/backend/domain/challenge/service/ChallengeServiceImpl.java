@@ -315,9 +315,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public ChallengeResponseDto.ChallengeLikeDto likeChallenge(Long userId, Long challengeId) {
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+	public ChallengeResponseDto.ChallengeLikeDto likeChallenge(User user, Long challengeId) {
 
 		Challenge challenge = challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
@@ -341,9 +339,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional
-	public ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(Long userId, Long challengeId) {
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+	public ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(User user, Long challengeId) {
 
 		Challenge challenge = challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
