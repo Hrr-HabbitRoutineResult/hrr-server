@@ -90,4 +90,20 @@ public class ChallengeResponseDto {
 		private Long challengeId;
 	}
 
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "챌린지 좋아요 등록/취소 응답 DTO")
+	public static class ChallengeLikeDto {
+
+		@Schema(description = "대상 챌린지 ID", example = "1")
+		private Long challengeId;
+
+		@Schema(description = "좋아요 상태 여부 (true: 좋아요 등록됨, false: 좋아요 취소됨)", example = "true")
+		private Boolean isLiked;
+
+		@Schema(description = "갱신된 챌린지의 총 좋아요 수", example = "15")
+		private Integer likeCount;
+	}
+
 }

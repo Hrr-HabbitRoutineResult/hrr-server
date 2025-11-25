@@ -38,6 +38,11 @@ public enum ErrorCode implements BaseCode{
     EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
     EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
 
+	// challenge wait
+	CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
+	CHALLENGE_WAIT_NOT_FOUND(HttpStatus.NOT_FOUND, "WAIT4041", "알림 신청 내역을 찾을 수 없습니다."),
+	CHALLENGE_NOT_FULL(HttpStatus.BAD_REQUEST, "WAIT4001", "아직 모집 인원이 마감되지 않아 바로 참여 가능합니다."),
+
 	// auth
     AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH001", "유효하지 않은 토큰입니다."),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH002", "토큰이 만료되었습니다."),
