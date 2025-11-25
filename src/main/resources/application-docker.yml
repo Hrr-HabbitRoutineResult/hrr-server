@@ -1,5 +1,0 @@
-
-model:
-  api:
-    url: http://model-api:8000/recommend
-    embedding-url: http://model-api:8000/embedding

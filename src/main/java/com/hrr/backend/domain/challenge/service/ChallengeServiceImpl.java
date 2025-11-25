@@ -15,7 +15,6 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
-import com.hrr.backend.domain.challenge.entity.ChallengeEmbedding;
 import com.hrr.backend.domain.challenge.repository.ChallengeEmbeddingRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
@@ -31,7 +30,6 @@ import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
-import org.springframework.scheduling.annotation.Async;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
@@ -45,7 +43,6 @@ import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -62,8 +59,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-    private final EmbeddingClient embeddingClient;
-    private final ChallengeEmbeddingRepository challengeEmbeddingRepository;
+    private final ChallengeEmbeddingAsyncService challengeEmbeddingAsyncService;
 
 
     private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
@@ -337,34 +333,18 @@ public class ChallengeServiceImpl implements ChallengeService {
 		userChallengeRepository.save(userChallenge);
 
         // 임베딩 계산은 비동기로 처리
-        calculateAndSaveEmbeddingAsync(saved.getId());
+        String challengeText = buildChallengeText(saved);
+        challengeEmbeddingAsyncService.calculateAndSaveEmbeddingAsync(
+                saved.getId(),
+                challengeText
+        );
 
         return challengeConverter.toCreateResponseDto(saved);
 	}
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void calculateAndSaveEmbeddingAsync(Long challengeId) {
-        try {
-            Challenge challenge = challengeRepository.findById(challengeId)
-                    .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
-
-            String challengeText = challenge.getTitle() + " " +
-                    challenge.getDescription() + " " +
-                    challenge.getRule();
-
-            float[] embedding = embeddingClient.getEmbedding(challengeText);
-            byte[] embeddingBytes = floatArrayToByteArray(embedding);
-
-            ChallengeEmbedding embeddingEntity = ChallengeEmbedding.builder()
-                    .challenge(challenge)
-                    .challengeText(challengeText)
-                    .challengeEmbedding(embeddingBytes)
-                    .build();
-
-            challengeEmbeddingRepository.save(embeddingEntity);
-        } catch (Exception e) {
-            throw new GlobalException(ErrorCode.CHALLENGE_CALCULATE_EMBEDDING);
-        }
+    private String buildChallengeText(Challenge challenge) {
+        return challenge.getTitle() + " " +
+                challenge.getDescription() + " " +
+                challenge.getRule();
     }
 
 	@Override
@@ -453,19 +433,4 @@ public class ChallengeServiceImpl implements ChallengeService {
 			}
 		}
 	}
-
-    private byte[] floatArrayToByteArray(float[] floats) {
-        int length = floats.length;
-        byte[] bytes = new byte[length * 4];
-
-        for (int i = 0; i < length; i++) {
-            int bits = Float.floatToIntBits(floats[i]);
-            bytes[i * 4]     = (byte) (bits >> 24);
-            bytes[i * 4 + 1] = (byte) (bits >> 16);
-            bytes[i * 4 + 2] = (byte) (bits >> 8);
-            bytes[i * 4 + 3] = (byte) (bits);
-        }
-        return bytes;
-    }
-
 }

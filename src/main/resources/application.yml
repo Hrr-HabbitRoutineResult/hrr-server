@@ -48,4 +48,7 @@ kakao:
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
 
-
+model:
+  api:
+    url: http://localhost:8000/recommend
+    embedding-url: http://localhost:8000/embedding
