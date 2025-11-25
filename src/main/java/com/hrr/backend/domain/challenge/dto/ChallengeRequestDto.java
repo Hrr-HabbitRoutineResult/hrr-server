@@ -79,4 +79,14 @@ public class ChallengeRequestDto {
         @Schema(description = "챌린지 이미지 URL (없으면 서버에서 기본 이미지 사용)", example = "https://example.com/images/challenge-default.png")
         private String imageUrl;
     }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "챌린지 참가 요청 DTO")
+    public static class JoinChallengeDto {
+
+        @Schema(description = "비공개 챌린지 비밀번호 (공개일 경우 null 또는 빈 값)", example = "1234")
+        @Pattern(regexp = "^\\d{4}$", message = "비밀번호는 4자리 숫자여야 합니다.")
+        private String password;
+    }
 }

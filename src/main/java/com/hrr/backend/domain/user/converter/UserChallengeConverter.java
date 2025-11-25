@@ -17,4 +17,13 @@ public class UserChallengeConverter {
                 .role(UserChallengeRole.OWNER)
                 .build();
     }
+
+    // 챌린지 참가자를 CHALLENGER로 매핑하는 UserChallenge 생성
+    public UserChallenge toChallenger(User user, Challenge challenge) {
+        return UserChallenge.builder()
+                .user(user)
+                .challenge(challenge)
+                .role(UserChallengeRole.CHALLENGER)
+                .build();
+    }
 }

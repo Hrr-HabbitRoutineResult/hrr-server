@@ -120,16 +120,54 @@ public class ChallengeController {
 			)
 	)
 	@PostMapping("")
-	public ApiResponse<ChallengeResponseDto.CreateChallengeResDto> createChallenge(
+	public ApiResponse<ChallengeResponseDto.CreateChallengeDto> createChallenge(
 			@Parameter(hidden = true)
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@Valid @RequestBody ChallengeRequestDto.CreateChallengeDto request
 	) {
-		Long userId = userDetails.getUser().getId();
 		return ApiResponse.onSuccess(
 				SuccessCode.OK,
-				challengeService.createChallenge(userId, request)
+				challengeService.createChallenge(userDetails.getUser(), request)
 		);
+	}
+
+	@Operation(
+			summary = "챌린지 참가",
+			description = "사용자가 특정 챌린지에 참가합니다. 비공개 챌린지인 경우 비밀번호 검증이 수행됩니다."
+	)
+	@PostMapping("/{challengeId}/join")
+	public ApiResponse<ChallengeResponseDto.JoinChallengeDto> joinChallenge(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails,
+			@PathVariable("challengeId") Long challengeId,
+			@Valid @RequestBody ChallengeRequestDto.JoinChallengeDto request
+	) {
+		return ApiResponse.onSuccess(
+				SuccessCode.OK,
+				challengeService.joinChallenge(userDetails.getUser(), challengeId, request)
+		);
+	}
+
+	@PostMapping("/{challengeId}/wait")
+	@Operation(summary = "챌린지 공석 알림 신청", description = "참여 인원이 마감된 챌린지에 공석이 생길 시 알림을 받기 위해 대기 신청을 합니다.")
+	public ApiResponse<Void> registerChallengeWait(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		challengeService.registerChallengeWait(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_REGISTER_OK, null);
+	}
+
+	@DeleteMapping("/{challengeId}/wait")
+	@Operation(summary = "챌린지 공석 알림 취소", description = "신청했던 챌린지 오픈 알림을 취소합니다.")
+	public ApiResponse<Void> cancelChallengeWait(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		challengeService.cancelChallengeWait(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_CANCEL_OK, null);
 	}
 
 	@PostMapping("/{challengeId}/likes")
