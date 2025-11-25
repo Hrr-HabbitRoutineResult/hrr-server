@@ -17,7 +17,12 @@ import org.hibernate.annotations.ColumnDefault;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "user_challenge")
+@Table(
+        name = "user_challenge",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"user_id", "challenge_id"})
+        }
+)
 public class UserChallenge extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

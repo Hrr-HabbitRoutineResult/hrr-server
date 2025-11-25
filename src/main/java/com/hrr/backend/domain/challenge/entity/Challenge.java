@@ -93,4 +93,9 @@ public class Challenge extends BaseEntity {
     @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = false)
     private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
+	// 참가자 수 증가 편의 메서드
+	public void increaseCurrentParticipants() {
+		this.currentParticipants++;
+	}
+
 }
