@@ -52,4 +52,9 @@ public interface ChallengeService {
 	// 챌린지 공석 알림 취소
 	void cancelChallengeWait(User user, Long challengeId);
 
+	// 챌린지 좋아요 등록
+	ChallengeResponseDto.ChallengeLikeDto likeChallenge(User user, Long challengeId);
+
+	// 챌린지 좋아요 취소
+	ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(User user, Long challengeId);
 }

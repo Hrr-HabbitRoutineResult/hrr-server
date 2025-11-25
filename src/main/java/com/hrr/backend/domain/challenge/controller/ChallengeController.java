@@ -169,4 +169,26 @@ public class ChallengeController {
 		challengeService.cancelChallengeWait(userDetails.getUser(), challengeId);
 		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_CANCEL_OK, null);
 	}
+
+	@PostMapping("/{challengeId}/likes")
+	@Operation(summary = "챌린지 좋아요 등록", description = "챌린지에 좋아요를 표시하고, 갱신된 좋아요 수와 상태를 반환합니다.")
+	public ApiResponse<ChallengeResponseDto.ChallengeLikeDto> likeChallenge(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails,
+			@PathVariable("challengeId") Long challengeId
+	) {
+		ChallengeResponseDto.ChallengeLikeDto response = challengeService.likeChallenge(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
+
+	@DeleteMapping("/{challengeId}/likes")
+	@Operation(summary = "챌린지 좋아요 취소", description = "챌린지 좋아요를 취소하고, 갱신된 좋아요 수와 상태를 반환합니다.")
+	public ApiResponse<ChallengeResponseDto.ChallengeLikeDto> unlikeChallenge(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails,
+			@PathVariable("challengeId") Long challengeId
+	) {
+		ChallengeResponseDto.ChallengeLikeDto response = challengeService.unlikeChallenge(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
 }

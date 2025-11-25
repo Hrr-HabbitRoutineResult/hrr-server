@@ -15,7 +15,9 @@ import java.util.function.Function;
 import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
+import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
@@ -55,6 +57,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final ChallengeConverter challengeConverter;
 
 	private final ChallengeWaitRepository challengeWaitRepository;
+	private final ChallengeLikeRepository challengeLikeRepository;
 
 	private final UserRepository userRepository;
 	private final UserChallengeRepository userChallengeRepository;
@@ -69,6 +72,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	// 기본 이미지 URL
 	private static final String DEFAULT_CHALLENGE_IMAGE_URL = "https://example.com/images/challenge-default.png";
+
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -254,6 +258,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 				}).toList();
 	}
 
+
 	@Override
 	@Transactional
 	public ChallengeResponseDto.CreateChallengeDto createChallenge(
@@ -272,7 +277,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 			imageUrl = DEFAULT_CHALLENGE_IMAGE_URL;
 		}
 
-		// 챌린지 엔티티 생성
+		// Challenge 생성
 		Challenge challenge = challengeConverter.toChallengeEntity(
 				req,
 				isPublic,
@@ -286,7 +291,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
-		// 응답 반환
 		return challengeConverter.toCreateResponseDto(saved);
 	}
 
@@ -346,13 +350,11 @@ public class ChallengeServiceImpl implements ChallengeService {
 				.build();
 
 		challengeWaitRepository.save(challengeWait);
-
 	}
 
 	@Override
 	@Transactional
 	public void cancelChallengeWait(User user, Long challengeId) {
-
 		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
@@ -362,6 +364,58 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// 삭제
 		challengeWaitRepository.delete(challengeWait);
+	}
+
+	@Override
+	@Transactional
+	public ChallengeResponseDto.ChallengeLikeDto likeChallenge(User user, Long challengeId) {
+
+		Challenge challenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// exists 체크 대신 try-catch로 예외 처리
+		try {
+			ChallengeLike challengeLike = ChallengeLike.builder()
+					.user(user)
+					.challenge(challenge)
+					.build();
+
+			// 이미 존재하면 유니크 제약 조건 위반 예외 발생
+			challengeLikeRepository.save(challengeLike);
+
+			// 저장이 성공적으로 된 경우에만 카운트 증가
+			challengeRepository.increaseLikeCount(challengeId);
+
+		} catch (DataIntegrityViolationException e) {
+			// 이미 좋아요가 눌러져 있는 경우이므로 예외를 무시하고 정상 응답 반환
+		}
+
+		// 최신 상태 조회 (좋아요 수 등 갱신된 정보)
+		Challenge updatedChallenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		return challengeConverter.toChallengeLikeDto(updatedChallenge, true);
+	}
+
+	@Override
+	@Transactional
+	public ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(User user, Long challengeId) {
+
+		Challenge challenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// 조회(findBy) 없이 바로 삭제 시도
+		int deletedCount = challengeLikeRepository.deleteByUserAndChallenge(user, challenge);
+
+		// 실제로 삭제된 데이터가 있을 경우에만(1개) 카운트 감소
+		if (deletedCount > 0) {
+			challengeRepository.decreaseLikeCount(challengeId);
+		}
+
+		Challenge updatedChallenge = challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		return challengeConverter.toChallengeLikeDto(updatedChallenge, false);
 	}
 
 	/**
@@ -424,5 +478,4 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 	}
-
 }
