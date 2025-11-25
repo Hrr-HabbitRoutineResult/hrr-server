@@ -65,10 +65,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-	private static final int UPCOMING_DAYS_CRITERIA = 5;
+	private static final int UPCOMING_DAYS_CRITERIA = 5;   // '곧 시작' 챌린지 판단 기준 일자
 
+	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
+
+	// 기본 이미지 URL
 	private static final String DEFAULT_CHALLENGE_IMAGE_URL = "https://example.com/images/challenge-default.png";
+
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -80,18 +84,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 			int page,
 			int size
 	) {
+		// isUpcoming에 따라 '곧 시작' 유효날짜 범위 계산
 		LocalDateTime upcomingStartDate = null;
 		LocalDateTime upcomingEndDate = null;
 
 		if (isUpcoming != null && isUpcoming) {
 			LocalDate today = LocalDate.now();
+
+			// 시작일
 			upcomingStartDate = today.atStartOfDay();
+
+			// 종료일 ; 오늘 + 5일
 			upcomingEndDate = today.plusDays(UPCOMING_DAYS_CRITERIA)
 					.atTime(23, 59, 59, 999_999_999);
 		}
 
 		Pageable pageable = PageRequest.of(page, size);
 
+		// Repository 호출 - 필터 적용된 챌린지들 반환(요일, 곧 시작 여부, 시작까지 남은 일자는 제외)
 		Slice<ChallengeResponseDto.InfoDto> tempDtoSlice = challengeRepository.findChallengesWithFilters(
 				category,
 				upcomingStartDate,
@@ -102,6 +112,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 				pageable
 		);
 
+		// dto 나머지 필드 보강 (isUpcoming, dDayUntilStart, dayOfWeek)
 		List<ChallengeResponseDto.InfoDto> rawContent = tempDtoSlice.getContent();
 		List<ChallengeResponseDto.InfoDto> enrichedContent = enrichChallengeInfo(rawContent);
 
@@ -116,13 +127,15 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	public Long clickChallenge(Long challengeId) {
+		// 챌린지 유효성 검사
 		challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
+		// 클릭 수 증가 로직
 		Double updatedScore = redisTemplate.opsForZSet().incrementScore(
 				TODAY_CHALLENGE_RANKING_KEY,
-				String.valueOf(challengeId),
-				1.0
+				String.valueOf(challengeId), // 챌린지 아이디를 key로 사용
+				1.0 // 클릭 수 1.0 증가 (redis sorted set의 메서드 정의 상 double 타입 필요)
 		);
 
 		return (updatedScore != null) ? updatedScore.longValue() : 0L;
@@ -130,9 +143,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	public List<ChallengeResponseDto.DailyTopDto> getDailyTopChallenges(int number) {
+
+		// 현재 목록 개수 범위를 넘어서면 있는 만큼 반환(UX 고려)
 		long currentListSize = Optional.ofNullable(
 				redisTemplate.opsForZSet().size(TODAY_CHALLENGE_RANKING_KEY)).orElse(0L);
 
+		// 데이터가 없을 경우 (아마 00시 직후) 빈 리스트 반환
 		if (currentListSize == 0) {
 			return Collections.emptyList();
 		}
@@ -141,37 +157,45 @@ public class ChallengeServiceImpl implements ChallengeService {
 			number = (int)currentListSize;
 		}
 
+		// Top N 조회
 		Set<ZSetOperations.TypedTuple<String>> topRankings = redisTemplate.opsForZSet().reverseRangeWithScores(
 				TODAY_CHALLENGE_RANKING_KEY,
 				0, number-1
 		);
 
+		// <챌린지 id, 클릭 수> 로딩
 		Map<Long, Long> clicksMap = topRankings.stream()
 				.collect(Collectors.toMap(
 						tuple -> Long.parseLong(Objects.requireNonNull(tuple.getValue())),
 						tuple -> (tuple.getScore() != null) ? tuple.getScore().longValue() : 0L
 				));
 
+		// 해당 챌린지들 DB에서 조회
 		List<Long> challengeIds = topRankings.stream()
 				.map(tuple -> Long.parseLong(Objects.requireNonNull(tuple.getValue())))
 				.toList();
 
 		List<ChallengeResponseDto.InfoDto> rawInfosFromRDB = challengeRepository.findChallengesByIds(challengeIds);
 
+		// D-Day, isUpcoming, daysOfWeek 추가
 		List<ChallengeResponseDto.InfoDto> enrichedInfos = enrichChallengeInfo(rawInfosFromRDB);
 
 		Map<Long, ChallengeResponseDto.InfoDto> infoMap = enrichedInfos.stream()
 				.collect(Collectors.toMap(
 						ChallengeResponseDto.InfoDto::getChallengeId,
-						Function.identity()
+						Function.identity() // Identity function: InfoDto 객체 자체를 값으로 사용
 				));
 
+		// 최종 DTO
 		List<ChallengeResponseDto.DailyTopDto> results = topRankings.stream()
 				.map(tuple -> {
 					Long id = Long.parseLong(Objects.requireNonNull(tuple.getValue()));
+
+					// DB에서 받아온 챌린지 정보와 클릭 수 조회
 					ChallengeResponseDto.InfoDto info = infoMap.get(id);
 					Long clickCount = clicksMap.getOrDefault(id, 0L);
 
+					// 챌린지 정보가 조회되지 않으면 패스
 					if (info == null) return null;
 
 					return ChallengeResponseDto.DailyTopDto.builder()
@@ -182,6 +206,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 				.filter(Objects::nonNull)
 				.toList();
 
+		// 랭킹 정보 추가
 		for (int i = 0; i < results.size(); i++) {
 			results.get(i).setRanking(i + 1);
 		}
@@ -189,23 +214,33 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return results;
 	}
 
+	/**
+	 * DB에서 조회해 온 Challenge InfoDto에 누락되어있는 D-Day, isUpcoming, daysOfWeek 정보를 추가
+	 * @param rawInfos DB에서 조회된 ChallengeResponseDto.InfoDto 리스트
+	 */
 	private List<ChallengeResponseDto.InfoDto> enrichChallengeInfo(List<ChallengeResponseDto.InfoDto> rawInfos) {
+
 		if (rawInfos.isEmpty()) {
 			return rawInfos;
 		}
 
+		// ---응답 dto에 추가할 요일 정보 조회---
+		// 모든 challengeId 추출
 		List<Long> challengeIds = rawInfos.stream()
 				.map(ChallengeResponseDto.InfoDto::getChallengeId)
 				.toList();
 
+		// 해당 challenge들을 가진 ChallengeDayJoin 엔티티 조회
 		List<ChallengeDayJoin> allDays = challengeDayJoinRepository.findByChallengeIdIn(challengeIds);
 
+		// 챌린지 아이디-요일 리스트 매핑
 		Map<Long, List<ChallengeDays>> daysMap = allDays.stream()
 				.collect(Collectors.groupingBy(
-						dayJoin -> dayJoin.getChallenge().getId(),
-						Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList())
+						dayJoin -> dayJoin.getChallenge().getId(), // key: 챌린지 아이디
+						Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList()) // value: 요일 리스트
 				));
 
+		// Repository에서 조회해 온 dto 기반으로 결과 dto 필드 일부 채우기
 		return rawInfos.stream()
 				.map(infoDto -> {
 					LocalDate challengeStartDate = infoDto.getStartDate().toLocalDate();
@@ -214,13 +249,15 @@ public class ChallengeServiceImpl implements ChallengeService {
 					long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
 					boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
+					// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
 					infoDto.setIsUpcoming(isUpcomingResult);
-					infoDto.setDDayUntilStart((int)Math.max(0, dDay));
+					infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
 					infoDto.setDaysOfWeek(daysMap.getOrDefault(infoDto.getChallengeId(), List.of()));
 
 					return infoDto;
 				}).toList();
 	}
+
 
 	@Override
 	@Transactional
@@ -228,6 +265,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 			User user,
 			ChallengeRequestDto.CreateChallengeDto req
 	) {
+		// 비즈니스 룰 검증
 		validateCreateRequest(req);
 
 		boolean isPublic = req.getIsPublic();
@@ -239,6 +277,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 			imageUrl = DEFAULT_CHALLENGE_IMAGE_URL;
 		}
 
+		// Challenge 생성
 		Challenge challenge = challengeConverter.toChallengeEntity(
 				req,
 				isPublic,
@@ -248,6 +287,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		);
 		Challenge saved = challengeRepository.save(challenge);
 
+		// UserChallenge 생성
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
@@ -261,10 +301,13 @@ public class ChallengeServiceImpl implements ChallengeService {
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto req
 	) {
+		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
+		// 비즈니스 룰 검증
 		validateJoinRequest(challenge, user, req.getPassword());
 
+		// 참가 처리
 		UserChallenge userChallenge = userChallengeConverter.toChallenger(user, challenge);
 
 		try {
@@ -272,6 +315,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		} catch (DataIntegrityViolationException e) {
 			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
 		}
+		// 챌린지 인원 업데이트
 		challenge.increaseCurrentParticipants();
 
 		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
@@ -280,20 +324,26 @@ public class ChallengeServiceImpl implements ChallengeService {
 	@Override
 	@Transactional
 	public void registerChallengeWait(User user, Long challengeId) {
+
+		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
+		// 챌린지 참여 여부 확인
 		if (userChallengeRepository.existsByUserAndChallenge(user, challenge)) {
 			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
 		}
 
+		// 이미 신청했는지 확인
 		if (challengeWaitRepository.existsByUserAndChallenge(user, challenge)) {
 			throw new GlobalException(ErrorCode.CHALLENGE_WAIT_ALREADY_EXIST);
 		}
 
+		// 자리가 남아있는 경우 대기 신청 불가
 		if (challenge.getCurrentParticipants() < challenge.getMaxParticipants()) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_FULL);
 		}
 
+		// 저장
 		ChallengeWait challengeWait = ChallengeWait.builder()
 				.user(user)
 				.challenge(challenge)
@@ -305,11 +355,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 	@Override
 	@Transactional
 	public void cancelChallengeWait(User user, Long challengeId) {
+		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
+		// 대기 내역 조회
 		ChallengeWait challengeWait = challengeWaitRepository.findByUserAndChallenge(user, challenge)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_WAIT_NOT_FOUND));
 
+		// 삭제
 		challengeWaitRepository.delete(challengeWait);
 	}
 
@@ -365,6 +418,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toChallengeLikeDto(updatedChallenge, false);
 	}
 
+	/**
+	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
+	 */
 	private void validateCreateRequest(ChallengeRequestDto.CreateChallengeDto req) {
 		// 인증 시간 검증: 종료 시간 > 시작 시간
 		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
@@ -394,18 +450,22 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
+		// 모집 상태 검증 (UPCOMING 상태인지)
 		if (challenge.getStatus() != ChallengeStatus.UPCOMING) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_RECRUITING);
 		}
 
+		// 중복 참가 검증
 		if (userChallengeRepository.existsByUserAndChallenge(user, challenge)) {
 			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
 		}
 
+		// 정원 초과 검증
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
 			throw new GlobalException(ErrorCode.CHALLENGE_FULL);
 		}
 
+		// 비밀번호 검증 (비공개 챌린지인 경우)
 		if (!challenge.getIsPublic()) {
 			if (inputPassword == null || !inputPassword.equals(challenge.getPassword())) {
 				throw new GlobalException(ErrorCode.CHALLENGE_PASSWORD_MISMATCH);
@@ -413,6 +473,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		}
 	}
 
+	// 챌린지 조회 헬퍼 메서드
 	private Challenge findChallenge(Long challengeId) {
 		return challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
