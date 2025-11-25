@@ -21,6 +21,6 @@ public interface ChallengeLikeRepository extends JpaRepository<ChallengeLike, Lo
     // 좋아요 내역 삭제
     @Modifying
     @Query("DELETE FROM ChallengeLike cl WHERE cl.user = :user AND cl.challenge = :challenge")
-    void deleteByUserAndChallenge(@Param("user") User user,
-                                  @Param("challenge") Challenge challenge);
+    int deleteByUserAndChallenge(@Param("user") User user,
+                                 @Param("challenge") Challenge challenge);
 }

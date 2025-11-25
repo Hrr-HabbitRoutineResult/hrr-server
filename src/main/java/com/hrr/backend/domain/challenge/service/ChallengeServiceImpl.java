@@ -320,17 +320,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 		Challenge challenge = challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
-		// 중복 좋아요 방지 및 저장
-		if (!challengeLikeRepository.existsByUserAndChallenge(user, challenge)) {
+		// exists 체크 대신 try-catch로 예외 처리
+		try {
 			ChallengeLike challengeLike = ChallengeLike.builder()
 					.user(user)
 					.challenge(challenge)
 					.build();
+
+			// 이미 존재하면 유니크 제약 조건 위반 예외 발생
 			challengeLikeRepository.save(challengeLike);
+
+			// 저장이 성공적으로 된 경우에만 카운트 증가
 			challengeRepository.increaseLikeCount(challengeId);
+
+		} catch (DataIntegrityViolationException e) {
+			// 이미 좋아요가 눌러져 있는 경우이므로 예외를 무시하고 정상 응답 반환
 		}
 
-		// 최신 상태 조회
+		// 최신 상태 조회 (좋아요 수 등 갱신된 정보)
 		Challenge updatedChallenge = challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
@@ -344,10 +351,11 @@ public class ChallengeServiceImpl implements ChallengeService {
 		Challenge challenge = challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
-		Optional<ChallengeLike> challengeLike = challengeLikeRepository.findByUserAndChallenge(user, challenge);
+		// 조회(findBy) 없이 바로 삭제 시도
+		int deletedCount = challengeLikeRepository.deleteByUserAndChallenge(user, challenge);
 
-		if (challengeLike.isPresent()) {
-			challengeLikeRepository.deleteByUserAndChallenge(user, challenge);
+		// 실제로 삭제된 데이터가 있을 경우에만(1개) 카운트 감소
+		if (deletedCount > 0) {
 			challengeRepository.decreaseLikeCount(challengeId);
 		}
 
