@@ -22,6 +22,7 @@ import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -124,10 +125,9 @@ public class ChallengeController {
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@Valid @RequestBody ChallengeRequestDto.CreateChallengeDto request
 	) {
-		Long userId = userDetails.getUser().getId();
 		return ApiResponse.onSuccess(
 				SuccessCode.OK,
-				challengeService.createChallenge(userId, request)
+				challengeService.createChallenge(userDetails.getUser(), request)
 		);
 	}
 
@@ -142,11 +142,31 @@ public class ChallengeController {
 			@PathVariable("challengeId") Long challengeId,
 			@Valid @RequestBody ChallengeRequestDto.JoinChallengeDto request
 	) {
-		Long userId = userDetails.getUser().getId();
-
 		return ApiResponse.onSuccess(
 				SuccessCode.OK,
-				challengeService.joinChallenge(userId, challengeId, request)
+				challengeService.joinChallenge(userDetails.getUser(), challengeId, request)
 		);
+	}
+
+	@PostMapping("/{challengeId}/wait")
+	@Operation(summary = "챌린지 공석 알림 신청", description = "참여 인원이 마감된 챌린지에 공석이 생길 시 알림을 받기 위해 대기 신청을 합니다.")
+	public ApiResponse<Void> registerChallengeWait(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		challengeService.registerChallengeWait(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_REGISTER_OK, null);
+	}
+
+	@DeleteMapping("/{challengeId}/wait")
+	@Operation(summary = "챌린지 공석 알림 취소", description = "신청했던 챌린지 오픈 알림을 취소합니다.")
+	public ApiResponse<Void> cancelChallengeWait(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		challengeService.cancelChallengeWait(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.CHALLENGE_WAIT_CANCEL_OK, null);
 	}
 }
