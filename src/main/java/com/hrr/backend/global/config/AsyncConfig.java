@@ -7,7 +7,9 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Configuration
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
@@ -26,6 +28,6 @@ public class AsyncConfig implements AsyncConfigurer {
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (ex, method, params) ->
-                System.err.println("비동기 메서드 " + method.getName() + " 실행 중 예외 발생: " + ex.getMessage());
+                log.error("비동기 메서드 실행 중 예외 발생. method={}, params={}", method.getName(), params, ex);
     }
 }

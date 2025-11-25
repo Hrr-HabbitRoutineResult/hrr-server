@@ -37,5 +37,5 @@ kakao:
 
 model:
   api:
-    url: http://localhost:8000/recommend
-    embedding-url: http://localhost:8000/embedding
+    url: ${MODEL_API_URL:http://model-api:8000}/recommend
+    embedding-url: ${MODEL_API_URL:http://model-api:8000}/embedding
