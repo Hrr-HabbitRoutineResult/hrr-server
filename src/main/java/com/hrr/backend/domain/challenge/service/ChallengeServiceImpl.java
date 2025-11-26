@@ -19,6 +19,11 @@ import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
+import com.hrr.backend.domain.round.converter.RoundConverter;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
+import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -62,6 +67,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final UserRepository userRepository;
 	private final UserChallengeRepository userChallengeRepository;
 	private final UserChallengeConverter userChallengeConverter;
+
+	private final RoundRepository roundRepository;
+	private final RoundRecordRepository roundRecordRepository;
+	private final RoundConverter roundConverter;
 
 	private final RedisTemplate<String, String> redisTemplate;
 
@@ -287,6 +296,16 @@ public class ChallengeServiceImpl implements ChallengeService {
 		);
 		Challenge saved = challengeRepository.save(challenge);
 
+		// Round 생성
+		Round firstRound = roundConverter.toFirstRoundEntity(
+				saved,
+				req.getStartDate().toLocalDate()
+		);
+		roundRepository.save(firstRound);
+
+		// 챌린지의 currentRound 설정
+		saved.changeCurrentRound(firstRound);
+
 		// UserChallenge 생성
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
@@ -317,6 +336,18 @@ public class ChallengeServiceImpl implements ChallengeService {
 		}
 		// 챌린지 인원 업데이트
 		challenge.increaseCurrentParticipants();
+
+		// 현재 진행 중인 라운드의 RoundRecord 생성
+		Round currentRound = challenge.getCurrentRound();
+
+		// 예외 처리: 혹시라도 라운드가 생성되지 않았을 경우
+		if (currentRound != null) {
+			RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
+					currentRound,
+					userChallenge
+			);
+			roundRecordRepository.save(roundRecord);
+		}
 
 		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
 	}
