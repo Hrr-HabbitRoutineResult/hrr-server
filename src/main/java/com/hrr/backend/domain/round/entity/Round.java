@@ -15,7 +15,18 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "round")
+@Table(
+        name = "round",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_challenge_round_number",
+                        columnNames = {"challenge_id", "roundNumber"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_round_end_date", columnList = "endDate")
+        }
+)
 public class Round extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

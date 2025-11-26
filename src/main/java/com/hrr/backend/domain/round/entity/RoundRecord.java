@@ -2,7 +2,6 @@ package com.hrr.backend.domain.round.entity;
 
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.user.entity.UserChallenge;
-import com.hrr.backend.domain.user.entity.enums.UserVerificationStatus;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
@@ -20,8 +19,22 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "round_record",
-        indexes = @Index(name = "idx_round_rank", columnList = "round_id, verification_count DESC"))
+@Table(
+        name = "round_record",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_round_user",
+                        columnNames = {"round_id", "user_challenge_id"}
+                )
+        },
+        indexes = {
+                // 검색용 기본 인덱스
+                @Index(name = "idx_round_id", columnList = "round_id"),
+
+                // 내 히스토리 조회용 인덱스
+                @Index(name = "idx_user_history", columnList = "user_challenge_id")
+        }
+)
 public class RoundRecord extends BaseEntity {
 
     @Id
