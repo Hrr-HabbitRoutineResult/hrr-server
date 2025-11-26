@@ -1,5 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto.ProfileDto getUserProfile(Long userId, Long currentUserId) {
         // 사용자 조회
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. ID: " + userId));
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         // 팔로잉 여부 확인
         Boolean isFollowing = checkIfFollowing(currentUserId, userId);
