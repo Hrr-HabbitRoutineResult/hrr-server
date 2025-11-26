@@ -1,0 +1,73 @@
+services:
+  # Nginx 리버스 프록시 서비스 (HTTPS 종료 및 Spring Boot 연결 담당)
+  nginx-proxy:
+    image: nginx:stable-alpine
+    container_name: hrr_nginx_prod
+    # 외부 80, 443 포트를 컨테이너에 바인딩
+    ports:
+      - "80:80"   # HTTP -> HTTPS 리다이렉트용
+      - "443:443" # HTTPS 트래픽 수신용
+    volumes:
+      # Nginx 설정 파일 마운트 (HTTPS 및 Proxy 설정 포함)
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # 호스트의 /etc/letsencrypt 대신 프로젝트 폴더 내 데이터 사용
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    # 6시간마다 Nginx 설정을 재로드하여 갱신된 인증서 반영
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    restart: always
+    depends_on:
+      - app
+
+  # Certbot
+  certbot:
+    image: certbot/certbot
+    container_name: hrr_certbot
+    volumes:
+      # Nginx와 동일한 볼륨을 공유 (서로 파일 주고받기 위함)
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    # 12시간마다 갱신 시도하는 루프 스크립트
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    restart: always
+
+# ---- nginx 외 다른 서비스들은 외부 포트 사용 x ---
+
+  # Spring Boot 애플리케이션 서비스
+  app:
+    image: ychan0/hrr-server:v1.0.0
+    container_name: hrr_app_prod
+    environment:
+      # Secrets Manager에서 가져온 환경 변수 사용
+      SPRING_PROFILES_ACTIVE: prod
+
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&sslMode=REQUIRED'
+      SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis-server
+      SPRING_DATA_REDIS_PORT: 6379
+
+      JWT_SECRET: ${JWT_SECRET}
+
+      PROD_BASE_URL: ${PROD_BASE_URL}
+
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      PROD_KAKAO_REDIRECT_URI: ${PROD_KAKAO_REDIRECT_URI}
+
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+
+    restart: always
+
+  # Redis 서비스
+  redis-server:
+    image: redis:7.4.2-alpine
+    container_name: hrr_redis_prod
+    restart: always
+    volumes:
+      - redis_data:/data
+
+volumes:
+  db-data:
+  redis_data:
