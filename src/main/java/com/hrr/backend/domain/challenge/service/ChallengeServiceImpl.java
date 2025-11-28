@@ -65,7 +65,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-	private static final int UPCOMING_DAYS_CRITERIA = 5;   // '곧 시작' 챌린지 판단 기준 일자
+    private final ChallengeEmbeddingAsyncService challengeEmbeddingAsyncService;
+
+
+    private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
 
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
@@ -291,8 +294,22 @@ public class ChallengeServiceImpl implements ChallengeService {
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
-		return challengeConverter.toCreateResponseDto(saved);
+        // 임베딩 계산은 비동기로 처리
+        String challengeText = buildChallengeText(saved);
+        challengeEmbeddingAsyncService.calculateAndSaveEmbeddingAsync(
+                saved.getId(),
+                challengeText
+        );
+
+        return challengeConverter.toCreateResponseDto(saved);
 	}
+    private String buildChallengeText(Challenge challenge) {
+        return String.join(" ",
+                challenge.getTitle(),
+                Objects.toString(challenge.getDescription(), ""),
+                Objects.toString(challenge.getRule(), "")
+        ).replaceAll("\\s+", " ").trim();
+    }
 
 	@Override
 	@Transactional
