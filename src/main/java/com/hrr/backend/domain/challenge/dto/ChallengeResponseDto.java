@@ -72,5 +72,38 @@ public class ChallengeResponseDto {
 
 	}
 
+	@Getter
+	@AllArgsConstructor
+	@Schema(description = "챌린지 개설 응답 DTO")
+	public static class CreateChallengeDto {
+
+		@Schema(description = "생성된 챌린지 ID", example = "1")
+		private Long id;
+	}
+
+	@Getter
+	@AllArgsConstructor
+	@Schema(description = "챌린지 참가 응답 DTO")
+	public static class JoinChallengeDto {
+
+		@Schema(description = "참가한 챌린지 ID", example = "1")
+		private Long challengeId;
+	}
+
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "챌린지 좋아요 등록/취소 응답 DTO")
+	public static class ChallengeLikeDto {
+
+		@Schema(description = "대상 챌린지 ID", example = "1")
+		private Long challengeId;
+
+		@Schema(description = "좋아요 상태 여부 (true: 좋아요 등록됨, false: 좋아요 취소됨)", example = "true")
+		private Boolean isLiked;
+
+		@Schema(description = "갱신된 챌린지의 총 좋아요 수", example = "15")
+		private Integer likeCount;
+	}
 
 }

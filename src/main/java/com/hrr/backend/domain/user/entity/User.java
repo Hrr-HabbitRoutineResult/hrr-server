@@ -33,8 +33,7 @@ public class User extends BaseEntity {
     @Column(name = "nickname", length = 20, nullable = false)
     private String nickname;
 
-    @NotNull
-    @Column(name = "email", length = 255, nullable = false)
+    @Column(name = "email", length = 255)
     private String email;
 
     @Column(name = "phone_number", length = 15)
@@ -98,6 +97,9 @@ public class User extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserFavor> userFavors = new ArrayList<>();
+
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<UserMission> userMissions = new ArrayList<>();
 
     /** 카카오 로그인용 팩토리 메서드 */
     public static User newKakao(Long kakaoId, String nickname, String profileImage) {

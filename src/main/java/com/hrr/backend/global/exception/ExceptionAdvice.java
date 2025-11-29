@@ -35,7 +35,7 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
 			.findFirst()
 			.orElse(null);
 
-		return handleExceptionInternalConstraint(e, ErrorCode.valueOf(message), HttpHeaders.EMPTY,request);
+		return handleExceptionInternalFalse(e, ErrorCode._BAD_REQUEST, HttpHeaders.EMPTY, HttpStatus.BAD_REQUEST, request, message);
 	}
 
 	@Override

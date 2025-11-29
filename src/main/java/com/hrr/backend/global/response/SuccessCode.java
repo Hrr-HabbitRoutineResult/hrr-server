@@ -6,7 +6,13 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum SuccessCode implements BaseCode {
 
+	// common
 	OK(HttpStatus.OK, "OK200", "요청에 성공하였습니다."),
+
+	// challenge wait
+	CHALLENGE_WAIT_REGISTER_OK(HttpStatus.OK, "WAIT2001", "챌린지 대기 신청이 완료되었습니다."),
+	CHALLENGE_WAIT_CANCEL_OK(HttpStatus.OK, "WAIT2002", "챌린지 대기 신청이 취소되었습니다.");
+
 	;
 
 	private final HttpStatus status;

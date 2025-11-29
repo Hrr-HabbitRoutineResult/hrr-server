@@ -44,3 +44,7 @@ src/main/resources/firebase/*.json
 ### Log Files ###
 *.log
 logs/
+
+# macOS files
+.DS_Store
+**/.*DS_Store
