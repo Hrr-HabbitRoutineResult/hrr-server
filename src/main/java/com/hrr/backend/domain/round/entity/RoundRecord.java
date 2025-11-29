@@ -69,6 +69,7 @@ public class RoundRecord extends BaseEntity {
 
     // 양방향 매핑
     @OneToMany(mappedBy = "roundRecord", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<Verification> verifications = new ArrayList<>();
 
     // 비즈니스 메서드
