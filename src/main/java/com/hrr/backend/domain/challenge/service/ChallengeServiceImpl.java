@@ -372,16 +372,11 @@ public class ChallengeServiceImpl implements ChallengeService {
 		challenge.increaseCurrentParticipants();
 
 		// 현재 진행 중인 라운드의 RoundRecord 생성
-		Round currentRound = challenge.getCurrentRound();
-
-		// 예외 처리: 혹시라도 라운드가 생성되지 않았을 경우
-		if (currentRound != null) {
-			RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
-					currentRound,
-					userChallenge
-			);
-			roundRecordRepository.save(roundRecord);
-		}
+		RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
+				challenge.getCurrentRound(),
+				userChallenge
+		);
+		roundRecordRepository.save(roundRecord);
 
 		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
 	}
@@ -515,8 +510,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
-		// 모집 상태 검증 (UPCOMING 상태인지)
-		if (challenge.getStatus() != ChallengeStatus.UPCOMING) {
+		// 모집 상태 검증 (UPCOMING 이거나 RECRUITING 상태여야 함)
+		if (challenge.getStatus() != ChallengeStatus.UPCOMING &&
+				challenge.getStatus() != ChallengeStatus.RECRUITING) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_RECRUITING);
 		}
 
@@ -535,6 +531,11 @@ public class ChallengeServiceImpl implements ChallengeService {
 			if (inputPassword == null || !inputPassword.equals(challenge.getPassword())) {
 				throw new GlobalException(ErrorCode.CHALLENGE_PASSWORD_MISMATCH);
 			}
+		}
+
+		// 라운드가 존재하지 않는 경우
+		if (challenge.getCurrentRound() == null) {
+			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
 		}
 	}
 
