@@ -56,7 +56,7 @@ docker compose -f "${COMPOSE_FILE}" pull || {
 }
 
 # 컨테이너 실행 (재생성 강제)
-if ! docker compose -f "${COMPOSE_FILE}" up -d --force-recreate; then
+if ! docker compose -f "${COMPOSE_FILE}" up -d; then
   echo "ERROR: docker compose up 실패. 로그를 확인하세요." >&2
   exit 1
 fi
