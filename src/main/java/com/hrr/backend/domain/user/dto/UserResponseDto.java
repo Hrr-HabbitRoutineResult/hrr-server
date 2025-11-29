@@ -1,12 +1,13 @@
 package com.hrr.backend.domain.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
+import java.time.LocalDateTime;
 
 public class UserResponseDto {
 
@@ -50,5 +51,33 @@ public class UserResponseDto {
                     .isFollowing(isFollowing)
                     .build();
         }
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "참가중인 챌린지 정보 DTO")
+    public static class OngoingChallengeDto {
+
+        @Schema(description = "챌린지 아이디", example = "301")
+        private Long challengeId;
+
+        @Schema(description = "챌린지 제목", example = "자잘자잘")
+        private String title;
+
+        @Schema(description = "챌린지 간단 설명", example = "하루 5분씩 무엇이든 꼭 해야...")
+        private String description;
+
+        @JsonProperty("image")
+        @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
+        private String thumbnailUrl;
+
+        @Schema(description = "현재 회차 (인증 성공 횟수)", example = "6")
+        private Integer currentRound;
+
+        @JsonIgnore
+        private LocalDateTime startDate;
     }
 }
