@@ -45,10 +45,8 @@ export PROD_KAKAO_REDIRECT_URI=$(echo "$SECRET_JSON" | jq -r '.PROD_KAKAO_REDIRE
 export SPRING_PROFILES_ACTIVE=prod # Spring Profile 설정
 export FIREBASE_SERVICE_ACCOUNT_JSON=$(echo "$SECRET_JSON" | jq -r '.FIREBASE_SERVICE_ACCOUNT_JSON')
 
-# --- Spring Boot 프로젝트 빌드 ---
 echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
 
-# --- Docker Compose 실행 및 배포 ---
 echo "--- 4/4: Docker Compose 실행 및 배포 ---"
 
 # 최신 이미지 가져오기
@@ -58,7 +56,7 @@ docker compose -f "${COMPOSE_FILE}" pull || {
 }
 
 # 컨테이너 실행 (재생성 강제)
-if ! docker compose -f "${COMPOSE_FILE}" up --no-build -d --force-recreate; then
+if ! docker compose -f "${COMPOSE_FILE}" up -d; then
   echo "ERROR: docker compose up 실패. 로그를 확인하세요." >&2
   exit 1
 fi
