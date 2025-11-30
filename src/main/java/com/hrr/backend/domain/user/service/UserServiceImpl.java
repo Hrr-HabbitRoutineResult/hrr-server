@@ -1,17 +1,18 @@
 package com.hrr.backend.domain.user.service;
 
-import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
 import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.LoginStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
-import com.hrr.backend.global.exception.GlobalException;
-import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +58,13 @@ public class UserServiceImpl implements UserService {
         return !userRepository.existsByNickname(nickname);
     }
 
+    @Override
+    public UserResponseDto.MyInfoDto getMyInfo(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        return UserResponseDto.MyInfoDto.from(user);
+    }
 
     // 닉네임 설정
     @Override

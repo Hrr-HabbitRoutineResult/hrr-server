@@ -71,4 +71,13 @@ public class UserController {
         UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, currentUserId);
         return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
+
+    @GetMapping("/me")
+    @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 기본 정보를 조회합니다.")
+    public ApiResponse<UserResponseDto.MyInfoDto> getMyInfo(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ) {
+        UserResponseDto.MyInfoDto myInfo = userService.getMyInfo(customUserDetails.getUser().getId());
+        return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
+    }
 }

@@ -12,6 +12,10 @@ public interface UserService {
             Long userId,
             Long currentUserId
     );
+
+    // 내 정보 조회
+    UserResponseDto.MyInfoDto getMyInfo(Long userId);
+
     /**
      * 닉네임 사용 가능 여부만 체크 -> 중복되면 중복 메세지 뜨고록 설정할거
      */
