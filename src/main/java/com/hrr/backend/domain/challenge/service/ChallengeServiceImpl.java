@@ -79,9 +79,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
-	// 기본 이미지 URL
-	private static final String DEFAULT_CHALLENGE_IMAGE_URL = "https://example.com/images/challenge-default.png";
-
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -315,18 +312,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isViewerMode = isPublic && req.getIsViewerMode();
 		String password = isPublic ? null : req.getPassword();
 
-		String imageUrl = req.getImageUrl();
-		if (imageUrl == null || imageUrl.isBlank()) {
-			imageUrl = DEFAULT_CHALLENGE_IMAGE_URL;
-		}
-
 		// Challenge 생성
 		Challenge challenge = challengeConverter.toChallengeEntity(
 				req,
 				isPublic,
 				isViewerMode,
-				password,
-				imageUrl
+				password
 		);
 		Challenge saved = challengeRepository.save(challenge);
 
