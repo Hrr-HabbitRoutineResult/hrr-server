@@ -18,8 +18,7 @@ public class ChallengeConverter {
             ChallengeRequestDto.CreateChallengeDto req,
             boolean isPublic,
             boolean isViewerMode,
-            String password,
-            String imageUrl
+            String password
     ) {
         Challenge challenge = Challenge.builder()
                 .isPublic(isPublic)
@@ -36,7 +35,7 @@ public class ChallengeConverter {
                 .rule(req.getRule())
                 .currentParticipants(1)
                 .status(ChallengeStatus.UPCOMING)
-                .imageUrl(imageUrl)
+                .imageUrl(req.getImageUrl())
                 .likeCount(0)
                 .build();
 
