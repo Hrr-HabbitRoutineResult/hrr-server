@@ -5,7 +5,7 @@ import com.hrr.backend.global.response.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.hrr.backend.domain.follow.entity.FollowRepository;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
