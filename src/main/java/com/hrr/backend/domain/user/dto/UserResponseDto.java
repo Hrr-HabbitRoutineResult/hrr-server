@@ -11,8 +11,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-import java.time.LocalDateTime;
-
 public class UserResponseDto {
 
     @Getter

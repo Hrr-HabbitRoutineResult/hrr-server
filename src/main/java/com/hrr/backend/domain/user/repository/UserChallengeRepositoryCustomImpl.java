@@ -42,6 +42,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 ))
                 .from(qUserChallenge)
                 .join(qUserChallenge.challenge, qChallenge)
+                .join(qChallenge.currentRound, qRound)
                 .join(qRound).on(qRound.challenge.eq(qChallenge))
                 .join(qRoundRecord).on(
                         qRoundRecord.round.eq(qRound)
@@ -59,7 +60,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
         // Slice 객체 생성 및 반환
         boolean hasNext = content.size() > pageable.getPageSize();
         if (hasNext) {
-            content.remove(pageable.getPageSize());  // 다음 페이지 확인용 데이터 제거
+            content.remove(pageable.getPageSize());
         }
 
         return new SliceImpl<>(content, pageable, hasNext);
