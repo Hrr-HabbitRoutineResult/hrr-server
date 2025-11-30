@@ -51,4 +51,61 @@ public class UserResponseDto {
                     .build();
         }
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "내 정보 조회 DTO")
+    public static class MyInfoDto {
+
+        @Schema(description = "사용자 ID", example = "12345")
+        private Long userId;
+
+        @Schema(description = "닉네임", example = "흐르르")
+        private String nickname;
+
+        @Schema(description = "이메일", example = "my_email@example.com")
+        private String email;
+
+        @Schema(description = "전화번호", example = "010-1234-5678")
+        private String phoneNumber;
+
+        @Schema(description = "프로필 사진 URL", example = "https://example.com/my_photo.jpg")
+        private String profilePhoto;
+
+        @Schema(description = "레벨", example = "BRONZE")
+        private UserLevel level;
+
+        @Schema(description = "팔로워 수", example = "500")
+        private Long followerCount;
+
+        @Schema(description = "팔로잉 수", example = "150")
+        private Long followingCount;
+
+        @Schema(description = "포인트", example = "10000")
+        private Long points;
+
+        @Schema(description = "공개 여부", example = "true")
+        private Boolean isPublic;
+
+        @Schema(description = "알림 설정 ID", example = "1")
+        private Long alarmId;
+
+        public static MyInfoDto from(User user) {
+            return MyInfoDto.builder()
+                    .userId(user.getId())
+                    .nickname(user.getNickname())
+                    .email(user.getEmail())
+                    .phoneNumber(user.getPhoneNumber())
+                    .profilePhoto(user.getProfileImage())
+                    .level(user.getUserLevel())
+                    .followerCount(user.getFollowerCount())
+                    .followingCount(user.getFollowingCount())
+                    .points(user.getPoints())
+                    .isPublic(user.getIsPublic())
+                    .alarmId(null)
+                    .build();
+        }
+    }
 }
