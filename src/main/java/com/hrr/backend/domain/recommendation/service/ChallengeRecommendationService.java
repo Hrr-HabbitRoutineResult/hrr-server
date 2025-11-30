@@ -4,16 +4,19 @@ import com.hrr.backend.domain.recommendation.repository.RecommendationRepository
 import com.hrr.backend.domain.recommendation.dto.request.ChallengeRecommendRequest;
 import com.hrr.backend.domain.recommendation.dto.request.ModelApiRequest;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemDto;
+import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemResponseDto;
 import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeRecommendResult;
+import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.time.LocalTime;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -22,6 +25,8 @@ public class ChallengeRecommendationService {
 
     private final RecommendationRepository challengeRepository;
     private final ModelApiClient modelApiClient;
+
+    private static final int EMBED_DIM = 768;
 
     public ChallengeRecommendResult recommendChallenges(ChallengeRecommendRequest request) {
 
@@ -36,6 +41,21 @@ public class ChallengeRecommendationService {
                     .latencyMs(0)
                     .recommendations(List.of())
                     .build();
+        }
+
+        boolean hasInvalidEmbedding = false;
+
+        for (ChallengeItemDto ch : allChallenges) {
+            List<Float> emb = ch.getEmbedding();
+            int size = (emb == null) ? -1 : emb.size();
+
+            if (emb == null || size != EMBED_DIM) {
+                hasInvalidEmbedding = true;
+            }
+        }
+
+        if (hasInvalidEmbedding) {
+            throw new GlobalException(ErrorCode.EMBEDDING_LENGTH_ERROR);
         }
 
         allChallenges.forEach(ch -> {
@@ -56,9 +76,6 @@ public class ChallengeRecommendationService {
         ModelApiResponse modelApiResponse = null;
         try {
             // 4) 모델 서버 호출
-            log.info("[Recommend] Sending request to model-api: query={}, items={}",
-                    modelApiRequest.getQuery(), modelApiRequest.getItems().size());
-
             modelApiResponse = modelApiClient.requestRecommendations(modelApiRequest);
 
             log.info("[Recommend] Model-api response: version={}, latencyMs={}",
@@ -66,14 +83,11 @@ public class ChallengeRecommendationService {
                     modelApiResponse != null ? modelApiResponse.getLatencyMs() : null);
 
         } catch (Exception e) {
-            log.error("[Recommend] Error while calling model-api", e);
-            throw e;
+            throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
         }
-
 
         // 5) 추천 결과를 최종 응답 DTO로 매핑
         return mapToResultDto(request, allChallenges, modelApiResponse);
-
     }
 
     private String formatCertTimeSlots(LocalTime start, LocalTime end) {
@@ -101,7 +115,6 @@ public class ChallengeRecommendationService {
         );
     }
 
-
     private ChallengeRecommendResult mapToResultDto(
             ChallengeRecommendRequest request,
             List<ChallengeItemDto> allChallenges,
@@ -122,25 +135,28 @@ public class ChallengeRecommendationService {
                         Function.identity()
                 ));
 
-        List<ChallengeItemDto> items = modelApiResponse.getRecommendations().stream()
-                .map(rec -> {
-                    ChallengeItemDto base = challengeMap.get(rec.getChallengeId());
-                    if (base == null) {
-                        return null;
-                    }
-                    return ChallengeItemDto.builder()
-                            .challengeId(base.getChallengeId())
-                            .title(base.getTitle())
-                            .description(base.getDescription())
-                            .category(base.getCategory())
-                            .cert_time_slots(base.getCert_time_slots())
-                            .goal_text(base.getGoal_text())
-                            .verifyEndTime(base.getVerifyEndTime())
-                            .verifyStartTime(base.getVerifyStartTime())
-                            .build();
-                })
-                .filter(Objects::nonNull)
-                .toList();
+        List<ChallengeItemResponseDto> items =
+                modelApiResponse.getRecommendations().stream()
+                        .map(rec -> {
+                            ChallengeItemDto base = challengeMap.get(rec.getChallengeId());
+                            if (base == null) {
+                                log.warn("[Recommend] Recommendation refers to unknown challengeId={}", rec.getChallengeId());
+                            }
+
+                            return ChallengeItemResponseDto.builder()
+                                    .challengeId(base.getChallengeId())
+                                    .title(base.getTitle())
+                                    .description(base.getDescription())
+                                    .category(base.getCategory())
+                                    .cert_time_slots(base.getCert_time_slots())
+                                    .goal_text(base.getGoal_text())
+                                    .verifyStartTime(base.getVerifyStartTime())
+                                    .verifyEndTime(base.getVerifyEndTime())
+                                    .build();
+                        })
+                        .filter(Objects::nonNull)
+                        .toList();
+
 
         return ChallengeRecommendResult.builder()
                 .userId(request.getUserId())

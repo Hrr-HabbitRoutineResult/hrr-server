@@ -1,6 +1,8 @@
 package com.hrr.backend.domain.recommendation.repository;
 
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemDto;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -9,6 +11,10 @@ import java.sql.Time;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.ArrayList;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 
 @Repository
 @RequiredArgsConstructor
@@ -21,14 +27,17 @@ public class RecommendationRepository {
     public List<ChallengeItemDto> findAllChallengeMeta() {
         String sql = """
                 SELECT
-                    id AS challenge_id,
-                    title,
-                    description,
-                    category,
-                    rule AS goal_text,
-                    verify_start_time,
-                    verify_end_time
-                FROM challenge
+                    c.id AS challenge_id,
+                    c.title,
+                    c.description,
+                    c.category,
+                    c.rule AS goal_text,
+                    c.verify_start_time,
+                    c.verify_end_time,
+                    ce.challenge_embedding
+                FROM challenge c
+                LEFT JOIN challenge_embedding ce
+                    ON ce.challenge_id = c.id
                 """;
 
         return jdbc.query(sql, (rs, rowNum) -> {
@@ -38,6 +47,8 @@ public class RecommendationRepository {
             LocalTime start = startSqlTime != null ? startSqlTime.toLocalTime() : null;
             LocalTime end = endSqlTime != null ? endSqlTime.toLocalTime() : null;
 
+            byte[] embeddingBytes = rs.getBytes("challenge_embedding");
+
             return ChallengeItemDto.builder()
                     .challengeId(rs.getLong("challenge_id"))
                     .title(rs.getString("title"))
@@ -46,16 +57,23 @@ public class RecommendationRepository {
                     .goal_text(rs.getString("goal_text"))
                     .verifyStartTime(start)
                     .verifyEndTime(end)
-                    .embedding(dummyEmbedding())
+                    .embedding(bytesToFloatList(embeddingBytes))
                     .build();
         });
     }
-    // ✅ 임시 더미 임베딩 (모든 값 0.0, 길이 768)
-    private List<Float> dummyEmbedding() {
-        List<Float> v = new ArrayList<>(EMBED_DIM);
-        for (int i = 0; i < EMBED_DIM; i++) {
-            v.add(0.0f);
+
+    private List<Float> bytesToFloatList(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
+        int len = bytes.length / 4;
+        List<Float> list = new ArrayList<>(len);
+
+        for (int i = 0; i < len; i++) {
+            list.add(buffer.getFloat());
         }
-        return v;
+
+        if (list.size() != EMBED_DIM) {
+            throw new GlobalException(ErrorCode.EMBEDDING_LENGTH_ERROR);
+        }
+        return list;
     }
 }

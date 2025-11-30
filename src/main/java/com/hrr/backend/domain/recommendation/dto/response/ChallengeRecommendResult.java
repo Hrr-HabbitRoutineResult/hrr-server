@@ -16,5 +16,5 @@ public class ChallengeRecommendResult {
     private Long userId;
     private String modelVersion;
     private int latencyMs;
-    private List<ChallengeItemDto> recommendations;
+    private List<ChallengeItemResponseDto> recommendations;
 }
