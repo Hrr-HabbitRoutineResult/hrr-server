@@ -70,7 +70,7 @@ public class ChallengeRecommendationService {
         ModelApiRequest modelApiRequest = ModelApiRequest.builder()
                 .query(query)
                 .items(allChallenges)
-                .top_k(5)
+                .topK(1)
                 .build();
 
         ModelApiResponse modelApiResponse = null;
@@ -83,6 +83,7 @@ public class ChallengeRecommendationService {
                     modelApiResponse != null ? modelApiResponse.getLatencyMs() : null);
 
         } catch (Exception e) {
+            log.error("[Recommend] Model API call failed", e);
             throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
         }
 
@@ -141,6 +142,7 @@ public class ChallengeRecommendationService {
                             ChallengeItemDto base = challengeMap.get(rec.getChallengeId());
                             if (base == null) {
                                 log.warn("[Recommend] Recommendation refers to unknown challengeId={}", rec.getChallengeId());
+                                return null;
                             }
 
                             return ChallengeItemResponseDto.builder()
@@ -148,8 +150,8 @@ public class ChallengeRecommendationService {
                                     .title(base.getTitle())
                                     .description(base.getDescription())
                                     .category(base.getCategory())
-                                    .cert_time_slots(base.getCert_time_slots())
-                                    .goal_text(base.getGoal_text())
+                                    .certTimeSlots(base.getCert_time_slots())
+                                    .goalText(base.getGoal_text())
                                     .verifyStartTime(base.getVerifyStartTime())
                                     .verifyEndTime(base.getVerifyEndTime())
                                     .build();

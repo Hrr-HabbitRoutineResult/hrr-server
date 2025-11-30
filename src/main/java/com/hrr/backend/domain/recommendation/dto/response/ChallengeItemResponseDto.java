@@ -2,6 +2,7 @@ package com.hrr.backend.domain.recommendation.dto.response;
 
 import lombok.*;
 import java.time.LocalTime;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Data
 @NoArgsConstructor
@@ -13,8 +14,10 @@ public class ChallengeItemResponseDto {
     private String title;
     private String description;
     private String category;
-    private String cert_time_slots;
-    private String goal_text;
+    @JsonProperty("cert_time_slots")
+    private String certTimeSlots;
+    @JsonProperty("goal_text")
+    private String goalText;
     private LocalTime verifyStartTime;
     private LocalTime verifyEndTime;
 }

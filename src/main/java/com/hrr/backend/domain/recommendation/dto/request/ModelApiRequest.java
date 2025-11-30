@@ -5,6 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
@@ -14,7 +18,11 @@ import java.util.List;
 @Builder
 public class ModelApiRequest {
 
+    @NotNull
     private String query;
+    @NotEmpty
     private List<ChallengeItemDto> items;
-    private int top_k;
+    @Positive
+    @JsonProperty("top_k")
+    private int topK;
 }

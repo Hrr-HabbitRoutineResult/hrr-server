@@ -63,6 +63,9 @@ public class RecommendationRepository {
     }
 
     private List<Float> bytesToFloatList(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
         ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
         int len = bytes.length / 4;
         List<Float> list = new ArrayList<>(len);
