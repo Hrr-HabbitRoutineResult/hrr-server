@@ -17,7 +17,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "User", description ="사용자 관련 API")
@@ -33,9 +32,11 @@ public class UserController {
     public ApiResponse<UserResponseDto.ProfileDto> getUserProfile(
             @PathVariable
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
-            @RequestParam(required = false)
-            @Parameter(description = "현재 로그인한 사용자 ID (팔로잉 여부 확인용)") Long currentUserId
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
+        // 인증된 사용자 ID 추출 (비로그인 시 null)
+        Long currentUserId = (customUserDetails != null) ? customUserDetails.getUser().getId() : null;
+
         UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, currentUserId);
         return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
@@ -100,5 +101,13 @@ public class UserController {
                 userService.getOngoingChallenges(userId, page, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
+      
+    @GetMapping("/me")
+    @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 기본 정보를 조회합니다.")
+    public ApiResponse<UserResponseDto.MyInfoDto> getMyInfo(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ) {
+        UserResponseDto.MyInfoDto myInfo = userService.getMyInfo(customUserDetails.getUser().getId());
+        return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
     }
 }

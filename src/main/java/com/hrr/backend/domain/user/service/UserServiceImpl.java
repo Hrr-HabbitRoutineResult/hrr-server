@@ -10,7 +10,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.hrr.backend.domain.follow.entity.FollowRepository;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -71,5 +71,13 @@ public class UserServiceImpl implements UserService {
 
         // 다른 사람 프로필 조회
         return followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
+    }
+
+    @Override
+    public UserResponseDto.MyInfoDto getMyInfo(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        return UserResponseDto.MyInfoDto.from(user);
     }
 }

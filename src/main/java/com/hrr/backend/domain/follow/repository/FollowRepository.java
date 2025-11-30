@@ -1,4 +1,4 @@
-package com.hrr.backend.domain.follow.entity;
+package com.hrr.backend.domain.follow.repository;
 
 import com.hrr.backend.domain.follow.entity.Follow;
 import org.springframework.data.jpa.repository.JpaRepository;

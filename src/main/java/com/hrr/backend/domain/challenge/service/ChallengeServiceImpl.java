@@ -19,12 +19,18 @@ import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
+import com.hrr.backend.domain.round.converter.RoundConverter;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
+import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,6 +54,7 @@ import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChallengeServiceImpl implements ChallengeService {
@@ -63,15 +70,19 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final UserChallengeRepository userChallengeRepository;
 	private final UserChallengeConverter userChallengeConverter;
 
+	private final RoundRepository roundRepository;
+	private final RoundRecordRepository roundRecordRepository;
+	private final RoundConverter roundConverter;
+
 	private final RedisTemplate<String, String> redisTemplate;
 
-	private static final int UPCOMING_DAYS_CRITERIA = 5;   // '곧 시작' 챌린지 판단 기준 일자
+    private final ChallengeEmbeddingAsyncService challengeEmbeddingAsyncService;
+
+
+    private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
 
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
-
-	// 기본 이미지 URL
-	private static final String DEFAULT_CHALLENGE_IMAGE_URL = "https://example.com/images/challenge-default.png";
 
 
 	@Override
@@ -272,27 +283,48 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isViewerMode = isPublic && req.getIsViewerMode();
 		String password = isPublic ? null : req.getPassword();
 
-		String imageUrl = req.getImageUrl();
-		if (imageUrl == null || imageUrl.isBlank()) {
-			imageUrl = DEFAULT_CHALLENGE_IMAGE_URL;
-		}
-
 		// Challenge 생성
 		Challenge challenge = challengeConverter.toChallengeEntity(
 				req,
 				isPublic,
 				isViewerMode,
-				password,
-				imageUrl
+				password
 		);
 		Challenge saved = challengeRepository.save(challenge);
 
-		// UserChallenge 생성
+		// Round 생성
+		Round firstRound = roundConverter.toFirstRoundEntity(
+				saved,
+				req.getStartDate().toLocalDate()
+		);
+		roundRepository.save(firstRound);
+
+		// 챌린지의 currentRound 설정
+		saved.changeCurrentRound(firstRound);
+
+		// UserChallenge(방장) 생성
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
 
-		return challengeConverter.toCreateResponseDto(saved);
+		// RoundRecord(방장의 레코드) 생성
+		createRoundRecordOrFail(saved, userChallenge);
+
+    // 임베딩 계산은 비동기로 처리
+    String challengeText = buildChallengeText(saved);
+    challengeEmbeddingAsyncService.calculateAndSaveEmbeddingAsync(
+            saved.getId(),
+            challengeText
+    );
+
+        return challengeConverter.toCreateResponseDto(saved);
 	}
+    private String buildChallengeText(Challenge challenge) {
+        return String.join(" ",
+                challenge.getTitle(),
+                Objects.toString(challenge.getDescription(), ""),
+                Objects.toString(challenge.getRule(), "")
+        ).replaceAll("\\s+", " ").trim();
+    }
 
 	@Override
 	@Transactional
@@ -318,7 +350,25 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 챌린지 인원 업데이트
 		challenge.increaseCurrentParticipants();
 
+		// 현재 진행 중인 라운드의 RoundRecord 생성
+		createRoundRecordOrFail(challenge, userChallenge);
+
 		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
+	}
+
+	private void createRoundRecordOrFail(Challenge challenge, UserChallenge userChallenge) {
+		Round currentRound = challenge.getCurrentRound();
+
+		// 챌린지가 있는데 라운드가 없는 건 서버 에러
+		if (currentRound == null) {
+			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
+		}
+
+		RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
+				currentRound,
+				userChallenge
+		);
+		roundRecordRepository.save(roundRecord);
 	}
 
 	@Override
@@ -450,8 +500,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
-		// 모집 상태 검증 (UPCOMING 상태인지)
-		if (challenge.getStatus() != ChallengeStatus.UPCOMING) {
+		// 모집 상태 검증 (UPCOMING 이거나 RECRUITING 상태여야 함)
+		if (challenge.getStatus() != ChallengeStatus.UPCOMING &&
+				challenge.getStatus() != ChallengeStatus.RECRUITING) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_RECRUITING);
 		}
 
@@ -470,6 +521,13 @@ public class ChallengeServiceImpl implements ChallengeService {
 			if (inputPassword == null || !inputPassword.equals(challenge.getPassword())) {
 				throw new GlobalException(ErrorCode.CHALLENGE_PASSWORD_MISMATCH);
 			}
+		}
+
+		// 라운드가 존재하지 않는 경우
+		if (challenge.getCurrentRound() == null) {
+
+			log.error("[Data Error] 챌린지의 현재 라운드(CurrentRound)가 null입니다. challengeId={}", challenge.getId());
+			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
 		}
 	}
 

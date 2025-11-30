@@ -17,4 +17,6 @@ public interface UserService {
             int page,
             int size
     );
+    // 내 정보 조회
+    UserResponseDto.MyInfoDto getMyInfo(Long userId);
 }

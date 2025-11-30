@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.global.common.BaseEntity;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
@@ -25,9 +26,21 @@ import lombok.NoArgsConstructor;
 @Table(name = "challenge")
 @Builder
 public class Challenge extends BaseEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+
+	// 비즈니스 규칙
+	public static final int ROUND_WEEKS = 3;              // 챌린지 1라운드 길이 (3주)
+	public static final int OWNER_DECISION_DAYS = 5;      // 방장 연장 결정 (종료 5일 전)
+	public static final int CHALLENGER_DECISION_DAYS = 3; // 팀원 연장 결정 (종료 3일 전)
+	public static final int FINALIZATION_DAYS = 1;        // 최종 확정 및 신규 모집 (종료 1일 전)
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+
+	// 현재 진행 중인 라운드
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "current_round_id")
+	private Round currentRound;
 
 	@Column(name = "is_public", nullable = false)
 	private Boolean isPublic;
@@ -74,7 +87,7 @@ public class Challenge extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)
 	@Builder.Default
-	private ChallengeStatus status=ChallengeStatus.UPCOMING;
+	private ChallengeStatus status = ChallengeStatus.UPCOMING;
 
 	@Column(name = "image_url")
 	private String imageUrl;
@@ -86,16 +99,20 @@ public class Challenge extends BaseEntity {
 	@Builder.Default
 	private List<ChallengeDayJoin> challengeDays = new ArrayList<>();
 
-    @OneToOne(mappedBy = "challenge", cascade = CascadeType.ALL)
-    private ChallengeEmbedding embedding;
+	@OneToOne(mappedBy = "challenge", cascade = CascadeType.ALL)
+	private ChallengeEmbedding embedding;
 
-    @Builder.Default
-    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = false)
-    private List<RecommendationResult> recommendationResults = new ArrayList<>();
+	@Builder.Default
+	@OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = false)
+	private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
 	// 참가자 수 증가 편의 메서드
 	public void increaseCurrentParticipants() {
 		this.currentParticipants++;
 	}
 
+	// 라운드 교체
+	public void changeCurrentRound(Round round) {
+		this.currentRound = round;
+	}
 }
