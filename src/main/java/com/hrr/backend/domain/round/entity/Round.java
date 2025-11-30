@@ -20,7 +20,7 @@ import java.time.LocalDate;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_challenge_round_number",
-                        columnNames = {"challenge_id", "roundNumber"}
+                        columnNames = {"challenge_id", "round_number"}
                 )
         },
         indexes = {
