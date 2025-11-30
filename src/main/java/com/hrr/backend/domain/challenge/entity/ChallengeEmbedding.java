@@ -25,7 +25,7 @@ public class ChallengeEmbedding extends BaseEntity {
     private String challengeText;
 
     @Lob
-    @Column(name = "challenge_embedding")
+    @Column(name = "challenge_embedding", columnDefinition = "LONGBLOB")
     private byte[] challengeEmbedding;
 
 }

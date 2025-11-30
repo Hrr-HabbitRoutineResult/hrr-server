@@ -68,6 +68,12 @@ services:
     volumes:
       - redis_data:/data
 
+  # 모델 서비스
+  model-api:
+    image: ychan0/hrr-model:v1.0.0
+    container_name: hrr_model_prod
+    restart: always
+
 volumes:
   db-data:
   redis_data:

@@ -34,6 +34,9 @@ public enum ErrorCode implements BaseCode{
 	CHALLENGE_FULL(HttpStatus.CONFLICT, "CHALLENGE4092", "챌린지 정원이 초과되었습니다."),
 	CHALLENGE_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "CHALLENGE4006", "비밀번호가 일치하지 않습니다."),
 	CHALLENGE_NOT_RECRUITING(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "모집 중인 챌린지가 아닙니다."),
+    CHALLENGE_CALCULATE_EMBEDDING(HttpStatus.BAD_REQUEST, "CHALLENGE4006", "챌린지 임베딩 계산 중 오류가 발생했습니다."),
+    EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
+    EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
 
 	// challenge wait
 	CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
