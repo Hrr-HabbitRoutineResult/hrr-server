@@ -30,6 +30,7 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -53,6 +54,7 @@ import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChallengeServiceImpl implements ChallengeService {
@@ -557,6 +559,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// 라운드가 존재하지 않는 경우
 		if (challenge.getCurrentRound() == null) {
+
+			log.error("[Data Error] 챌린지의 현재 라운드(CurrentRound)가 null입니다. challengeId={}", challenge.getId());
 			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
 		}
 	}
