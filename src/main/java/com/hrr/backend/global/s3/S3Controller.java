@@ -9,6 +9,7 @@ import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "S3", description = "S3 API")
@@ -20,7 +21,7 @@ public class S3Controller {
 
 	@PostMapping("/presigned-url")
 	public ApiResponse<S3ResponseDto.PostDto> getPresignedUrl(
-		@RequestBody S3RequestDto.PostDto request
+		@Valid @RequestBody S3RequestDto.PostDto request
 	) {
 
 		S3ResponseDto.PostDto response = s3Service.getPresignedUrl(
