@@ -11,8 +11,12 @@ public enum SuccessCode implements BaseCode {
 
 	// challenge wait
 	CHALLENGE_WAIT_REGISTER_OK(HttpStatus.OK, "WAIT2001", "챌린지 대기 신청이 완료되었습니다."),
-	CHALLENGE_WAIT_CANCEL_OK(HttpStatus.OK, "WAIT2002", "챌린지 대기 신청이 취소되었습니다.");
+	CHALLENGE_WAIT_CANCEL_OK(HttpStatus.OK, "WAIT2002", "챌린지 대기 신청이 취소되었습니다."),
 
+    // comment
+    COMMENT_POST_OK(HttpStatus.OK, "COMMENT2001","댓글이 작성되었습니다."),
+    COMMENT_UPDATE_OK(HttpStatus.OK, "COMMENT2002", "댓글이 수정되었습니다."),
+    COMMENT_DELETE_OK(HttpStatus.OK, "COMMENT2003", "댓글이 삭제되었습니다.")
 	;
 
 	private final HttpStatus status;

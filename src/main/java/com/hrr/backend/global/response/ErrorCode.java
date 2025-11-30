@@ -71,6 +71,13 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_ROUND_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40010", "유효하지 않은 라운드입니다."),
     VERIFICATION_FILTER_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40011", "조회 필터 조건이 올바르지 않습니다."),
 
+    // comment
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT4041", "존재하지 않는 댓글입니다."),
+    COMMENT_CONTENT_EMPTY(HttpStatus.BAD_REQUEST, "COMMENT4002", "댓글 내용은 비어 있을 수 없습니다."),
+    COMMENT_UNAUTHORIZED(HttpStatus.FORBIDDEN, "COMMENT4033", "본인이 작성한 댓글만 수정/삭제할 수 있습니다."),
+    COMMENT_INVALID_PARENT(HttpStatus.BAD_REQUEST, "COMMENT4004", "유효하지 않은 부모 댓글입니다."),
+    COMMENT_DEPTH_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4005", "대댓글의 depth 값이 올바르지 않습니다."),
+
     ;
 
 	private final HttpStatus status;
