@@ -340,9 +340,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 챌린지의 currentRound 설정
 		saved.changeCurrentRound(firstRound);
 
-		// UserChallenge 생성
+		// UserChallenge(방장) 생성
 		UserChallenge userChallenge = userChallengeConverter.toOwner(user, saved);
 		userChallengeRepository.save(userChallenge);
+
+		// RoundRecord(방장의 레코드) 생성
+		createRoundRecordOrFail(saved, userChallenge);
 
 		return challengeConverter.toCreateResponseDto(saved);
 	}
@@ -372,13 +375,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 		challenge.increaseCurrentParticipants();
 
 		// 현재 진행 중인 라운드의 RoundRecord 생성
+		createRoundRecordOrFail(challenge, userChallenge);
+
+		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
+	}
+
+	private void createRoundRecordOrFail(Challenge challenge, UserChallenge userChallenge) {
+		Round currentRound = challenge.getCurrentRound();
+
+		// 챌린지가 있는데 라운드가 없는 건 서버 에러
+		if (currentRound == null) {
+			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
+		}
+
 		RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
-				challenge.getCurrentRound(),
+				currentRound,
 				userChallenge
 		);
 		roundRecordRepository.save(roundRecord);
-
-		return new ChallengeResponseDto.JoinChallengeDto(challenge.getId());
 	}
 
 	@Override
