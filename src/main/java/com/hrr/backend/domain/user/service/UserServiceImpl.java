@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService {
         return followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
     }
 
-    // 닉네임 설정 관련 ---
+    // 닉네임 설정 관련
 
     @Override
     public boolean isNicknameAvailable(String rawNickname) {
@@ -70,6 +70,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional // 중요: DB 변경(save/update)이 일어나므로 쓰기 트랜잭션 적용
     public UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request) {
+        if (user.getLoginStatus() != LoginStatus.TERMS_DONE) {
+            throw new GlobalException(ErrorCode.INVALID_LOGIN_STATUS_FOR_NICKNAME);
+        }
+
         String nickname = normalize(request.getNickname());
 
         if (nickname.isEmpty()) {

@@ -18,8 +18,10 @@ public enum ErrorCode implements BaseCode{
     NICKNAME_BLANK(HttpStatus.BAD_REQUEST, "USER4002", "닉네임을 입력해 주세요."),
     NICKNAME_TOO_LONG(HttpStatus.BAD_REQUEST, "USER4003", "닉네임은 최대 10자까지 입력 가능합니다."),
     NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "USER4094", "해당 닉네임은 이미 등록되어 있어요!"),
+    INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
 
-	// fcm
+
+    // fcm
 	FCM_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "FCM404", "존재하지 않는 FCM 토큰입니다."),
 
 	// dm
@@ -65,6 +67,7 @@ public enum ErrorCode implements BaseCode{
     TERM_ALREADY_AGREED(HttpStatus.BAD_REQUEST, "TERM4003", "이미 약관 동의를 완료한 사용자입니다."),
     INVALID_TERM_ID_IN_REQUEST(HttpStatus.BAD_REQUEST, "TERM4004", "요청에 유효하지 않은 약관 ID가 포함되어 있습니다."),
     TERM_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "TERM5005", "약관 동의 저장 중 오류가 발생했습니다."),
+
     ;
 
 	private final HttpStatus status;
