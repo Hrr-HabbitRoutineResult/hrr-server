@@ -123,40 +123,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 				pageable
 		);
 
-		// // ---응답 dto에 추가할 요일 정보 조회---
-		// // 모든 challengeId 추출
-		// List<Long> challengeIds = tempDtoSlice.getContent().stream()
-		// 	.map(ChallengeResponseDto.InfoDto::getChallengeId)
-		// 	.toList();
-		//
-		// // 해당 challenge들을 가진 ChallengeDayJoin 엔티티 조회
-		// List<ChallengeDayJoin> allDays = challengeDayJoinRepository.findByChallengeIdIn(challengeIds);
-		//
-		// // 챌린지 아이디-요일 리스트 매핑
-		// Map<Long, List<ChallengeDays>> daysMap = allDays.stream()
-		// 	.collect(Collectors.groupingBy(
-		// 		dayJoin -> dayJoin.getChallenge().getId(), // key: 챌린지 아이디
-		// 		Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList()) // value: 요일 리스트
-		// 	));
-		//
-		//
-		// // Repository에서 조회해 온 dto 기반으로 결과 dto 필드 일부 채우기
-		// Slice<ChallengeResponseDto.InfoDto> finalDtoSlice = tempDtoSlice.map(tempDto -> {
-		//
-		// 	LocalDate challengeStartDate = tempDto.getStartDate().toLocalDate();
-		// 	LocalDate today = LocalDate.now();
-		//
-		// 	long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
-		// 	boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
-		//
-		// 	// dto 나머지 필드 채우기(isUpcoming, dDayUntilStart, dayOfWeek)
-		// 	tempDto.setIsUpcoming(isUpcomingResult);
-		// 	tempDto.setDDayUntilStart((int)Math.max(0, dDay));	// 시작 전일 경우에만 남은 날짜를 set, else 0
-		// 	tempDto.setDaysOfWeek(daysMap.getOrDefault(tempDto.getChallengeId(), List.of()));
-		//
-		// 	return tempDto;
-		// });
-
 		// dto 나머지 필드 보강 (isUpcoming, dDayUntilStart, dayOfWeek)
 		List<ChallengeResponseDto.InfoDto> rawContent = tempDtoSlice.getContent();
 		List<ChallengeResponseDto.InfoDto> enrichedContent = enrichChallengeInfo(rawContent);
