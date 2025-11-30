@@ -39,3 +39,9 @@ model:
   api:
     url: ${MODEL_API_URL:http://model-api:8000}/recommend
     embedding-url: ${MODEL_API_URL:http://model-api:8000}/embedding
+
+aws:
+  s3:
+    region: ap-northeast-2
+    bucket: hrr-bucket
+    prefix: uploads
