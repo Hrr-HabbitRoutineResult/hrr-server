@@ -1,6 +1,8 @@
 package com.hrr.backend.domain.user.repository;
 
 import com.hrr.backend.domain.challenge.entity.QChallenge;
+import com.hrr.backend.domain.round.entity.QRound;
+import com.hrr.backend.domain.round.entity.QRoundRecord;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.QUserChallenge;
 import com.hrr.backend.domain.user.entity.User;
@@ -25,6 +27,8 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
     public Slice<UserResponseDto.OngoingChallengeDto> findOngoingChallengesByUser(User user, Pageable pageable) {
         QUserChallenge qUserChallenge = QUserChallenge.userChallenge;
         QChallenge qChallenge = QChallenge.challenge;
+        QRound qRound = QRound.round;
+        QRoundRecord qRoundRecord = QRoundRecord.roundRecord;
 
         // 챌린지 기본 정보와 UserChallenge 정보 조회
         List<UserResponseDto.OngoingChallengeDto> content = jpaQueryFactory
@@ -33,11 +37,16 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                         qChallenge.title,
                         qChallenge.description,
                         qChallenge.imageUrl.as("thumbnailUrl"),
-                        qUserChallenge.verificationCount.as("currentRound"),
+                        qRoundRecord.verificationCount.as("currentRound"),
                         qChallenge.startDate
                 ))
                 .from(qUserChallenge)
                 .join(qUserChallenge.challenge, qChallenge)
+                .join(qRound).on(qRound.challenge.eq(qChallenge))
+                .join(qRoundRecord).on(
+                        qRoundRecord.round.eq(qRound)
+                                .and(qRoundRecord.userChallenge.eq(qUserChallenge))
+                )
                 .where(
                         qUserChallenge.user.eq(user),
                         qChallenge.status.eq(ChallengeStatus.ONGOING)

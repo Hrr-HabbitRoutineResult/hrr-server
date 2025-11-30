@@ -83,6 +83,7 @@ public class UserResponseDto {
 
         @JsonIgnore
         private LocalDateTime startDate;
+    }
       
     @Builder
     @NoArgsConstructor
