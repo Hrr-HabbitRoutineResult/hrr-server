@@ -43,3 +43,5 @@ model:
 aws:
   s3:
     region: ap-northeast-2
+    bucket: hrr-bucket
+    prefix: uploads
