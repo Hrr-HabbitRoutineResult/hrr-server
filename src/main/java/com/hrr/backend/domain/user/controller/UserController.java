@@ -28,10 +28,25 @@ public class UserController {
 
     private final UserService userService;
 
+
+    // 닉네임 유효성 검사 API
+    @Operation(
+            summary = "닉네임 유효성 검사",
+            description = "입력한 닉네임이 사용 가능한지 검사합니다."
+    )
+    @GetMapping("/nickname/check")
+    public ApiResponse<Boolean> checkNickname(
+            @RequestParam("nickname") String nickname
+    ) {
+        boolean available = userService.isNicknameAvailable(nickname);
+        return ApiResponse.onSuccess(SuccessCode.OK, available);
+    }
+
+
+    // 닉네임 설정 API
     @Operation(
             summary = "닉네임 설정",
-            description = "회원가입 단계에서 닉네임을 설정합니다. " +
-                    "최대 10자까지 입력 가능하며, 중복된 닉네임은 사용할 수 없습니다."
+            description = "회원가입 단계에서 닉네임을 설정합니다. 최대 10자, 중복 불가."
     )
     @PostMapping("/nickname")
     public ApiResponse<UserNicknameResponseDto> setNickname(
@@ -40,10 +55,9 @@ public class UserController {
     ) {
         User user = userDetails.getUser();
         UserNicknameResponseDto response = userService.setNickname(user, request);
-
-        // result.message = "사용 가능한 닉네임이에요.",  result.nextStep = "MAIN" (LoginStatus.ACTIVE 기준)
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
+
     @GetMapping("/{userId}")
     @Operation(summary = "타인 사용자 기본 정보 조회", description = "특정 사용자의 프로필 정보를 조회합니다.\n")
     public ApiResponse<UserResponseDto.ProfileDto> getUserProfile(

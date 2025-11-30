@@ -50,54 +50,46 @@ public class UserServiceImpl implements UserService {
         return followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
     }
 
-    // 닉네임 설정 관련
-
+    // 닉네임 유효성 검사 (중복 체크)
     @Override
     public boolean isNicknameAvailable(String rawNickname) {
-        // 클래스 레벨에 @Transactional(readOnly = true)가 있어 메서드 단건 생략 가능
         String nickname = normalize(rawNickname);
-        if (nickname.isEmpty()) {
-            throw new GlobalException(ErrorCode.NICKNAME_BLANK);
-        }
-
-        if (nickname.length() > 10) {
-            throw new GlobalException(ErrorCode.NICKNAME_TOO_LONG);
-        }
-
         return !userRepository.existsByNickname(nickname);
     }
 
+
+    // 닉네임 설정
     @Override
-    @Transactional // 중요: DB 변경(save/update)이 일어나므로 쓰기 트랜잭션 적용
+    @Transactional
     public UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request) {
+
+        // 온보딩 상태 검증
         if (user.getLoginStatus() != LoginStatus.TERMS_DONE) {
             throw new GlobalException(ErrorCode.INVALID_LOGIN_STATUS_FOR_NICKNAME);
         }
 
         String nickname = normalize(request.getNickname());
 
+        // 닉네임 중복 검사만 수행 (빈값/길이는 DTO Validation에서 수행)
         if (!isNicknameAvailable(nickname)) {
             throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
         }
 
-        // 닉네임 저장 + 로그인 상태 ACTIVE 전환
+        // 닉네임 저장 + ACTIVE 전환
         user.updateNickname(nickname);
         user.updateLoginStatus(LoginStatus.ACTIVE);
-
-        // 변경내용 반영
         userRepository.save(user);
 
         return UserNicknameResponseDto.builder()
                 .nickname(nickname)
                 .message("사용 가능한 닉네임이에요.")
-                .nextStep(user.determineNextStep())   // User 엔티티에 이미 있는 메서드 사용
+                .nextStep(user.determineNextStep())
                 .build();
     }
 
+
     private String normalize(String raw) {
-        if (raw == null) {
-            return "";
-        }
+        if (raw == null) return "";
         return raw.trim();
     }
 }
