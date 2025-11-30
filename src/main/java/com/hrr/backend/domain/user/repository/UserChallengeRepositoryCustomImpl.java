@@ -40,11 +40,11 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 .join(qUserChallenge.challenge, qChallenge)
                 .where(
                         qUserChallenge.user.eq(user),
-                        qChallenge.status.in(ChallengeStatus.UPCOMING, ChallengeStatus.ONGOING)
+                        qChallenge.status.eq(ChallengeStatus.ONGOING)
                 )
                 .orderBy(qChallenge.startDate.desc())
                 .offset(pageable.getOffset())
-                .limit(pageable.getPageSize() + 1)  // hasNext 확인을 위해 +1
+                .limit(pageable.getPageSize() + 1)
                 .fetch();
 
         // Slice 객체 생성 및 반환

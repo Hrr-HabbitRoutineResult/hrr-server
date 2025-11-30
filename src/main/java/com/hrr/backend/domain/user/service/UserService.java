@@ -1,7 +1,6 @@
 package com.hrr.backend.domain.user.service;
 
 import com.hrr.backend.domain.user.dto.UserResponseDto;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 public interface UserService {
@@ -14,7 +13,7 @@ public interface UserService {
 
     // 참가중인 챌린지 목록 조회 (페이징)
     SliceResponseDto<UserResponseDto.OngoingChallengeDto> getOngoingChallenges(
-            User user,
+            Long userId,
             int page,
             int size
     );

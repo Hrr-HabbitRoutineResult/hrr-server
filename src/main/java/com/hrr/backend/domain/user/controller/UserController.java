@@ -40,12 +40,11 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
 
-    @GetMapping("/challenge/ongoing")
+    @GetMapping("/{userId}/challenge/ongoing")
     @Operation(
             summary = "참가중인 챌린지 목록 조회",
             description = "현재 로그인한 사용자가 참가중인 챌린지 목록을 조회합니다. " +
-                    "UPCOMING 또는 ONGOING 상태의 챌린지만 반환됩니다.\n" +
-                    "페이징을 지원하며, page는 0부터 시작합니다."
+                    "ONGOING 상태의 챌린지만 반환됩니다.\n"
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -88,19 +87,11 @@ public class UserController {
             )
     })
     public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getOngoingChallenges(
-            @Parameter(hidden = true)
-            @AuthenticationPrincipal CustomUserDetails customUserDetails,
-
-            @RequestParam(name = "page", defaultValue = "0")
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-            int page,
-
-            @RequestParam(name = "size", defaultValue = "10")
-            @Parameter(description = "페이지당 데이터 개수", example = "10")
-            int size
+            @PathVariable
+            @Parameter(description = "조회할 사용자 ID", example = "999") Long userId
     ) {
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(customUserDetails.getUser(), page, size);
+                userService.getOngoingChallenges(userId, 0, 10);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }

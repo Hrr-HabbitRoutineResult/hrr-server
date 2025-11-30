@@ -39,10 +39,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public SliceResponseDto<UserResponseDto.OngoingChallengeDto> getOngoingChallenges(
-            User user,
+            Long userId,
             int page,
             int size
     ) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
         // Pageable 객체 생성 (0-based index)
         Pageable pageable = PageRequest.of(page, size);
 
