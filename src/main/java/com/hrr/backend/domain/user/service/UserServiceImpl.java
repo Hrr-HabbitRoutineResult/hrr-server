@@ -76,15 +76,7 @@ public class UserServiceImpl implements UserService {
 
         String nickname = normalize(request.getNickname());
 
-        if (nickname.isEmpty()) {
-            throw new GlobalException(ErrorCode.NICKNAME_BLANK);
-        }
-
-        if (nickname.length() > 10) {
-            throw new GlobalException(ErrorCode.NICKNAME_TOO_LONG);
-        }
-
-        if (userRepository.existsByNickname(nickname)) {
+        if (!isNicknameAvailable(nickname)) {
             throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
         }
 
