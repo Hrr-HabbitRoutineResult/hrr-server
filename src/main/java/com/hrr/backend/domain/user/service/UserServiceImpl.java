@@ -45,4 +45,12 @@ public class UserServiceImpl implements UserService {
         // 다른 사람 프로필 조회
         return followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
     }
+
+    @Override
+    public UserResponseDto.MyInfoDto getMyInfo(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        return UserResponseDto.MyInfoDto.from(user);
+    }
 }

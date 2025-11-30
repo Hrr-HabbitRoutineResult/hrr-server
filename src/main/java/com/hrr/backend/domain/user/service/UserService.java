@@ -9,4 +9,7 @@ public interface UserService {
             Long userId,
             Long currentUserId
     );
+
+    // 내 정보 조회
+    UserResponseDto.MyInfoDto getMyInfo(Long userId);
 }
