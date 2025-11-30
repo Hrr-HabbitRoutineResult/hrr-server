@@ -88,10 +88,16 @@ public class UserController {
     })
     public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getOngoingChallenges(
             @PathVariable
-            @Parameter(description = "조회할 사용자 ID", example = "999") Long userId
+            @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
+
+            @RequestParam(name = "page", defaultValue = "0")
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, 0, 10);
+                userService.getOngoingChallenges(userId, page, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
