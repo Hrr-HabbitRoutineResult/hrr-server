@@ -52,9 +52,24 @@ public enum ErrorCode implements BaseCode{
     AUTH_EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "AUTH006", "외부 인증 서버와 통신 중 오류가 발생했습니다."),
     AUTH_KAKAO_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "AUTH007", "카카오 토큰 요청 중 오류가 발생했습니다."),
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
+    AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
 
-	// mission
-	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다.")
+
+    // mission
+	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
+
+    // verification
+    VERIFICATION_TEXT_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4001", "글 인증에서는 내용이 반드시 필요합니다."),
+    VERIFICATION_URL_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION4002", "잘못된 URL 형식입니다."),
+    VERIFICATION_NOT_TEXT_TYPE(HttpStatus.BAD_REQUEST, "VERIFICATION4003", "이 챌린지는 글 인증 방식이 아닙니다."),
+    VERIFICATION_USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4044", "챌린지 참가 이력이 없습니다."),
+    VERIFICATION_ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4045", "해당 라운드를 찾을 수 없습니다."),
+    VERIFICATION_FILE_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4006", "사진 인증에서는 파일이 반드시 필요합니다."),
+    VERIFICATION_FILE_NOT_IMAGE(HttpStatus.BAD_REQUEST, "VERIFICATION4007", "이미지 파일만 업로드할 수 있습니다."),
+    VERIFICATION_TITLE_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4008", "제목은 필수 입력 값입니다."),
+    VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4049", "해당 인증글을 찾을 수 없습니다."),
+    VERIFICATION_ROUND_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40010", "유효하지 않은 라운드입니다."),
+    VERIFICATION_FILTER_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40011", "조회 필터 조건이 올바르지 않습니다."),
 
     ;
 
