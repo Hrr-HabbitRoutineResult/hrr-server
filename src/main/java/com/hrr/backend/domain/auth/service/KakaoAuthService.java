@@ -44,7 +44,7 @@ public class KakaoAuthService {
     @Value("${kakao.redirect-uri}")
     private String redirectUri;  // hrr://oauth/kakao
 
-    @Value("${KAKAO_CLIENT_SECRET}")
+    @Value("${kakao.client-secret}")
     private String clientSecret;
 
     /*카카오 인가코드로 토큰 발급*/

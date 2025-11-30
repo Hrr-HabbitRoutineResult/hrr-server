@@ -42,7 +42,7 @@ public class UserTerm {
     @Column(name = "agreed_at", nullable = false, updatable = false)
     private LocalDateTime agreedAt;
 
-    public void updateIsAgreed(Boolean isAgreed) {
+    public void updateIsAgreed(boolean isAgreed) {
         this.isAgreed = isAgreed;
     }
 }

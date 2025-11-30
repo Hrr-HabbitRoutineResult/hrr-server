@@ -18,8 +18,7 @@ public class ChallengeConverter {
             ChallengeRequestDto.CreateChallengeDto req,
             boolean isPublic,
             boolean isViewerMode,
-            String password,
-            String imageUrl
+            String password
     ) {
         Challenge challenge = Challenge.builder()
                 .isPublic(isPublic)
@@ -36,7 +35,7 @@ public class ChallengeConverter {
                 .rule(req.getRule())
                 .currentParticipants(1)
                 .status(ChallengeStatus.UPCOMING)
-                .imageUrl(imageUrl)
+                .imageUrl(req.getImageUrl())
                 .likeCount(0)
                 .build();
 
@@ -52,7 +51,16 @@ public class ChallengeConverter {
         return challenge;
     }
 
-    public ChallengeResponseDto.CreateChallengeResDto toCreateResponseDto(Challenge challenge) {
-        return new ChallengeResponseDto.CreateChallengeResDto(challenge.getId());
+    public ChallengeResponseDto.CreateChallengeDto toCreateResponseDto(Challenge challenge) {
+        return new ChallengeResponseDto.CreateChallengeDto(challenge.getId());
+    }
+
+    // 좋아요 응답 DTO 변환 메서드
+    public ChallengeResponseDto.ChallengeLikeDto toChallengeLikeDto(Challenge challenge, Boolean isLiked) {
+        return ChallengeResponseDto.ChallengeLikeDto.builder()
+                .challengeId(challenge.getId())
+                .isLiked(isLiked)
+                .likeCount(challenge.getLikeCount())
+                .build();
     }
 }
