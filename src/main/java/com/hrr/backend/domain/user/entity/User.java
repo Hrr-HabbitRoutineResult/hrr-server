@@ -30,7 +30,7 @@ public class User extends BaseEntity {
     private Long id;
 
     @NotNull
-    @Column(name = "nickname", length = 20, nullable = false)
+    @Column(name = "nickname", length = 20, nullable = false, unique = true)
     private String nickname;
 
     @Column(name = "email", length = 255)
@@ -92,7 +92,8 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private LoginStatus loginStatus;
+    @Builder.Default
+    private LoginStatus loginStatus = LoginStatus.NEW;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -120,6 +121,23 @@ public class User extends BaseEntity {
     /** 프로필 이미지 업데이트 */
     public void updateProfileImage(String profileImage) {
         this.profileImage = profileImage;
+    }
+
+    /** 온보딩 진행 상태로 다음 단계 반환
+     * new -> terms : 약관동의 화면
+     * terms_done -> signup: 가입 정보 입력 화면
+     * active -> main : 메인화면으로 gogo
+     */
+    public String determineNextStep() {
+        if (this.loginStatus == null) {
+            return "TERMS"; // 혹시 null이면 가장 처음 단계로
+        }
+
+        return switch (this.loginStatus) {
+            case NEW -> "TERMS";
+            case TERMS_DONE -> "SIGNUP";
+            case ACTIVE -> "MAIN";
+        };
     }
 
     /** 로그인 상태 변경 */
