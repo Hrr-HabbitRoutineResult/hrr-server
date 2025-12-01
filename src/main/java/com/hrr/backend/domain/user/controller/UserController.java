@@ -105,7 +105,7 @@ public class UserController {
     // 다른 사용자가 참가중인 챌린지 조회
     @GetMapping("/{userId}/challenge/ongoing")
     @Operation(
-            summary = "참가중인 챌린지 목록 조회",
+            summary = "다른 사용자가 참가중인 챌린지 목록 조회",
             description = "특정 사용자가 참가중인 챌린지 목록을 조회합니다. " +
                     "ONGOING 상태의 챌린지만 반환됩니다.\n"
     )
