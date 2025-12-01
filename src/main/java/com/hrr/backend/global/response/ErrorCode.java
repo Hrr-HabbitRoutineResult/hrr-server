@@ -14,9 +14,14 @@ public enum ErrorCode implements BaseCode{
 	_BAD_REQUEST(HttpStatus.BAD_REQUEST,"COMMON400","잘못된 요청입니다."),
 
 	// user
-	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER404", "존재하지 않는 유저입니다."),
+	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER4041", "존재하지 않는 유저입니다."),
+    NICKNAME_BLANK(HttpStatus.BAD_REQUEST, "USER4002", "닉네임을 입력해 주세요."),
+    NICKNAME_TOO_LONG(HttpStatus.BAD_REQUEST, "USER4003", "닉네임은 최대 10자까지 입력 가능합니다."),
+    NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "USER4094", "해당 닉네임은 이미 등록되어 있어요!"),
+    INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
 
-	// fcm
+
+    // fcm
 	FCM_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "FCM404", "존재하지 않는 FCM 토큰입니다."),
 
 	// dm
@@ -55,8 +60,15 @@ public enum ErrorCode implements BaseCode{
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
 
 
-    // mission
+	// mission
 	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
+
+    // term
+    TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM4041", "존재하지 않는 약관입니다."),
+    REQUIRED_TERM_NOT_AGREED(HttpStatus.BAD_REQUEST, "TERM4002", "필수 약관에 모두 동의해야 합니다."),
+    TERM_ALREADY_AGREED(HttpStatus.BAD_REQUEST, "TERM4003", "이미 약관 동의를 완료한 사용자입니다."),
+    INVALID_TERM_ID_IN_REQUEST(HttpStatus.BAD_REQUEST, "TERM4004", "요청에 유효하지 않은 약관 ID가 포함되어 있습니다."),
+    TERM_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "TERM5005", "약관 동의 저장 중 오류가 발생했습니다."),
 
     // verification
     VERIFICATION_TEXT_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4001", "글 인증에서는 내용이 반드시 필요합니다."),

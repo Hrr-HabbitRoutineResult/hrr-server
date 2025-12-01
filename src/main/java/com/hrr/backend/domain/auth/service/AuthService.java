@@ -39,12 +39,16 @@ public class AuthService {
             String accessToken = jwtService.generateAccessToken(user.getId());
             String refreshToken = jwtService.generateRefreshToken(user.getId());
 
+            // 5. 다음단계 게산
+            String nextStep = user.determineNextStep();
+
             return new AuthResponseDto.LoginResponse(
                     user.getId(),
                     accessToken,
                     refreshToken,
                     user.getNickname(),
-                    user.getLoginStatus()
+                    user.getLoginStatus(),
+                    nextStep
             );
         } catch (GlobalException e) {
             // KakaoAuthService 내부에서 GlobalException 이미 던지면 그대로 전달

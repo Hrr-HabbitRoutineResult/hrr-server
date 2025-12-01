@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.verification.entity;
 
+import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -20,6 +21,10 @@ public class Verification extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "round_record_id", nullable = false)
+    private RoundRecord roundRecord;
 
     /** 인증 방식 (PHOTO / TEXT) */
     @Enumerated(EnumType.STRING)

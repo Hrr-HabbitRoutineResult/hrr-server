@@ -1,8 +1,8 @@
 package com.hrr.backend.domain.user.entity;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
-import com.hrr.backend.domain.user.entity.enums.UserVerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -46,23 +46,16 @@ public class UserChallenge extends BaseEntity {
     private UserChallengeRole role = UserChallengeRole.CHALLENGER;
 
     @NotNull
-    @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "verification_status", nullable = false)
-    private UserVerificationStatus userVerificationStatus = UserVerificationStatus.PENDING;
-
-    @NotNull
-    @Column(name = "verification_count", nullable = false)
+    @Column(name = "status", nullable = false)
+    @ColumnDefault("'JOINED'")
     @Builder.Default
-    private Integer verificationCount = 0;
+    private ChallengeJoinStatus status = ChallengeJoinStatus.JOINED;
 
-    @NotNull
-    @Column(name = "verification_uncount", nullable = false)
+    // '내보내기 경고' 누적 횟수 (3회 되면 status = KICKED로 변경됨)
+    @Column(name = "kick_warnings", nullable = false)
+    @ColumnDefault("0")
     @Builder.Default
-    private Integer verificationUncount = 0;
+    private Integer kickWarnings = 0;
 
-    @NotNull
-    @Column(name = "warn_count", nullable = false)
-    @Builder.Default
-    private Integer warnCount = 0;
 }

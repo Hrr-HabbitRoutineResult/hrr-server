@@ -27,6 +27,13 @@ public class ChallengeEmbeddingAsyncService {
         try {
             // 임베딩 계산
             float[] embedding = embeddingClient.getEmbedding(challengeText);
+
+            if (embedding == null || embedding.length == 0) {
+                throw new GlobalException(ErrorCode.CHALLENGE_CALCULATE_EMBEDDING);
+            }
+
+            sanitizeEmbedding(embedding, challengeId);
+
             byte[] embeddingBytes = floatArrayToByteArray(embedding);
 
             Challenge challengeRef = challengeRepository.getReferenceById(challengeId);
@@ -41,6 +48,26 @@ public class ChallengeEmbeddingAsyncService {
 
         } catch (Exception e) {
             log.error("예상치 못한 오류로 임베딩 계산 실패. challengeId={}", challengeId, e);
+        }
+    }
+
+    private void sanitizeEmbedding(float[] embedding, Long challengeId) {
+        int fixedCount = 0;
+
+        for (int i = 0; i < embedding.length; i++) {
+            float v = embedding[i];
+
+            if (Float.isNaN(v) || Float.isInfinite(v)) {
+                embedding[i] = 0.0f;
+                fixedCount++;
+            }
+        }
+
+        if (fixedCount > 0) {
+            log.warn(
+                    "[Embedding] NaN/Inf {}개를 0.0f로 치환했습니다. challengeId={}",
+                    fixedCount, challengeId
+            );
         }
     }
 
