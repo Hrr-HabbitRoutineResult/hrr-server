@@ -43,7 +43,6 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 .from(qUserChallenge)
                 .join(qUserChallenge.challenge, qChallenge)
                 .join(qChallenge.currentRound, qRound)
-                .join(qRound).on(qRound.challenge.eq(qChallenge))
                 .join(qRoundRecord).on(
                         qRoundRecord.round.eq(qRound)
                                 .and(qRoundRecord.userChallenge.eq(qUserChallenge))

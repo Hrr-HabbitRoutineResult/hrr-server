@@ -12,14 +12,18 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "User", description ="사용자 관련 API")
 @RestController
 @RequestMapping("/api/v1/user")
 @RequiredArgsConstructor
+@Validated
 public class UserController {
 
     private final UserService userService;
@@ -89,9 +93,11 @@ public class UserController {
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
 
             @RequestParam(name = "page", defaultValue = "0")
+            @Min(0)
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
 
             @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
