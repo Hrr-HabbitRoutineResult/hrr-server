@@ -42,10 +42,71 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
 
+    // 내가 참가중인 챌린지 조회
+    @GetMapping("/me/challenge/ongoing")
+    @Operation(
+            summary = "내가 참가중인 챌린지 목록 조회",
+            description = "현재 로그인한 사용자가 참가중인 챌린지 목록을 조회합니다. " +
+                    "ONGOING 상태의 챌린지만 반환됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                    {
+                                      "resultType": "SUCCESS",
+                                      "error": null,
+                                      "success": {
+                                        "content": [
+                                          {
+                                            "challengeId": 301,
+                                            "title": "자잘자잘",
+                                            "description": "하루 5분씩 무엇이든 꼭 해야...",
+                                            "image": "http://example.com/challenge_301.jpg",
+                                            "currentRound": 6
+                                          }
+                                        ],
+                                        "currentPage": 1,
+                                        "size": 10,
+                                        "first": true,
+                                        "last": true,
+                                        "hasNext": false
+                                      }
+                                    }
+                                    """
+                            )
+                    )
+            )
+    })
+    public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getMyOngoingChallenges(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+
+            @RequestParam(name = "page", defaultValue = "0")
+            @Min(0)
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) {
+        Long userId = customUserDetails.getUser().getId();
+        SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
+                userService.getOngoingChallenges(userId, page, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+
+    // 다른 사용자가 참가중인 챌린지 조회
     @GetMapping("/{userId}/challenge/ongoing")
     @Operation(
             summary = "참가중인 챌린지 목록 조회",
-            description = "현재 로그인한 사용자가 참가중인 챌린지 목록을 조회합니다. " +
+            description = "특정 사용자가 참가중인 챌린지 목록을 조회합니다. " +
                     "ONGOING 상태의 챌린지만 반환됩니다.\n"
     )
     @ApiResponses({
@@ -88,7 +149,7 @@ public class UserController {
                     )
             )
     })
-    public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getOngoingChallenges(
+    public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getUserOngoingChallenges(
             @PathVariable
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
 
