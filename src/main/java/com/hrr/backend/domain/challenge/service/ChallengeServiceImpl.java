@@ -1,7 +1,9 @@
 package com.hrr.backend.domain.challenge.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
@@ -17,6 +19,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
+import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.round.converter.RoundConverter;
@@ -27,8 +30,11 @@ import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
+import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -73,6 +79,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final RoundRepository roundRepository;
 	private final RoundRecordRepository roundRecordRepository;
 	private final RoundConverter roundConverter;
+
+	private final VerificationRepository verificationRepository;
 
 	private final RedisTemplate<String, String> redisTemplate;
 
@@ -134,6 +142,48 @@ public class ChallengeServiceImpl implements ChallengeService {
 		);
 
 		return new SliceResponseDto<>(finalDtoSlice);
+	}
+
+	@Override
+    @Transactional(readOnly = true)
+	public ChallengeResponseDto.HeaderInfoDto getChallengeHeaderInfo(Long challengeId, User user) {
+		// 챌린지 조회
+        Challenge challenge = findChallengeWithDays(challengeId);
+
+		// 라운드 및 날짜 계산
+		Round currentRound = challenge.getCurrentRound();
+		LocalDate startDate = (currentRound != null) ? currentRound.getStartDate() : null;
+		LocalDate endDate = (currentRound != null) ? currentRound.getEndDate() : null;
+		long remainDays = calculateRemainDays(endDate);
+
+		// 유저 상태 확인 (참여 여부, 오늘 인증 여부)
+		boolean isParticipant = false;
+		boolean isCertifiedToday = false;
+
+        // 유저가 참여 중인지 확인
+        Optional<UserChallenge> ucOp = userChallengeRepository.findByUserAndChallenge(user, challenge);
+
+        if (ucOp.isPresent()) {
+            isParticipant = true;
+            // 참여자라면 오늘 인증 여부 체크 (시간대 + 오늘 기준)
+            isCertifiedToday = checkTodayVerification(ucOp.get().getId(), challenge);
+        }
+
+		// 좋아요 여부 조회
+		boolean isLiked = challengeLikeRepository.existsByUserAndChallenge(user, challenge);
+
+		// 방장 정보 조회
+		UserChallenge ownerUc = userChallengeRepository.findOwnerByChallengeId(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+		// 버튼 상태 결정
+		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday);
+
+		// DTO 변환 및 반환
+		return challengeConverter.toHeaderInfoDto(
+				challenge, ownerUc.getUser(), startDate, endDate, remainDays,
+				isParticipant, isLiked, buttonStatus
+		);
 	}
 
 	@Override
@@ -531,9 +581,146 @@ public class ChallengeServiceImpl implements ChallengeService {
 		}
 	}
 
-	// 챌린지 조회 헬퍼 메서드
+	// 챌린지 일반 조회용
 	private Challenge findChallenge(Long challengeId) {
 		return challengeRepository.findById(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 	}
+
+    // 상단 정보 조회용 (요일 정보 Fetch Join)
+    private Challenge findChallengeWithDays(Long challengeId) {
+        return challengeRepository.findByIdWithDays(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+    }
+
+    /**
+     * 챌린지 종료일까지 남은 일수 계산
+     * - 챌린지 하단 버튼에 표시 목적
+     */
+	private long calculateRemainDays(LocalDate endDate) {
+		if (endDate == null) return 0;
+		long days = ChronoUnit.DAYS.between(LocalDate.now(), endDate);
+		return Math.max(days, 0); // 과거 날짜라면 0 반환
+	}
+
+    /**
+     * 유저가 '오늘' '해당 챌린지의 인증 시간' 내에 '완료된 인증'을 했는지 확인
+     * (추후 기획에 따라 시간대 상관없이 하루 전체 조회로 변경 가능)
+     */
+    private boolean checkTodayVerification(Long userChallengeId, Challenge challenge) {
+        LocalDate today = LocalDate.now();
+
+        // 챌린지 인증 허용 시간대
+        LocalTime verifyStart = challenge.getVerifyStartTime();
+        LocalTime verifyEnd = challenge.getVerifyEndTime();
+
+        LocalDateTime start = LocalDateTime.of(today, verifyStart);
+        LocalDateTime end = LocalDateTime.of(today, verifyEnd);
+
+        return verificationRepository.existsTodayVerification(
+                userChallengeId,
+                VerificationStatus.COMPLETED,
+                start,
+                end
+        );
+    }
+
+    /**
+     * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
+     * (기획 따라 변경 가능)
+     */
+    private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday) {
+
+        // 끝난 챌린지는 모두 DISABLED
+        if (challenge.getStatus() == ChallengeStatus.FINISHED) {
+            return ActionButtonStatus.DISABLED;
+        }
+
+        // 참여자인 경우: 요일/시간대/인증 여부로 분기
+        if (isParticipant) {
+            boolean isTodayVerificationDay = isTodayVerificationDay(challenge);
+
+            // 오늘이 인증 요일이 아니라면 → 항상 D-DAY 형식
+            if (!isTodayVerificationDay) {
+                return ActionButtonStatus.CERTIFIED;
+            }
+
+            boolean inVerificationTime = isNowWithinVerificationTime(challenge);
+
+            // 오늘이 인증 요일이지만, 지금은 인증 시간대가 아님 → D-DAY 형식
+            if (!inVerificationTime) {
+                return ActionButtonStatus.CERTIFIED;
+            }
+
+            // 오늘이 인증 요일 + 인증 시간대 안일 때만
+            //  - 인증 O → D-DAY
+            //  - 인증 X → 인증하기
+            if (isCertifiedToday) {
+                return ActionButtonStatus.CERTIFIED;
+            } else {
+                return ActionButtonStatus.CERTIFY_AVAILABLE;
+            }
+        }
+
+        // 미참여자 + 정원 초과 -> 빈자리 알림
+        if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
+            return ActionButtonStatus.WAITLIST;
+        }
+
+        // 미참여자 + 모집 중 -> 참가하기
+        if (challenge.getStatus() == ChallengeStatus.UPCOMING
+                || challenge.getStatus() == ChallengeStatus.RECRUITING) {
+            return ActionButtonStatus.JOIN;
+        }
+
+        // 그 외 -> 비활성화
+        return ActionButtonStatus.DISABLED;
+    }
+
+    /**
+     * 오늘이 챌린지 인증 요일(DaysOfWeek)에 포함되는지 확인
+     */
+    private boolean isTodayVerificationDay(Challenge challenge) {
+        List<ChallengeDayJoin> challengeDays = challenge.getChallengeDays();
+
+        // 설정된 요일이 없으면 매일 인증으로 간주
+        if (challengeDays == null || challengeDays.isEmpty()) {
+            return true;
+        }
+
+        ChallengeDays todayChallengeDay = getTodayChallengeDay();
+
+        return challengeDays.stream()
+                .anyMatch(join -> join.getDayOfWeek() == todayChallengeDay);
+    }
+
+    /**
+     * 현재 시간이 챌린지 인증 시간대(Start ~ End)에 포함되는지 확인
+     */
+    private boolean isNowWithinVerificationTime(Challenge challenge) {
+        LocalTime now = LocalTime.now();
+
+        LocalTime start = challenge.getVerifyStartTime();
+        LocalTime end   = challenge.getVerifyEndTime();
+
+        return !now.isBefore(start) && !now.isAfter(end);
+    }
+
+    /**
+     * Java DayOfWeek -> Custom ChallengeDays Enum 변환
+     */
+    private ChallengeDays getTodayChallengeDay() {
+        DayOfWeek dayOfWeek = LocalDate.now().getDayOfWeek();
+
+        return switch (dayOfWeek) {
+            case MONDAY -> ChallengeDays.MONDAY;
+            case TUESDAY -> ChallengeDays.TUESDAY;
+            case WEDNESDAY -> ChallengeDays.WEDNESDAY;
+            case THURSDAY -> ChallengeDays.THURSDAY;
+            case FRIDAY -> ChallengeDays.FRIDAY;
+            case SATURDAY -> ChallengeDays.SATURDAY;
+            case SUNDAY -> ChallengeDays.SUNDAY;
+        };
+    }
+
 }
