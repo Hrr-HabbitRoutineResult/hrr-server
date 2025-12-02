@@ -17,37 +17,64 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/user")
 @Tag(name = "Follow List", description = "팔로워/팔로잉 목록 조회 API")
 public class FollowListController {
 
     private final FollowListService followListService;
 
-    @Operation(summary = "팔로워 목록 조회", description = "특정 사용자를 팔로우하는 사용자 목록을 조회합니다.")
-    @GetMapping("/{userId}/follower")
-    public ApiResponse<List<FollowListResponseDto>> getFollowers(
+    // ===== 내 팔로워/팔로잉 목록 =====
+
+    @Operation(summary = "내 팔로워 목록 조회", description = "현재 로그인한 사용자의 팔로워 목록을 조회합니다.")
+    @GetMapping("/api/v1/my-profile/followers")
+    public ApiResponse<List<FollowListResponseDto>> getMyFollowers(
+            Authentication authentication
+    ) {
+        Long currentUserId = Long.parseLong(authentication.getName());
+        log.info("내 팔로워 목록 조회 요청 - currentUserId: {}", currentUserId);
+
+        List<FollowListResponseDto> followers = followListService.getFollowers(currentUserId, currentUserId);
+        return ApiResponse.onSuccess(SuccessCode.OK, followers);
+    }
+
+    @Operation(summary = "내 팔로잉 목록 조회", description = "현재 로그인한 사용자의 팔로잉 목록을 조회합니다.")
+    @GetMapping("/api/v1/my-profile/followings")
+    public ApiResponse<List<FollowListResponseDto>> getMyFollowings(
+            Authentication authentication
+    ) {
+        Long currentUserId = Long.parseLong(authentication.getName());
+        log.info("내 팔로잉 목록 조회 요청 - currentUserId: {}", currentUserId);
+
+        List<FollowListResponseDto> followings = followListService.getFollowings(currentUserId, currentUserId);
+        return ApiResponse.onSuccess(SuccessCode.OK, followings);
+    }
+
+    // ===== 다른 사용자의 팔로워/팔로잉 목록 =====
+
+    @Operation(summary = "다른 사용자의 팔로워 목록 조회", description = "다른 사용자를 팔로우하는 사용자 목록을 조회합니다.")
+    @GetMapping("/api/v1/users/{userId}/followers")
+    public ApiResponse<List<FollowListResponseDto>> getUserFollowers(
             @Parameter(description = "조회할 사용자 ID", required = true)
             @PathVariable Long userId,
             Authentication authentication
     ) {
         Long currentUserId = Long.parseLong(authentication.getName());
-        log.info("팔로워 목록 조회 요청 - userId: {}, currentUserId: {}", userId, currentUserId);
+        log.info("사용자 팔로워 목록 조회 요청 - userId: {}, currentUserId: {}", userId, currentUserId);
 
         List<FollowListResponseDto> followers = followListService.getFollowers(userId, currentUserId);
         return ApiResponse.onSuccess(SuccessCode.OK, followers);
     }
 
-    @Operation(summary = "팔로잉 목록 조회", description = "특정 사용자가 팔로우하는 사용자 목록을 조회합니다.")
-    @GetMapping("/{userId}/following")
-    public ApiResponse<List<FollowListResponseDto>> getFollowings(
+    @Operation(summary = "다른 사용자의 팔로잉 목록 조회", description = "다른 사용자가 팔로우하는 사용자 목록을 조회합니다.")
+    @GetMapping("/api/v1/users/{userId}/followings")
+    public ApiResponse<List<FollowListResponseDto>> getUserFollowings(
             @Parameter(description = "조회할 사용자 ID", required = true)
             @PathVariable Long userId,
             Authentication authentication
     ) {
         Long currentUserId = Long.parseLong(authentication.getName());
-        log.info("팔로잉 목록 조회 요청 - userId: {}, currentUserId: {}", userId, currentUserId);
+        log.info("사용자 팔로잉 목록 조회 요청 - userId: {}, currentUserId: {}", userId, currentUserId);
 
         List<FollowListResponseDto> followings = followListService.getFollowings(userId, currentUserId);
-        return ApiResponse.onSuccess(SuccessCode.OK,followings);
+        return ApiResponse.onSuccess(SuccessCode.OK, followings);
     }
 }
