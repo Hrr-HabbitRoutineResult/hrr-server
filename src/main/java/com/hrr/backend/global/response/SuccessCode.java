@@ -15,7 +15,7 @@ public enum SuccessCode implements BaseCode {
 
     // follow
     FOLLOW_SUCCESS(HttpStatus.OK, "FOLLOW2001", "팔로우 성공"),
-    UNFOLLOW_SUCCESS(HttpStatus.OK, "FOLLOW2002", "언팔로우 성공"),
+    UNFOLLOW_SUCCESS(HttpStatus.OK, "FOLLOW2002", "팔로우 취소 성공"),
 	;
 
 	private final HttpStatus status;

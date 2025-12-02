@@ -70,14 +70,14 @@ public class FollowService {
     }
 
     /**
-     * 사용자 언팔로우
+     * 사용자 팔로우 취소
      * @param currentUserId 현재 로그인한 사용자 ID
-     * @param unfollowedUserId 언팔로우할 사용자 ID
+     * @param unfollowedUserId 팔로우 취소할 사용자 ID
      * @return FollowResponseDto
      */
     @Transactional
     public FollowResponseDto unfollowUser(Long currentUserId, Long unfollowedUserId) {
-        log.info("사용자 언팔로우 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
+        log.info("사용자 팔로우 취소 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
         // 팔로우 관계 조회
         Follow follow = followRepository.findByFollowerIdAndFollowingId(currentUserId, unfollowedUserId)
@@ -88,7 +88,7 @@ public class FollowService {
 
         // 팔로우 관계 삭제
         followRepository.delete(follow);
-        log.info("사용자 언팔로우 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
+        log.info("사용자 팔로우 취소 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
         return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId);
     }
