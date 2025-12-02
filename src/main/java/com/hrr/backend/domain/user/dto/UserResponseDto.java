@@ -84,6 +84,7 @@ public class UserResponseDto {
     }
       
     @Builder
+    @Getter
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "내 정보 조회 DTO")
