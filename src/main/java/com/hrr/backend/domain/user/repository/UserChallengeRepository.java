@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface UserChallengeRepository extends JpaRepository<UserChallenge, Long> {
+public interface UserChallengeRepository extends JpaRepository<UserChallenge, Long>, UserChallengeRepositoryCustom {
 
     // 유저가 특정 챌린지에 이미 참여 중인지 확인
     boolean existsByUserAndChallenge(User user, Challenge challenge);
