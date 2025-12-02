@@ -1,6 +1,8 @@
 package com.hrr.backend.domain.search.controller;
 
-import org.springframework.web.bind.annotation.PathVariable;
+import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,6 +34,19 @@ public class SearchController {
 		// 검색 카운트 증가 서비스 호출
 		searchService.incrementSearchCount(keyword);
 
-		return ApiResponse.onSuccess(SuccessCode.OK, null);	// result가
+		return ApiResponse.onSuccess(SuccessCode.OK, null);	// result가 필요없어서 null로 설정
 	}
+
+	@GetMapping("/popular-keyword")
+	@Operation(summary = "인기 검색어 조회", description = "현재 인기 검색어 Top N을 반환합니다.")
+	public ApiResponse<List<String>> getPopularKeywords(
+		// 기본값 10개로 설정
+		@RequestParam(name = "limit", defaultValue = "10") int limit)
+	{
+		List<String> keywords = searchService.getTopNPopularKeywords(limit);
+
+		// List<String> 데이터를 ApiResponse의 data 필드에 담아 반환
+		return ApiResponse.onSuccess(SuccessCode.OK, keywords);
+	}
+
 }
