@@ -29,7 +29,7 @@ public class FollowListResponseDto {
         return FollowListResponseDto.builder()
                 .id(user.getId())
                 .nickname(user.getNickname())
-                .level(user.getLevel().name().toLowerCase())
+                .level(user.getUserLevel().name().toLowerCase())
                 .profilePhoto(user.getProfileImage())
                 .isFollowing(isFollowing)
                 .build();
