@@ -70,7 +70,7 @@ public class ChallengeRecommendationService {
         ModelApiRequest modelApiRequest = ModelApiRequest.builder()
                 .query(query)
                 .items(allChallenges)
-                .topK(1)
+                .topK(5)
                 .build();
 
         ModelApiResponse modelApiResponse = null;
@@ -83,7 +83,7 @@ public class ChallengeRecommendationService {
                     modelApiResponse != null ? modelApiResponse.getLatencyMs() : null);
 
         } catch (Exception e) {
-            log.error("[Recommend] Model API call failed", e);
+            log.error("[Recommend] Model API call failed");
             throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
         }
 
