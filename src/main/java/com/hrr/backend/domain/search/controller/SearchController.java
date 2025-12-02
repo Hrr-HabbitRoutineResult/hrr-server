@@ -38,7 +38,7 @@ public class SearchController {
 	}
 
 	@GetMapping("/popular-keyword")
-	@Operation(summary = "인기 검색어 조회", description = "현재 인기 검색어 Top N을 반환합니다.")
+	@Operation(summary = "인기 검색어 조회", description = "현재 인기 검색어 Top N을 반환합니다. 최근 한 달 기록 기준입니다.")
 	public ApiResponse<List<String>> getPopularKeywords(
 		// 기본값 10개로 설정
 		@RequestParam(name = "limit", defaultValue = "10") int limit)
