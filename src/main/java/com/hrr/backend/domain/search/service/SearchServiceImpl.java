@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.search.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,10 +30,13 @@ public class SearchServiceImpl implements SearchService {
 	public void incrementSearchCount(String keyword) {
 		ZSetOperations<String, String> zSetOperations = redisTemplate.opsForZSet();
 
-		// count 1만큼 증가. 없으면 최초 생성
-		Double score = zSetOperations.incrementScore(POPULAR_SEARCH_KEY, keyword, 1);
+		// 시간대를 key로 지정
+		String hourKey = POPULAR_SEARCH_KEY+":"+java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHH"));
 
-		log.info("[SearchServiceImpl] "+keyword+": "+score+"회 검색");
+		// count 1만큼 증가. 없으면 최초 생성
+		Double score = zSetOperations.incrementScore(hourKey, keyword, 1);
+
+		log.info("[SearchServiceImpl, 인기 검색어] "+keyword+": "+score+"회 검색");
 	}
 
 	@Override
