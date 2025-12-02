@@ -7,6 +7,7 @@ import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,310 +44,303 @@ class ChallengeServiceImplTest {
     @Mock private ChallengeLikeRepository challengeLikeRepository;
     @Mock private ChallengeConverter challengeConverter;
 
-    // 나머지 생성자 파라미터들은 이 테스트에서 안 쓰여서 생략
+    // 나머지 Repository들은 이 테스트 범위(상단 정보 조회)에서 쓰이지 않아 생략 가능
 
+    /**
+     * 1. 참여자(Participant) 관련 시나리오
+     */
     @Test
-    @DisplayName("참여자 + 오늘이 인증 요일이 아님 -> CERTIFIED (D-DAY)")
-    void participant_notVerificationDay_returns_CERTIFIED() {
-        // given
+    @DisplayName("상황 1: 참여자 + UPCOMING 상태(라운드 시작 전) -> CERTIFIED (D-Day)")
+    void participant_upcoming_beforeStart_returns_CERTIFIED() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
 
+        // 조건: 챌린지 시작일이 '내일'임
+        setRoundDate(challenge, LocalDate.now().plusDays(1));
+        // 조건: 상태는 UPCOMING
+        setChallengeStatus(challenge, ChallengeStatus.UPCOMING, 10, 30);
+        // 조건: 인증 시간대 내 (시간은 맞지만 날짜가 안 맞음)
+        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
+
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, true);
+        mockConverter(ActionButtonStatus.CERTIFIED);
+
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
+        // Then
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.CERTIFIED);
+    }
+
+    @Test
+    @DisplayName("상황 2: 참여자 + 오늘이 인증 요일이 아님 -> CERTIFIED (D-Day)")
+    void participant_notVerificationDay_returns_CERTIFIED() {
+        // Given
+        Long challengeId = 1L;
+        User user = mock(User.class);
         Challenge challenge = mock(Challenge.class);
-        // 오늘이 아닌 다른 요일만 포함되도록 설정
+
+        // 조건: 오늘이 아닌 다른 요일만 설정됨
         ChallengeDayJoin otherDayJoin = mock(ChallengeDayJoin.class);
-        given(otherDayJoin.getDayOfWeek()).willReturn(getNotTodayChallengeDay());
+        given(otherDayJoin.getDayOfWeek()).willReturn(getOtherDayEnum());
         given(challenge.getChallengeDays()).willReturn(List.of(otherDayJoin));
 
-        // 인증 시간대 (checkTodayVerification에서 사용되므로 세팅 필요)
-        LocalTime now = LocalTime.now();
-        setVerificationTime(challenge, now.minusHours(1), now.plusHours(1));
+        // 조건: 라운드 시작됨, 시간 맞음
+        setRoundDate(challenge, LocalDate.now().minusDays(1));
+        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 10, 30);
 
-        // 챌린지 조회 (findByIdWithDays)
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, true);
+        mockConverter(ActionButtonStatus.CERTIFIED);
 
-        // 참여자
-        UserChallenge userChallenge = mock(UserChallenge.class);
-        given(userChallenge.getId()).willReturn(100L);
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.of(userChallenge));
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        // 오늘 인증 여부는 어떤 값이어도 상관 없음 (어차피 요일에서 걸림)
-        given(verificationRepository.existsTodayVerification(anyLong(), any(), any(), any()))
-                .willReturn(false);
-
-        // 방장
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
-
-        // Converter mock (status 그대로 DTO에 실어 보내기)
-        mockConverter();
-
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
-
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.CERTIFIED);
     }
 
     @Test
-    @DisplayName("참여자 + 인증 요일 + 인증 시간대 아님 -> CERTIFIED")
-    void participant_verificationDay_notInTime_returns_CERTIFIED() {
-        // given
+    @DisplayName("상황 3: 참여자 + 인증 요일 맞음 + 인증 시간대 아님 -> CERTIFIED (D-Day)")
+    void participant_notVerificationTime_returns_CERTIFIED() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
+        Challenge challenge = createChallengeBase(); // 오늘 요일 포함
 
-        Challenge challenge = mockChallengeWithTodayAsVerificationDay();
+        setRoundDate(challenge, LocalDate.now().minusDays(1));
 
-        LocalTime now = LocalTime.now();
-        // 현재 시간보다 이후로 설정해서, 지금은 인증 시간대 밖
-        setVerificationTime(challenge, now.plusHours(1), now.plusHours(2));
+        // 조건: 인증 시간이 현재 시간보다 미래임 (아직 안 옴)
+        setVerificationTime(challenge, LocalTime.now().plusHours(1), LocalTime.now().plusHours(2));
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, true);
+        mockConverter(ActionButtonStatus.CERTIFIED);
 
-        UserChallenge userChallenge = mock(UserChallenge.class);
-        given(userChallenge.getId()).willReturn(100L);
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.of(userChallenge));
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        given(verificationRepository.existsTodayVerification(anyLong(), any(), any(), any()))
-                .willReturn(false);
-
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
-
-        mockConverter();
-
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
-
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.CERTIFIED);
     }
 
     @Test
-    @DisplayName("참여자 + 인증 요일 + 인증 시간대 + 미인증 -> CERTIFY_AVAILABLE (인증하기)")
-    void participant_inTime_notVerified_returns_CERTIFY_AVAILABLE() {
-        // given
+    @DisplayName("상황 4: 참여자 + 모든 조건 충족 + 아직 인증 안 함 -> CERTIFY_AVAILABLE (인증하기)")
+    void participant_readyToVerify_returns_AVAILABLE() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
 
-        Challenge challenge = mockChallengeWithTodayAsVerificationDay();
+        setRoundDate(challenge, LocalDate.now().minusDays(1));
+        // 조건: 현재 시간이 인증 시간 내에 포함됨
+        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
 
-        LocalTime now = LocalTime.now();
-        // 현재 시간 포함
-        setVerificationTime(challenge, now.minusHours(1), now.plusHours(1));
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, true);
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // 조건: 오늘 완료된 인증 없음 (false)
+        given(verificationRepository.existsTodayVerification(any(), any(), any(), any())).willReturn(false);
 
-        UserChallenge userChallenge = mock(UserChallenge.class);
-        given(userChallenge.getId()).willReturn(100L);
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.of(userChallenge));
+        mockConverter(ActionButtonStatus.CERTIFY_AVAILABLE);
 
-        // 오늘 인증 내역 없음
-        given(verificationRepository.existsTodayVerification(anyLong(), any(), any(), any()))
-                .willReturn(false);
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
-
-        mockConverter();
-
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
-
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.CERTIFY_AVAILABLE);
     }
 
     @Test
-    @DisplayName("참여자 + 인증 요일 + 인증 시간대 + 이미 인증함 -> CERTIFIED")
-    void participant_inTime_verified_returns_CERTIFIED() {
-        // given
+    @DisplayName("상황 5: 참여자 + 모든 조건 충족 + 이미 인증 완료함 -> CERTIFIED (완료)")
+    void participant_alreadyVerified_returns_CERTIFIED() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
 
-        Challenge challenge = mockChallengeWithTodayAsVerificationDay();
+        setRoundDate(challenge, LocalDate.now().minusDays(1));
+        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
 
-        LocalTime now = LocalTime.now();
-        setVerificationTime(challenge, now.minusHours(1), now.plusHours(1));
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, true);
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // 조건: 오늘 완료된 인증 있음 (true)
+        given(verificationRepository.existsTodayVerification(any(), any(), any(), any())).willReturn(true);
 
-        UserChallenge userChallenge = mock(UserChallenge.class);
-        given(userChallenge.getId()).willReturn(100L);
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.of(userChallenge));
+        mockConverter(ActionButtonStatus.CERTIFIED);
 
-        // 오늘 인증 내역 있음
-        given(verificationRepository.existsTodayVerification(anyLong(), any(), any(), any()))
-                .willReturn(true);
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
-
-        mockConverter();
-
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
-
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.CERTIFIED);
     }
 
+    /**
+     * 2. 미참여자(Guest) 관련 시나리오
+     */
     @Test
-    @DisplayName("미참여자 + 모집중 + 자리 있음 -> JOIN")
-    void nonParticipant_recruiting_notFull_returns_JOIN() {
-        // given
+    @DisplayName("상황 6: 미참여자 + 모집중 + 자리 있음 -> JOIN (참가하기)")
+    void guest_recruiting_hasSpace_returns_JOIN() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
-
         Challenge challenge = mock(Challenge.class);
-        given(challenge.getStatus()).willReturn(ChallengeStatus.RECRUITING);
-        given(challenge.getCurrentParticipants()).willReturn(5);
-        given(challenge.getMaxParticipants()).willReturn(10);
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // 조건: 모집중, 인원 5/10
+        setChallengeStatus(challenge, ChallengeStatus.RECRUITING, 5, 10);
+        setRoundDate(challenge, LocalDate.now());
 
-        // 미참여자
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.empty());
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, false); // 미참여자
 
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
+        mockConverter(ActionButtonStatus.JOIN);
 
-        mockConverter();
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
-
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.JOIN);
     }
 
     @Test
-    @DisplayName("미참여자 + 모집중 + 만석 -> WAITLIST")
-    void nonParticipant_recruiting_full_returns_WAITLIST() {
-        // given
+    @DisplayName("상황 7: 미참여자 + 모집중 + 만석 -> WAITLIST (빈자리 알림)")
+    void guest_recruiting_full_returns_WAITLIST() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
-
         Challenge challenge = mock(Challenge.class);
-        given(challenge.getStatus()).willReturn(ChallengeStatus.RECRUITING);
-        given(challenge.getCurrentParticipants()).willReturn(30);
-        given(challenge.getMaxParticipants()).willReturn(30);
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // 조건: 모집중이지만 인원 30/30 (만석)
+        setChallengeStatus(challenge, ChallengeStatus.RECRUITING, 30, 30);
+        setRoundDate(challenge, LocalDate.now());
 
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.empty());
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, false);
 
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
+        mockConverter(ActionButtonStatus.WAITLIST);
 
-        mockConverter();
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
-
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLIST);
     }
 
+    /**
+     * 3. 공통/종료 시나리오
+     */
+
     @Test
-    @DisplayName("챌린지 FINISHED 상태 -> 항상 DISABLED")
-    void finishedChallenge_returns_DISABLED() {
-        // given
+    @DisplayName("상황 8: 챌린지 종료(FINISHED) -> 무조건 DISABLED")
+    void challenge_finished_returns_DISABLED() {
+        // Given
         Long challengeId = 1L;
         User user = mock(User.class);
-
         Challenge challenge = mock(Challenge.class);
-        given(challenge.getStatus()).willReturn(ChallengeStatus.FINISHED);
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        // 조건: 종료됨
+        setChallengeStatus(challenge, ChallengeStatus.FINISHED, 10, 30);
+        setRoundDate(challenge, LocalDate.now().minusDays(30));
 
-        // 참여 여부와 관계없이 DISABLED여야 함
-        given(userChallengeRepository.findByUserAndChallenge(user, challenge))
-                .willReturn(Optional.empty());
+        // NPE 방지를 위한 시간 설정
+        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
 
-        given(userChallengeRepository.findOwnerByChallengeId(challengeId))
-                .willReturn(Optional.of(mock(UserChallenge.class)));
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, true); // 참여자여도 비활성화되어야 함
 
-        mockConverter();
+        mockConverter(ActionButtonStatus.DISABLED);
 
-        // when
-        ChallengeResponseDto.HeaderInfoDto result =
-                challengeService.getChallengeHeaderInfo(challengeId, user);
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
 
-        // then
+        // Then
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.DISABLED);
     }
 
-    // =================== Helper Methods ===================
+    /**
+     * Helper Methods (테스트 설정을 쉽게 하기 위한 도구들)
+     */
 
     /**
-     * 오늘 요일이 인증 요일로 설정된 Challenge mock 생성
+     * 오늘 요일이 포함된 Mock Challenge 생성
      */
-    private Challenge mockChallengeWithTodayAsVerificationDay() {
+    private Challenge createChallengeBase() {
         Challenge challenge = mock(Challenge.class);
-
         ChallengeDayJoin todayJoin = mock(ChallengeDayJoin.class);
-        given(todayJoin.getDayOfWeek()).willReturn(getTodayChallengeDay());
-        given(challenge.getChallengeDays()).willReturn(List.of(todayJoin));
+
+        // lenient 사용
+        lenient().when(todayJoin.getDayOfWeek()).thenReturn(getTodayChallengeDayEnum());
+        lenient().when(challenge.getChallengeDays()).thenReturn(List.of(todayJoin));
 
         return challenge;
     }
 
-    private void setVerificationTime(Challenge challenge, LocalTime start, LocalTime end) {
-        given(challenge.getVerifyStartTime()).willReturn(start);
-        given(challenge.getVerifyEndTime()).willReturn(end);
+    private void mockFetchingChallenge(Long id, Challenge challenge) {
+        given(challengeRepository.findByIdWithDays(id)).willReturn(Optional.of(challenge));
+        given(userChallengeRepository.findOwnerByChallengeId(id))
+                .willReturn(Optional.of(mock(UserChallenge.class))); // 방장 정보는 에러만 안 나게 처리
     }
 
-    /**
-     * Converter가 서비스에서 계산한 ActionButtonStatus를
-     * 그대로 HeaderInfoDto에 실어주도록 stub
-     */
-    private void mockConverter() {
-        given(challengeConverter.toHeaderInfoDto(
-                any(Challenge.class),
-                any(),            // owner user
-                any(),            // startDate
-                any(),            // endDate
-                anyLong(),        // remainDays
-                anyBoolean(),     // isParticipant
-                anyBoolean(),     // isLiked
-                any(ActionButtonStatus.class) // status
-        )).willAnswer(invocation -> ChallengeResponseDto.HeaderInfoDto.builder()
-                .actionButtonStatus(invocation.getArgument(7))
-                .build());
-    }
-
-    /**
-     * 오늘 요일에 해당하는 ChallengeDays enum
-     */
-    private ChallengeDays getTodayChallengeDay() {
-        String name = LocalDate.now().getDayOfWeek().name(); // "MONDAY" ...
-        return ChallengeDays.valueOf(name);
-    }
-
-    /**
-     * 오늘이 아닌 다른 요일 하나 리턴
-     */
-    private ChallengeDays getNotTodayChallengeDay() {
-        ChallengeDays today = getTodayChallengeDay();
-        for (ChallengeDays day : ChallengeDays.values()) {
-            if (day != today) {
-                return day;
-            }
+    private void mockParticipant(User user, Challenge challenge, boolean isParticipant) {
+        if (isParticipant) {
+            UserChallenge uc = mock(UserChallenge.class);
+            given(uc.getId()).willReturn(100L);
+            given(userChallengeRepository.findByUserAndChallenge(user, challenge))
+                    .willReturn(Optional.of(uc));
+        } else {
+            given(userChallengeRepository.findByUserAndChallenge(user, challenge))
+                    .willReturn(Optional.empty());
         }
-        // 이론상 도달 불가지만, 컴파일을 위해
-        return ChallengeDays.MONDAY;
+    }
+
+    private void setRoundDate(Challenge challenge, LocalDate startDate) {
+        Round round = mock(Round.class);
+        given(round.getStartDate()).willReturn(startDate);
+        // endDate는 D-Day 계산용이지만 로직 흐름에는 큰 영향 없어서 임의 설정
+        given(round.getEndDate()).willReturn(startDate.plusDays(20));
+        given(challenge.getCurrentRound()).willReturn(round);
+    }
+
+    private void setVerificationTime(Challenge challenge, LocalTime start, LocalTime end) {
+        lenient().when(challenge.getVerifyStartTime()).thenReturn(start);
+        lenient().when(challenge.getVerifyEndTime()).thenReturn(end);
+    }
+
+    private void setChallengeStatus(Challenge challenge, ChallengeStatus status, int current, int max) {
+        lenient().when(challenge.getStatus()).thenReturn(status);
+        lenient().when(challenge.getCurrentParticipants()).thenReturn(current);
+        lenient().when(challenge.getMaxParticipants()).thenReturn(max);
+    }
+    // 오늘 요일 구하기
+    private ChallengeDays getTodayChallengeDayEnum() {
+        return ChallengeDays.valueOf(LocalDate.now().getDayOfWeek().name());
+    }
+
+    // 오늘이 아닌 다른 요일 구하기
+    private ChallengeDays getOtherDayEnum() {
+        ChallengeDays today = getTodayChallengeDayEnum();
+        return today == ChallengeDays.MONDAY ? ChallengeDays.TUESDAY : ChallengeDays.MONDAY;
+    }
+
+    // Converter가 Status를 그대로 통과시키도록 Stubbing
+    private void mockConverter(ActionButtonStatus expectedStatus) {
+        given(challengeConverter.toHeaderInfoDto(any(), any(), any(), any(), anyLong(), anyBoolean(), anyBoolean(), any()))
+                .willAnswer(invocation -> ChallengeResponseDto.HeaderInfoDto.builder()
+                        .actionButtonStatus(invocation.getArgument(7))
+                        .build());
     }
 }
