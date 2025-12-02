@@ -21,7 +21,6 @@ public class Verification extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "round_record_id", nullable = false)
     private RoundRecord roundRecord;
-    // ==========================================================
 
     @Enumerated(EnumType.STRING)
     private VerificationPostType type; // CAMERA, TEXT
@@ -48,29 +47,29 @@ public class Verification extends BaseEntity {
             Boolean isQuestion
     ) {
         return Verification.builder()
-                .roundRecord(roundRecord) // [변경]
+                .roundRecord(roundRecord)
                 .type(VerificationPostType.TEXT)
                 .title(title)
                 .content(content)
                 .textUrl(textUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.COMPLETED) // 바로 완료 처리 (기획에 따라 다름)
+                .status(VerificationStatus.TEMPORARY)
                 .build();
     }
 
     public static Verification createPhotoVerification(
-            RoundRecord roundRecord, // [변경]
+            RoundRecord roundRecord,
             String title,
             String photoUrl,
             Boolean isQuestion
     ) {
         return Verification.builder()
-                .roundRecord(roundRecord) // [변경]
+                .roundRecord(roundRecord)
                 .type(VerificationPostType.CAMERA)
                 .title(title)
                 .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.COMPLETED)
+                .status(VerificationStatus.TEMPORARY)
                 .build();
     }
 }
