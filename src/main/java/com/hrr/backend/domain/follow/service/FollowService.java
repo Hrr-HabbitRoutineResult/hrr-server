@@ -79,6 +79,13 @@ public class FollowService {
     public FollowResponseDto unfollowUser(Long currentUserId, Long unfollowedUserId) {
         log.info("사용자 팔로우 취소 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
+        // 존재 여부 확인
+        userRepository.findById(unfollowedUserId)
+                .orElseThrow(() -> {
+                    log.warn("언팔로우할 사용자를 찾을 수 없습니다 - userId: {}", unfollowedUserId);
+                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
+                });
+
         // 팔로우 관계 조회
         Follow follow = followRepository.findByFollowerIdAndFollowingId(currentUserId, unfollowedUserId)
                 .orElseThrow(() -> {
