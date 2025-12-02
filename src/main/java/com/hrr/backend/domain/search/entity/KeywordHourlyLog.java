@@ -2,6 +2,8 @@ package com.hrr.backend.domain.search.entity;
 
 import java.time.LocalDateTime;
 
+import org.checkerframework.checker.units.qual.N;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,6 +11,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
@@ -19,6 +24,9 @@ import jakarta.persistence.Table;
 		@Index(name = "idx_keyword_hourly_log_hour", columnList = "hour")
 	}
 )
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 /**
  * 검색 데이터를 보존하기 위한 로그 테이블
  */
