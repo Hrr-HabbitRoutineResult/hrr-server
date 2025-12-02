@@ -17,6 +17,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
+import com.hrr.backend.domain.challenge.event.ChallengeCreatedEvent;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.round.converter.RoundConverter;
@@ -31,6 +32,7 @@ import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -76,7 +78,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-    private final ChallengeEmbeddingAsyncService challengeEmbeddingAsyncService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
@@ -309,12 +311,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// RoundRecord(방장의 레코드) 생성
 		createRoundRecordOrFail(saved, userChallenge);
 
-    // 임베딩 계산은 비동기로 처리
-    String challengeText = buildChallengeText(saved);
-    challengeEmbeddingAsyncService.calculateAndSaveEmbeddingAsync(
-            saved.getId(),
-            challengeText
-    );
+        // 임베딩 계산
+        String challengeText = buildChallengeText(saved);
+        eventPublisher.publishEvent(
+                new ChallengeCreatedEvent(saved.getId(), challengeText)
+        );
+
 
         return challengeConverter.toCreateResponseDto(saved);
 	}
