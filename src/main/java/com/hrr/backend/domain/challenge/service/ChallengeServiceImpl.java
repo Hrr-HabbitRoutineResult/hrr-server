@@ -686,12 +686,6 @@ public class ChallengeServiceImpl implements ChallengeService {
      */
     private boolean isTodayVerificationDay(Challenge challenge) {
         List<ChallengeDayJoin> challengeDays = challenge.getChallengeDays();
-
-        // 설정된 요일이 없으면 매일 인증으로 간주
-        if (challengeDays == null || challengeDays.isEmpty()) {
-            return true;
-        }
-
         ChallengeDays todayChallengeDay = getTodayChallengeDay();
 
         return challengeDays.stream()
