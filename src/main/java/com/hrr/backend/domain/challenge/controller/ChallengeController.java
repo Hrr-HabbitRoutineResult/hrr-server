@@ -3,7 +3,6 @@ package com.hrr.backend.domain.challenge.controller;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.config.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -126,14 +125,9 @@ public class ChallengeController {
 			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@Valid @RequestBody ChallengeRequestDto.CreateChallengeDto request
 	) {
-        // userId = 1 하드코딩
-        User fakeUser = User.builder()
-                .id(1L)
-                .build();
-
-        return ApiResponse.onSuccess(
+		return ApiResponse.onSuccess(
 				SuccessCode.OK,
-				challengeService.createChallenge(fakeUser, request)
+				challengeService.createChallenge(userDetails.getUser(), request)
 		);
 	}
 
