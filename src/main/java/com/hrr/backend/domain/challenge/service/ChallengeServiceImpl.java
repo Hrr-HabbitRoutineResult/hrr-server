@@ -638,16 +638,20 @@ public class ChallengeServiceImpl implements ChallengeService {
 
         // 참여자인 경우: 요일/시간대/인증 여부로 분기
         if (isParticipant) {
-            boolean isTodayVerificationDay = isTodayVerificationDay(challenge);
+			// 아직 라운드 시작 전(UPCOMING 상태 등)이라면 무조건 D-Day(CERTIFIED) 처리
+			Round currentRound = challenge.getCurrentRound();
+			if (currentRound != null && LocalDate.now().isBefore(currentRound.getStartDate())) {
+				return ActionButtonStatus.CERTIFIED;
+			}
 
-            // 오늘이 인증 요일이 아니라면 → 항상 D-DAY 형식
+			// 오늘이 인증 요일이 아니라면 → 항상 D-DAY 형식
+            boolean isTodayVerificationDay = isTodayVerificationDay(challenge);
             if (!isTodayVerificationDay) {
                 return ActionButtonStatus.CERTIFIED;
             }
 
+			// 오늘이 인증 요일이지만, 지금은 인증 시간대가 아님 → D-DAY 형식
             boolean inVerificationTime = isNowWithinVerificationTime(challenge);
-
-            // 오늘이 인증 요일이지만, 지금은 인증 시간대가 아님 → D-DAY 형식
             if (!inVerificationTime) {
                 return ActionButtonStatus.CERTIFIED;
             }
