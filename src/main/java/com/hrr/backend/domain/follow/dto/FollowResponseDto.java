@@ -10,13 +10,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "팔로우/언팔로우 응답 DTO")
+@Schema(description = "팔로우/팔로우 취소 응답 DTO")
 public class FollowResponseDto {
 
     @Schema(description = "응답 메시지", example = "User followed successfully")
     private String message;
 
-    @Schema(description = "팔로우/언팔로우된 사용자 ID", example = "123")
+    @Schema(description = "팔로우/팔로우 취소된 사용자 ID", example = "123")
     private Long userId;
 
     public static FollowResponseDto of(String message, Long userId) {

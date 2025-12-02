@@ -35,15 +35,15 @@ public class FollowController {
         return ApiResponse.onSuccess(SuccessCode.FOLLOW_SUCCESS, response);
     }
 
-    @Operation(summary = "사용자 언팔로우", description = "특정 사용자를 언팔로우합니다.")
+    @Operation(summary = "사용자 팔로우 취소", description = "특정 사용자 팔로우를 취소합니다.")
     @DeleteMapping("/{unfollowedUserId}/unfollow")
     public ApiResponse<FollowResponseDto> unfollowUser(
-            @Parameter(description = "언팔로우할 사용자 ID", required = true)
+            @Parameter(description = "팔로우 취소할 사용자 ID", required = true)
             @PathVariable Long unfollowedUserId,
             Authentication authentication
     ) {
         Long currentUserId = Long.parseLong(authentication.getName());
-        log.info("언팔로우 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
+        log.info("팔로우 취소 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
 
         FollowResponseDto response = followService.unfollowUser(currentUserId, unfollowedUserId);
         return ApiResponse.onSuccess(SuccessCode.UNFOLLOW_SUCCESS, response);
