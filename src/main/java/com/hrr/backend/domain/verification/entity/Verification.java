@@ -16,7 +16,7 @@ import lombok.*;
         name = "verification",
         indexes = {
                 // 날짜 범위 검색 최적화
-                @Index(name = "idx_verification_created_at", columnList = "createdAt"),
+                @Index(name = "idx_verification_created_at", columnList = "created_at"),
                 // 상태값 필터링 최적화
                 @Index(name = "idx_verification_status", columnList = "status")
         }
