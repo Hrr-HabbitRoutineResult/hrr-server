@@ -26,6 +26,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("status") VerificationStatus status,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay
+    );
     /**사용자 본인 인증글 목록 조회*/
     Page<Verification> findByUserChallenge_User_Id(Long userId, Pageable pageable);
 
