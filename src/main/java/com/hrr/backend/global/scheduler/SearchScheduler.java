@@ -5,14 +5,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.search.entity.KeywordHourlyLog;
 import com.hrr.backend.domain.search.repository.KeywordHourlyLogRepository;
+import com.hrr.backend.domain.search.repository.PopularKeywordRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,11 +28,12 @@ public class SearchScheduler {
 	private final StringRedisTemplate redisTemplate;
 
 	private final KeywordHourlyLogRepository keywordHourlyLogRepository;
+	private final PopularKeywordRepository popularKeywordRepository;
 
 	/**
 	 * 매시간 직전 시간대의 검색어 통계를 keyword_hourly_log 테이블에 insert
 	 */
-	@Scheduled(cron = "0 2 * * * *")
+	@Scheduled(cron = "0 0 * * * *")
 	public void migrateRedisToLogTable() {
 		// 직전 시간(HH-1)의 키를 계산 e.g. 현재 20시면 19시 키 (YYYYMMDD19)를 가져와야 함
 		LocalDateTime targetHour = LocalDateTime.now().minusHours(1);
@@ -67,6 +69,24 @@ public class SearchScheduler {
 		// 처리 완료된 Redis 키 삭제
 		redisTemplate.delete(targetHourKey);
 		log.info("[SearchScheduler] Redis 키 삭제 완료: {}", targetHourKey);
+	}
+
+	/**
+	 * 매시간 keyword_hourly_log에서 최근 한 달치 검색어 기록을 group by로 집계해서 popular_keyword 테이블로 upsert
+	 */
+	@Scheduled(cron = "30 0 * * * *")	// 먼저 실행될 migrateRedisToLogTable와의 간격 유지
+	@Transactional
+	public void aggregateLogToFinalTable() {
+		// 현재 시점으로부터 30일 전
+		LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
+
+		log.info("[SearchScheduler] 최종 집계 시작. 최근 30일 데이터 기준: {}", targetDateTime);
+
+		// Repository의 UPSERT 쿼리 호출
+		// affectedRows = 변경된 레코드의 수
+		int affectedRows = popularKeywordRepository.upsertPopularKeywords(targetDateTime);
+
+		log.info("[SearchScheduler] 최종 집계 완료. 총 {}개 키워드 업데이트/생성됨.", affectedRows);
 	}
 
 }
