@@ -107,7 +107,33 @@ class ChallengeServiceProfileTest {
     }
 
     @Test
-    @DisplayName("3. [주 시작일 인증] 일요일(주의 시작)에 인증한 경우 -> 이번 주 현황에 포함되어야 한다")
+    @DisplayName("3. [중복 인증] 월요일에 2번 인증했더라도 -> 결과에는 MONDAY가 한 번만 나와야 한다 (distinct)")
+    void getChallengeProfile_DuplicateVerification() {
+        // Given
+        Long challengeId = 1L;
+        User user = User.builder().id(100L).build();
+        Challenge challenge = createChallenge(challengeId, "중복 인증 테스트", List.of(ChallengeDays.MONDAY));
+
+        mockParticipating(user, challenge);
+
+        // 인증 내역: 월요일 아침, 월요일 저녁 (같은 요일 2건)
+        List<Verification> verifications = List.of(
+                createVerification(DayOfWeek.MONDAY),
+                createVerification(DayOfWeek.MONDAY)
+        );
+
+        mockRepositoryCalls(user, challenge, verifications);
+
+        // When
+        ChallengeResponseDto.ChallengeProfileDto result = challengeService.getChallengeProfile(user, challengeId);
+
+        // Then
+        assertThat(result.getVerifiedDaysThisWeek()).hasSize(1); // 중복 제거 확인
+        assertThat(result.getVerifiedDaysThisWeek()).containsOnly(ChallengeDays.MONDAY);
+    }
+
+    @Test
+    @DisplayName("4. [주 시작일 인증] 일요일(주의 시작)에 인증한 경우 -> 이번 주 현황에 포함되어야 한다")
     void getChallengeProfile_SundayVerification() {
         // Given
         Long challengeId = 1L;
@@ -131,7 +157,7 @@ class ChallengeServiceProfileTest {
     }
 
     @Test
-    @DisplayName("4. [미참여] 챌린지에 참여하지 않은 경우 -> verifiedDaysThisWeek는 null이어야 한다")
+    @DisplayName("5. [미참여] 챌린지에 참여하지 않은 경우 -> verifiedDaysThisWeek는 null이어야 한다")
     void getChallengeProfile_NotParticipating() {
         // Given
         Long challengeId = 1L;
@@ -151,7 +177,7 @@ class ChallengeServiceProfileTest {
     }
 
     @Test
-    @DisplayName("5. [기간 제외] 지난 주(예: 지난 목요일)에 인증했더라도, 이번 주(일~토) 범위 밖이므로 안 떠야 한다")
+    @DisplayName("6. [기간 제외] 지난 주(예: 지난 목요일)에 인증했더라도, 이번 주(일~토) 범위 밖이므로 안 떠야 한다")
     void getChallengeProfile_LastWeekVerification_ShouldNotAppear() {
         // Given
         Long challengeId = 1L;
