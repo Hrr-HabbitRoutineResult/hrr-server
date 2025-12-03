@@ -11,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,12 +45,23 @@ public class FollowListService {
         List<User> followers = followRepository.findFollowersByUserId(userId);
         log.info("팔로워 목록 조회 완료 - userId: {}, followerCount: {}", userId, followers.size());
 
+        // 팔로워가 없으면 빈 리스트 반환
+        if (followers.isEmpty()) {
+            return List.of();
+        }
+
+        // N+1 방지: 한 번의 쿼리로 현재 사용자가 팔로우 중인 ID 목록 조회
+        List<Long> followerIds = followers.stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        Set<Long> followingIds = new HashSet<>(
+                followRepository.findFollowingIdsByFollowerIdAndFollowingIds(currentUserId, followerIds)
+        );
+
         // DTO 변환 (isFollowing 계산)
         return followers.stream()
-                .map(follower -> {
-                    boolean isFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUserId, follower.getId());
-                    return FollowListResponseDto.of(follower, isFollowing);
-                })
+                .map(follower -> FollowListResponseDto.of(follower, followingIds.contains(follower.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -72,12 +85,23 @@ public class FollowListService {
         List<User> followings = followRepository.findFollowingsByUserId(userId);
         log.info("팔로잉 목록 조회 완료 - userId: {}, followingCount: {}", userId, followings.size());
 
+        // 팔로잉이 없으면 빈 리스트 반환
+        if (followings.isEmpty()) {
+            return List.of();
+        }
+
+        // N+1 방지: 한 번의 쿼리로 현재 사용자가 팔로우 중인 ID 목록 조회
+        List<Long> followingIds = followings.stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        Set<Long> currentUserFollowingIds = new HashSet<>(
+                followRepository.findFollowingIdsByFollowerIdAndFollowingIds(currentUserId, followingIds)
+        );
+
         // DTO 변환 (isFollowing 계산)
         return followings.stream()
-                .map(following -> {
-                    boolean isFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUserId, following.getId());
-                    return FollowListResponseDto.of(following, isFollowing);
-                })
+                .map(following -> FollowListResponseDto.of(following, currentUserFollowingIds.contains(following.getId())))
                 .collect(Collectors.toList());
     }
 }
