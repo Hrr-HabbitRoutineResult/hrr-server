@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -185,6 +186,46 @@ public class ChallengeServiceImpl implements ChallengeService {
 				challenge, ownerUc.getUser(), startDate, endDate, remainDays,
 				isParticipant, isLiked, buttonStatus
 		);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public ChallengeResponseDto.ChallengeProfileDto getChallengeProfile(User user, Long challengeId) {
+		// 챌린지 조회
+		Challenge challenge = findChallengeWithDays(challengeId);
+
+		// 참여 여부 확인
+		boolean isParticipating = userChallengeRepository.findByUserAndChallenge(user, challenge)
+				.map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)
+				.orElse(false);
+
+		List<ChallengeDays> verifiedDaysThisWeek = null;
+
+		// 참여 중일 때만 계산
+		if (isParticipating) {
+			LocalDateTime now = LocalDateTime.now();
+
+			// 일요일 시작 ~ 토요일 종료 기준으로 범위 설정
+			LocalDateTime startOfWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)).with(LocalTime.MIN);
+			LocalDateTime endOfWeek = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY)).with(LocalTime.MAX);
+
+			// DB 조회
+			List<com.hrr.backend.domain.verification.entity.Verification> verifications = verificationRepository.findWeeklyVerifications(
+					user.getId(),
+					challengeId,
+					startOfWeek,
+					endOfWeek,
+					VerificationStatus.COMPLETED
+			);
+
+			// Enum 메서드 사용
+			verifiedDaysThisWeek = verifications.stream()
+					.map(v -> ChallengeDays.from(v.getCreatedAt().getDayOfWeek()))
+					.distinct()
+					.toList();
+		}
+
+		return challengeConverter.toProfileDto(challenge, isParticipating, verifiedDaysThisWeek);
 	}
 
 	@Override
