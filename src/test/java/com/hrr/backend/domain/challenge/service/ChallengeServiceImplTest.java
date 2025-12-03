@@ -10,6 +10,7 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -291,7 +292,7 @@ class ChallengeServiceImplTest {
 
     private void mockFetchingChallenge(Long id, Challenge challenge) {
         given(challengeRepository.findByIdWithDays(id)).willReturn(Optional.of(challenge));
-        given(userChallengeRepository.findOwnerByChallengeId(id))
+        given(userChallengeRepository.findByChallengeIdAndRole(id, UserChallengeRole.OWNER))
                 .willReturn(Optional.of(mock(UserChallenge.class))); // 방장 정보는 에러만 안 나게 처리
     }
 

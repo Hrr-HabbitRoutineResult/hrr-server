@@ -31,6 +31,7 @@ import com.hrr.backend.domain.user.converter.UserChallengeConverter;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -173,7 +174,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isLiked = challengeLikeRepository.existsByUserAndChallenge(user, challenge);
 
 		// 방장 정보 조회
-		UserChallenge ownerUc = userChallengeRepository.findOwnerByChallengeId(challengeId)
+		UserChallenge ownerUc = userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER)
 				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
 		// 버튼 상태 결정
