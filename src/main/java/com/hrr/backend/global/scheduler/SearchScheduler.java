@@ -33,7 +33,7 @@ public class SearchScheduler {
 	/**
 	 * 매시간 직전 시간대의 검색어 통계를 keyword_hourly_log 테이블에 insert
 	 */
-	@Scheduled(cron = "0 0 * * * *")
+	@Scheduled(cron = "5 0 * * * *")
 	public void migrateRedisToLogTable() {
 		// 직전 시간(HH-1)의 키를 계산 e.g. 현재 20시면 19시 키 (YYYYMMDD19)를 가져와야 함
 		LocalDateTime targetHour = LocalDateTime.now().minusHours(1);
@@ -80,7 +80,7 @@ public class SearchScheduler {
 		// 현재 시점으로부터 30일 전
 		LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
 
-		log.info("[SearchScheduler] 최종 집계 시작. 최근 30일 데이터 기준: {}", targetDateTime);
+		log.info("[SearchScheduler] 최종 집계 시작. 최근 30일 데이터 기준 시점: {}", targetDateTime);
 
 		// Repository의 UPSERT 쿼리 호출
 		// affectedRows = 변경된 레코드의 수
