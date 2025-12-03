@@ -6,8 +6,11 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,13 +29,15 @@ public class FollowListService {
     private final UserRepository userRepository;
 
     /**
-     * 특정 사용자의 팔로워 목록 조회
+     * 특정 사용자의 팔로워 목록 조회 (Slice 페이징)
      * @param userId 조회할 사용자 ID
      * @param currentUserId 현재 로그인한 사용자 ID
-     * @return 팔로워 목록
+     * @param pageable 페이징 정보
+     * @return 팔로워 목록 (SliceResponseDto)
      */
-    public List<FollowListResponseDto> getFollowers(Long userId, Long currentUserId) {
-        log.info("팔로워 목록 조회 - userId: {}, currentUserId: {}", userId, currentUserId);
+    public SliceResponseDto<FollowListResponseDto> getFollowers(Long userId, Long currentUserId, Pageable pageable) {
+        log.info("팔로워 목록 조회 - userId: {}, currentUserId: {}, page: {}, size: {}",
+                userId, currentUserId, pageable.getPageNumber(), pageable.getPageSize());
 
         // 조회할 사용자 존재 여부 확인
         userRepository.findById(userId)
@@ -41,17 +46,17 @@ public class FollowListService {
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        // 팔로워 목록 조회
-        List<User> followers = followRepository.findFollowersByUserId(userId);
-        log.info("팔로워 목록 조회 완료 - userId: {}, followerCount: {}", userId, followers.size());
+        // 팔로워 목록 조회 (Slice 페이징)
+        Slice<User> followersSlice = followRepository.findFollowersByUserId(userId, pageable);
+        log.info("팔로워 목록 조회 완료 - userId: {}, hasNext: {}", userId, followersSlice.hasNext());
 
-        // 팔로워가 없으면 빈 리스트 반환
-        if (followers.isEmpty()) {
-            return List.of();
+        // 팔로워가 없으면 빈 Slice 반환
+        if (followersSlice.isEmpty()) {
+            return new SliceResponseDto<>(followersSlice.map(user -> null));
         }
 
         // N+1 방지: 한 번의 쿼리로 현재 사용자가 팔로우 중인 ID 목록 조회
-        List<Long> followerIds = followers.stream()
+        List<Long> followerIds = followersSlice.getContent().stream()
                 .map(User::getId)
                 .collect(Collectors.toList());
 
@@ -60,19 +65,23 @@ public class FollowListService {
         );
 
         // DTO 변환 (isFollowing 계산)
-        return followers.stream()
-                .map(follower -> FollowListResponseDto.of(follower, followingIds.contains(follower.getId())))
-                .collect(Collectors.toList());
+        Slice<FollowListResponseDto> dtoSlice = followersSlice.map(follower ->
+                FollowListResponseDto.of(follower, followingIds.contains(follower.getId()))
+        );
+
+        return new SliceResponseDto<>(dtoSlice);
     }
 
     /**
-     * 특정 사용자의 팔로잉 목록 조회
+     * 특정 사용자의 팔로잉 목록 조회 (Slice 페이징)
      * @param userId 조회할 사용자 ID
      * @param currentUserId 현재 로그인한 사용자 ID
-     * @return 팔로잉 목록
+     * @param pageable 페이징 정보
+     * @return 팔로잉 목록 (SliceResponseDto)
      */
-    public List<FollowListResponseDto> getFollowings(Long userId, Long currentUserId) {
-        log.info("팔로잉 목록 조회 - userId: {}, currentUserId: {}", userId, currentUserId);
+    public SliceResponseDto<FollowListResponseDto> getFollowings(Long userId, Long currentUserId, Pageable pageable) {
+        log.info("팔로잉 목록 조회 - userId: {}, currentUserId: {}, page: {}, size: {}",
+                userId, currentUserId, pageable.getPageNumber(), pageable.getPageSize());
 
         // 조회할 사용자 존재 여부 확인
         userRepository.findById(userId)
@@ -81,17 +90,17 @@ public class FollowListService {
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        // 팔로잉 목록 조회
-        List<User> followings = followRepository.findFollowingsByUserId(userId);
-        log.info("팔로잉 목록 조회 완료 - userId: {}, followingCount: {}", userId, followings.size());
+        // 팔로잉 목록 조회 (Slice 페이징)
+        Slice<User> followingsSlice = followRepository.findFollowingsByUserId(userId, pageable);
+        log.info("팔로잉 목록 조회 완료 - userId: {}, hasNext: {}", userId, followingsSlice.hasNext());
 
-        // 팔로잉이 없으면 빈 리스트 반환
-        if (followings.isEmpty()) {
-            return List.of();
+        // 팔로잉이 없으면 빈 Slice 반환
+        if (followingsSlice.isEmpty()) {
+            return new SliceResponseDto<>(followingsSlice.map(user -> null));
         }
 
         // N+1 방지: 한 번의 쿼리로 현재 사용자가 팔로우 중인 ID 목록 조회
-        List<Long> followingIds = followings.stream()
+        List<Long> followingIds = followingsSlice.getContent().stream()
                 .map(User::getId)
                 .collect(Collectors.toList());
 
@@ -100,8 +109,10 @@ public class FollowListService {
         );
 
         // DTO 변환 (isFollowing 계산)
-        return followings.stream()
-                .map(following -> FollowListResponseDto.of(following, currentUserFollowingIds.contains(following.getId())))
-                .collect(Collectors.toList());
+        Slice<FollowListResponseDto> dtoSlice = followingsSlice.map(following ->
+                FollowListResponseDto.of(following, currentUserFollowingIds.contains(following.getId()))
+        );
+
+        return new SliceResponseDto<>(dtoSlice);
     }
 }
