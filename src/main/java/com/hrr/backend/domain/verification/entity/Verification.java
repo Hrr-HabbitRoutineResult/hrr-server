@@ -1,15 +1,12 @@
 package com.hrr.backend.domain.verification.entity;
 
-import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.entity.RoundRecord; // [중요] RoundRecord Import
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
-
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -26,31 +23,23 @@ public class Verification extends BaseEntity {
     @JoinColumn(name = "round_record_id", nullable = false)
     private RoundRecord roundRecord;
 
-    /** 인증 방식 (PHOTO / TEXT) */
     @Enumerated(EnumType.STRING)
-    private VerificationPostType type;
+    private VerificationPostType type; // CAMERA, TEXT
 
-    /** 제목 */
     private String title;
 
-    /** 내용(텍스트 인증 전용) */
     @Lob
     private String content;
 
-    /** 사진 인증 URL */
     private String photoUrl;
 
-    /** 텍스트 인증 URL */
     private String textUrl;
 
-    /** 질문 여부 */
     private Boolean isQuestion;
 
-    /** 상태 */
     @Enumerated(EnumType.STRING)
-    private VerificationStatus status;
+    private VerificationStatus status; // TEMPORARY, COMPLETED
 
-    /** 라운드 ID (선택) */
     private Long roundId;
 
     /** 유저 챌린지 */
@@ -58,9 +47,10 @@ public class Verification extends BaseEntity {
     @JoinColumn(name = "user_challenge_id")
     private UserChallenge userChallenge;
 
-    /** 텍스트 인증 생성 */
+
     public static Verification createTextVerification(
             UserChallenge userChallenge,
+            RoundRecord roundRecord,
             String title,
             String content,
             String textUrl,
@@ -68,6 +58,7 @@ public class Verification extends BaseEntity {
             Long roundId
     ) {
         return Verification.builder()
+                .roundRecord(roundRecord)
                 .type(VerificationPostType.TEXT)
                 .title(title)
                 .content(content)
@@ -79,15 +70,16 @@ public class Verification extends BaseEntity {
                 .build();
     }
 
-    /** 사진 인증 생성 */
     public static Verification createPhotoVerification(
             UserChallenge userChallenge,
+            RoundRecord roundRecord,
             String title,
             String photoUrl,
             Boolean isQuestion,
             Long roundId
     ) {
         return Verification.builder()
+                .roundRecord(roundRecord)
                 .type(VerificationPostType.CAMERA)
                 .title(title)
                 .photoUrl(photoUrl)

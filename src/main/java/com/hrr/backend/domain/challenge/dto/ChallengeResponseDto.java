@@ -1,17 +1,15 @@
 package com.hrr.backend.domain.challenge.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 public class ChallengeResponseDto {
 
@@ -104,6 +102,74 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "갱신된 챌린지의 총 좋아요 수", example = "15")
 		private Integer likeCount;
+	}
+
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "챌린지 상세 상단 정보 응답 DTO")
+	public static class HeaderInfoDto {
+
+		@Schema(description = "챌린지 ID", example = "101")
+		private Long challengeId;
+
+		@Schema(description = "챌린지 제목", example = "백준 실버3 코테")
+		private String title;
+
+		@Schema(description = "챌린지 설명 (부제목)", example = "백준 실버3 매일 풀고 공유")
+		private String description;
+
+		@Schema(description = "챌린지 배경 이미지 URL", example = "https://example.com/image.jpg")
+		private String imageUrl;
+
+		@Schema(description = "현재 참여 인원", example = "10")
+		private Integer currentParticipantCount;
+
+		@Schema(description = "최대 참여 인원", example = "30")
+		private Integer maxParticipantCount;
+
+		@Schema(description = "챌린지 시작일", example = "2025-10-01")
+		private LocalDate startDate;
+
+		@Schema(description = "챌린지 종료일", example = "2025-10-31")
+		private LocalDate endDate;
+
+		@Schema(description = "종료까지 남은 일수 (D-Day)", example = "15")
+		private Long remainDays;
+
+		// 상태 플래그
+		@Schema(description = "관찰자 모드 여부", example = "true")
+		private Boolean isObserverMode;
+
+		@Schema(description = "현재 유저의 참여 여부", example = "true")
+		private Boolean isParticipant;
+
+		@Schema(description = "현재 유저의 좋아요(찜) 여부", example = "false")
+		private Boolean isLiked;
+
+		// 하단 버튼 상태
+		@Schema(description = "하단 버튼 상태 (JOIN, DISABLED, WAITLIST, CERTIFY_AVAILABLE, CERTIFIED)", example = "CERTIFIED")
+		private ActionButtonStatus actionButtonStatus;
+
+		// 방장 정보
+		@Schema(description = "방장 정보")
+		private OwnerDto owner;
+	}
+
+	// 방장 정보 DTO 내부 클래스
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "방장 정보 DTO")
+	public static class OwnerDto {
+		@Schema(description = "방장 유저 ID", example = "1")
+		private Long id;
+
+		@Schema(description = "방장 닉네임", example = "김호르")
+		private String nickname;
+
+		@Schema(description = "방장 프로필 이미지 URL", example = "https://example.com/profile.jpg")
+		private String profileImageUrl;
 	}
 
 }
