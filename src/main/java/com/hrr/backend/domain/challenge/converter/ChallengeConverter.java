@@ -1,13 +1,16 @@
 package com.hrr.backend.domain.challenge.converter;
 
+import java.time.LocalDate;
 import java.util.List;
 
+import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import org.springframework.stereotype.Component;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 
@@ -61,6 +64,42 @@ public class ChallengeConverter {
                 .challengeId(challenge.getId())
                 .isLiked(isLiked)
                 .likeCount(challenge.getLikeCount())
+                .build();
+    }
+
+    public ChallengeResponseDto.HeaderInfoDto toHeaderInfoDto(
+            Challenge challenge,
+            User owner,
+            LocalDate startDate,
+            LocalDate endDate,
+            long remainDays,
+            boolean isParticipant,
+            boolean isLiked,
+            ActionButtonStatus actionButtonStatus
+    ) {
+        // 방장 정보 DTO 생성
+        ChallengeResponseDto.OwnerDto ownerDto = ChallengeResponseDto.OwnerDto.builder()
+                .id(owner.getId())
+                .nickname(owner.getNickname())
+                .profileImageUrl(owner.getProfileImage())
+                .build();
+
+        // 상단 정보 DTO 생성 및 반환
+        return ChallengeResponseDto.HeaderInfoDto.builder()
+                .challengeId(challenge.getId())
+                .title(challenge.getTitle())
+                .description(challenge.getDescription())
+                .imageUrl(challenge.getImageUrl())
+                .currentParticipantCount(challenge.getCurrentParticipants())
+                .maxParticipantCount(challenge.getMaxParticipants())
+                .startDate(startDate)
+                .endDate(endDate)
+                .remainDays(remainDays)
+                .isObserverMode(challenge.getIsViewerMode())
+                .isParticipant(isParticipant)
+                .isLiked(isLiked)
+                .owner(ownerDto)
+                .actionButtonStatus(actionButtonStatus)
                 .build();
     }
 }

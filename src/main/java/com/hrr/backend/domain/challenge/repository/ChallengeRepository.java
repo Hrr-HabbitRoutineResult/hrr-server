@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.challenge.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -25,4 +26,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 	@Query("UPDATE Challenge c SET c.likeCount = c.likeCount - 1 WHERE c.id = :id AND c.likeCount > 0")
 	void decreaseLikeCount(@Param("id") Long id);
 
+	// 요일 정보(ChallengeDays)까지 한 번에 가져오는 Fetch Join 쿼리
+	@Query("SELECT c FROM Challenge c LEFT JOIN FETCH c.challengeDays WHERE c.id = :id")
+	Optional<Challenge> findByIdWithDays(@Param("id") Long id);
 }
