@@ -3,6 +3,8 @@ package com.hrr.backend.global.common.enums;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.time.DayOfWeek;
+
 @Getter
 @RequiredArgsConstructor
 public enum ChallengeDays {
@@ -19,4 +21,16 @@ public enum ChallengeDays {
 
 	private final String koreanName;
 	private final int dayCode;       // 일요일=0 시작
+
+	public static ChallengeDays from(DayOfWeek dayOfWeek) {
+		return switch (dayOfWeek) {
+			case MONDAY -> MONDAY;
+			case TUESDAY -> TUESDAY;
+			case WEDNESDAY -> WEDNESDAY;
+			case THURSDAY -> THURSDAY;
+			case FRIDAY -> FRIDAY;
+			case SATURDAY -> SATURDAY;
+			case SUNDAY -> SUNDAY;
+		};
+	}
 }

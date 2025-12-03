@@ -39,4 +39,8 @@ public class ChallengeDayJoin extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "day_of_week", nullable = false)
 	private ChallengeDays dayOfWeek;
+
+	public ChallengeDays getDay() {
+		return this.dayOfWeek;
+	}
 }
