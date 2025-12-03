@@ -17,7 +17,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Follow List", description = "팔로워/팔로잉 목록 조회 API")
+@Tag(name = "Follow", description = "팔로우 관련 API")
 public class FollowListController {
 
     private final FollowListService followListService;
