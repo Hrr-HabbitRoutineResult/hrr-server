@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/user")
+@RequestMapping("/api/v1/follow")
 @Tag(name = "Follow", description = "팔로우 관련 API")
 public class FollowController {
 
@@ -34,7 +34,7 @@ public class FollowController {
     // ===== 팔로우/팔로우 취소 =====
 
     @Operation(summary = "사용자 팔로우", description = "특정 사용자를 팔로우합니다.")
-    @PostMapping("/{followedUserId}/follow")
+    @PostMapping("/{followedUserId}")
     public ApiResponse<FollowResponseDto> followUser(
             @Parameter(description = "팔로우할 사용자 ID", required = true)
             @PathVariable Long followedUserId,
@@ -47,15 +47,15 @@ public class FollowController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
-    @Operation(summary = "사용자 팔로우 취소", description = "특정 사용자 팔로우를 취소합니다.")
-    @DeleteMapping("/{unfollowedUserId}/unfollow")
+    @Operation(summary = "사용자 언팔로우", description = "특정 사용자를 언팔로우합니다.")
+    @DeleteMapping("/{unfollowedUserId}")
     public ApiResponse<FollowResponseDto> unfollowUser(
-            @Parameter(description = "팔로우 취소할 사용자 ID", required = true)
+            @Parameter(description = "언팔로우할 사용자 ID", required = true)
             @PathVariable Long unfollowedUserId,
             Authentication authentication
     ) {
         Long currentUserId = Long.parseLong(authentication.getName());
-        log.info("팔로우 취소 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
+        log.info("언팔로우 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
 
         FollowResponseDto response = followService.unfollowUser(currentUserId, unfollowedUserId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
@@ -142,7 +142,7 @@ public class FollowController {
     // ===== 팔로우 요청 관리 =====
 
     @Operation(summary = "팔로우 요청 승인", description = "받은 팔로우 요청을 승인합니다.")
-    @PostMapping("/follow/{followId}/approve")
+    @PostMapping("/requests/{followId}/approve")
     public ApiResponse<FollowActionResponseDto> approveFollowRequest(
             @Parameter(description = "팔로우 ID", required = true)
             @PathVariable Long followId,
@@ -156,7 +156,7 @@ public class FollowController {
     }
 
     @Operation(summary = "팔로우 요청 거절", description = "받은 팔로우 요청을 거절합니다.")
-    @DeleteMapping("/follow/{followId}/reject")
+    @DeleteMapping("/requests/{followId}/reject")
     public ApiResponse<FollowActionResponseDto> rejectFollowRequest(
             @Parameter(description = "팔로우 ID", required = true)
             @PathVariable Long followId,
@@ -170,7 +170,7 @@ public class FollowController {
     }
 
     @Operation(summary = "받은 팔로우 요청 목록 조회", description = "현재 사용자가 받은 대기 중인 팔로우 요청 목록을 조회합니다.")
-    @GetMapping("/me/follow/requests")
+    @GetMapping("/me/requests")
     public ApiResponse<List<FollowRequestDto>> getPendingFollowRequests(
             Authentication authentication
     ) {
