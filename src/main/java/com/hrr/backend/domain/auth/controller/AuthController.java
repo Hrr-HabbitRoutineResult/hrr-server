@@ -57,7 +57,7 @@ public class AuthController {
             HttpServletResponse response
     ) throws IOException {
 
-        log.info("Kakao Callback Received with code: {}", code);
+        log.info("Kakao Callback received. Code received successfully.");
 
         // 서비스 로직 호출 (인가 코드로 토큰 발급 및 유저 처리)
         AuthRequestDto.SocialLoginRequest requestDto = new AuthRequestDto.SocialLoginRequest(code);
@@ -75,7 +75,7 @@ public class AuthController {
                 .encode(StandardCharsets.UTF_8)
                 .toUriString();
 
-        log.info("Login Success! Redirecting to App: {}", redirectUrl);
+        log.info("Login Success! Redirecting to app deep link");
 
         // 리다이렉트 전송 (302 Found) -> 앱 실행.
         response.sendRedirect(redirectUrl);
