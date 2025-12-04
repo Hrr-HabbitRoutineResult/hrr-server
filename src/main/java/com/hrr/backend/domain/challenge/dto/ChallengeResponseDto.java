@@ -2,6 +2,7 @@ package com.hrr.backend.domain.challenge.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -170,6 +171,34 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "방장 프로필 이미지 URL", example = "https://example.com/profile.jpg")
 		private String profileImageUrl;
+	}
+
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "챌린지 프로필(메인 화면) 응답 DTO - Flat Structure")
+	public static class ChallengeProfileDto {
+
+		@Schema(description = "챌린지 ID", example = "1")
+		private Long challengeId;
+
+		@Schema(description = "참여 여부 (true: 2번 UI / false: 1번 UI)", example = "true")
+		private Boolean isParticipating;
+
+		@Schema(description = "챌린지 규칙", example = "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.")
+		private String rule;
+
+		@Schema(description = "목표 요일 목록", example = "[\"MONDAY\", \"THURSDAY\"]")
+		private List<ChallengeDays> targetDays;
+
+		@Schema(description = "인증 가능 시작 시간", example = "10:00:00")
+		private LocalTime verifyStartTime;
+
+		@Schema(description = "인증 가능 종료 시간", example = "18:00:00")
+		private LocalTime verifyEndTime;
+
+		@Schema(description = "이번 주 인증 완료 요일 (참여 중일 때만 값 있음, 미참여시 null)", example = "[\"MONDAY\"]")
+		private List<ChallengeDays> verifiedDaysThisWeek;
 	}
 
 }

@@ -102,4 +102,26 @@ public class ChallengeConverter {
                 .actionButtonStatus(actionButtonStatus)
                 .build();
     }
+
+    // ▼▼▼ [새로 추가된 메서드] ▼▼▼
+    public ChallengeResponseDto.ChallengeProfileDto toProfileDto(
+            Challenge challenge,
+            boolean isParticipating,
+            List<ChallengeDays> verifiedDays
+    ) {
+        // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환
+        List<ChallengeDays> targetDays = challenge.getChallengeDays().stream()
+                .map(ChallengeDayJoin::getDay)
+                .toList();
+
+        return ChallengeResponseDto.ChallengeProfileDto.builder()
+                .challengeId(challenge.getId())
+                .isParticipating(isParticipating)
+                .rule(challenge.getRule())
+                .targetDays(targetDays)
+                .verifyStartTime(challenge.getVerifyStartTime())
+                .verifyEndTime(challenge.getVerifyEndTime())
+                .verifiedDaysThisWeek(verifiedDays) // 미참여시 null
+                .build();
+    }
 }

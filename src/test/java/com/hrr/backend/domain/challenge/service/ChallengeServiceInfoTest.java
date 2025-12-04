@@ -34,7 +34,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class ChallengeServiceImplTest {
+class ChallengeServiceInfoTest {
 
     @InjectMocks
     private ChallengeServiceImpl challengeService;
