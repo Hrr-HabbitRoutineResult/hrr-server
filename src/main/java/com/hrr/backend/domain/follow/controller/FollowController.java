@@ -40,7 +40,7 @@ public class FollowController {
         log.info("팔로우 요청 - currentUserId: {}, followedUserId: {}", currentUserId, followedUserId);
 
         FollowResponseDto response = followService.followUser(currentUserId, followedUserId);
-        return ApiResponse.onSuccess(SuccessCode.FOLLOW_SUCCESS, response);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
     @Operation(summary = "사용자 팔로우 취소", description = "특정 사용자 팔로우를 취소합니다.")
@@ -54,7 +54,7 @@ public class FollowController {
         log.info("팔로우 취소 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
 
         FollowResponseDto response = followService.unfollowUser(currentUserId, unfollowedUserId);
-        return ApiResponse.onSuccess(SuccessCode.UNFOLLOW_SUCCESS, response);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
     // ===== 내 팔로우 정보 조회 =====
