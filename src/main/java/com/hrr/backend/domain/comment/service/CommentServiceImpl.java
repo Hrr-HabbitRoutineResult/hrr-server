@@ -14,6 +14,8 @@ import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,22 +76,23 @@ public class CommentServiceImpl implements CommentService {
 
     /** 댓글/대댓글 조회 */
     @Override
-    public CommentListResponseDto getComments(Long verificationId) {
+    public CommentListResponseDto getComments(Long verificationId, Pageable pageable) {
 
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-        // [수정] 부모 댓글 조회 시 '삭제되지 않은 것(IsDeletedFalse)'만 조회
-        List<Comment> parents =
-                commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0);
+        // 1. 부모 댓글(Depth 0)만 페이징하여 조회 + 삭제 안 된 것만 필터링
+        Page<Comment> parentPage = commentRepository
+                .findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0, pageable);
 
         List<CommentResponseDto> result = new ArrayList<>();
 
-        for (Comment parent : parents) {
-            // 부모 댓글
+        // 2. 부모 댓글 순회 -> 자식 댓글(대댓글) 조회 후 리스트 추가
+        for (Comment parent : parentPage.getContent()) {
+            // 부모 추가
             result.add(CommentConverter.toDto(parent));
 
-            // 자식 댓글(대댓글) 조회 시에도 삭제되지 않은 것만 조회
+            // 자식 조회 (대댓글은 페이지네이션 없이 해당 부모의 모든 자식을 가져옴)
             List<Comment> children = commentRepository.findByParentAndIsDeletedFalseOrderByCreatedAtAsc(parent);
 
             for (Comment child : children) {
@@ -97,7 +100,16 @@ public class CommentServiceImpl implements CommentService {
             }
         }
 
-        return new CommentListResponseDto(result.size(), result);
+        // 3. DTO 반환 (페이지네이션 정보 포함)
+        return CommentListResponseDto.builder()
+                .comments(result)
+                .currentPage(parentPage.getNumber() + 1) // 1부터 시작하도록 +1
+                .totalPages(parentPage.getTotalPages())
+                .totalParentElements(parentPage.getTotalElements())
+                .size(parentPage.getSize())
+                .isFirst(parentPage.isFirst())
+                .isLast(parentPage.isLast())
+                .build();
     }
 
     /** 댓글 수정 */

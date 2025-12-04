@@ -30,7 +30,7 @@ public class CommentConverter {
                 .depth(comment.getDepth())
                 .content(comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent())
                 .likesCount(comment.getLikesCount())
-                .createdAt(comment.getCreatedAt().toString())
+                .createdAt(comment.getCreatedAt())
                 .build();
     }
 }

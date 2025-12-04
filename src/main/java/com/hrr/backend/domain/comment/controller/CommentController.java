@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,8 +46,8 @@ public class CommentController {
     @Operation(summary = "댓글/대댓글 조회", description = "특정 인증글의 모든 댓글 및 대댓글을 조회합니다.")
     @GetMapping("/{verificationId}")
     public ApiResponse<CommentListResponseDto> getComments(
-            @PathVariable Long verificationId
-    ) {
+            @PathVariable Long verificationId,
+            Pageable pageable) {
         CommentListResponseDto response = commentService.getComments(verificationId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
