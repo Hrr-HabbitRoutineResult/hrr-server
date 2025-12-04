@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -26,6 +27,21 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("status") VerificationStatus status,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay
+    );
+
+    @Query("SELECT v FROM Verification v " +
+            "JOIN v.roundRecord r " +
+            "JOIN r.userChallenge uc " +
+            "WHERE uc.user.id = :userId " +
+            "AND uc.challenge.id = :challengeId " +
+            "AND v.createdAt BETWEEN :start AND :end " +
+            "AND v.status = :status")
+    List<Verification> findWeeklyVerifications(
+            @Param("userId") Long userId,
+            @Param("challengeId") Long challengeId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("status") VerificationStatus status
     );
     /**사용자 본인 인증글 목록 조회*/
     Page<Verification> findByUserChallenge_User_Id(Long userId, Pageable pageable);
