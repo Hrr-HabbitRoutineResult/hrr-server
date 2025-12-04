@@ -79,9 +79,9 @@ public class CommentServiceImpl implements CommentService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-        // 부모 댓글(깊이 0) 먼저 조회
+        // [수정] 부모 댓글 조회 시 '삭제되지 않은 것(IsDeletedFalse)'만 조회
         List<Comment> parents =
-                commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(verification, 0);
+                commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0);
 
         List<CommentResponseDto> result = new ArrayList<>();
 
@@ -89,8 +89,9 @@ public class CommentServiceImpl implements CommentService {
             // 부모 댓글
             result.add(CommentConverter.toDto(parent));
 
-            // 자식 댓글(대댓글)
-            List<Comment> children = commentRepository.findByParentOrderByCreatedAtAsc(parent);
+            // 자식 댓글(대댓글) 조회 시에도 삭제되지 않은 것만 조회
+            List<Comment> children = commentRepository.findByParentAndIsDeletedFalseOrderByCreatedAtAsc(parent);
+
             for (Comment child : children) {
                 result.add(CommentConverter.toDto(child));
             }
