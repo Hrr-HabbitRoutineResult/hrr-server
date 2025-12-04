@@ -1,6 +1,5 @@
 package com.hrr.backend.domain.follow.controller;
 
-import com.hrr.backend.domain.follow.dto.FollowListResponseDto;
 import com.hrr.backend.domain.follow.dto.FollowResponseDto;
 import com.hrr.backend.domain.follow.service.FollowListService;
 import com.hrr.backend.domain.follow.service.FollowService;
