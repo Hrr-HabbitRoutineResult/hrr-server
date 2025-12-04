@@ -1,6 +1,8 @@
 package com.hrr.backend.domain.follow.controller;
 
+import com.hrr.backend.domain.follow.dto.FollowActionResponseDto;
 import com.hrr.backend.domain.follow.dto.FollowListResponseDto;
+import com.hrr.backend.domain.follow.dto.FollowRequestDto;
 import com.hrr.backend.domain.follow.dto.FollowResponseDto;
 import com.hrr.backend.domain.follow.service.FollowListService;
 import com.hrr.backend.domain.follow.service.FollowService;
@@ -16,6 +18,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -133,5 +137,47 @@ public class FollowController {
         Pageable pageable = PageRequest.of(page, size);
         SliceResponseDto<FollowListResponseDto> followers = followListService.getFollowers(userId, currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, followers);
+    }
+
+    // ===== 팔로우 요청 관리 =====
+
+    @Operation(summary = "팔로우 요청 승인", description = "받은 팔로우 요청을 승인합니다.")
+    @PostMapping("/follow/{followId}/approve")
+    public ApiResponse<FollowActionResponseDto> approveFollowRequest(
+            @Parameter(description = "팔로우 ID", required = true)
+            @PathVariable Long followId,
+            Authentication authentication
+    ) {
+        Long currentUserId = Long.parseLong(authentication.getName());
+        log.info("팔로우 요청 승인 - currentUserId: {}, followId: {}", currentUserId, followId);
+
+        FollowActionResponseDto response = followService.approveFollowRequest(currentUserId, followId);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @Operation(summary = "팔로우 요청 거절", description = "받은 팔로우 요청을 거절합니다.")
+    @DeleteMapping("/follow/{followId}/reject")
+    public ApiResponse<FollowActionResponseDto> rejectFollowRequest(
+            @Parameter(description = "팔로우 ID", required = true)
+            @PathVariable Long followId,
+            Authentication authentication
+    ) {
+        Long currentUserId = Long.parseLong(authentication.getName());
+        log.info("팔로우 요청 거절 - currentUserId: {}, followId: {}", currentUserId, followId);
+
+        FollowActionResponseDto response = followService.rejectFollowRequest(currentUserId, followId);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @Operation(summary = "받은 팔로우 요청 목록 조회", description = "현재 사용자가 받은 대기 중인 팔로우 요청 목록을 조회합니다.")
+    @GetMapping("/me/follow/requests")
+    public ApiResponse<List<FollowRequestDto>> getPendingFollowRequests(
+            Authentication authentication
+    ) {
+        Long currentUserId = Long.parseLong(authentication.getName());
+        log.info("팔로우 요청 목록 조회 - currentUserId: {}", currentUserId);
+
+        List<FollowRequestDto> response = followService.getPendingFollowRequests(currentUserId);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 }
