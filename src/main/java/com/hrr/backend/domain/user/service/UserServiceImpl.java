@@ -6,6 +6,7 @@ import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,8 +30,7 @@ public class UserServiceImpl implements UserService {
     private final FollowRepository followRepository;
     private final UserChallengeRepository userChallengeRepository;
 
-    @Value("${aws.s3.url-prefix}")
-    private String s3UrlPrefix;
+    private final S3UrlUtil s3UrlUtil;
 
     // 프로필 조회 관련
 
@@ -63,12 +63,10 @@ public class UserServiceImpl implements UserService {
         Slice<UserResponseDto.OngoingChallengeDto> slice =
                 userChallengeRepository.findOngoingChallengesByUser(user, pageable);
 
-        slice.getContent().forEach(dto -> {
-            if (dto.getThumbnailUrl() != null && !dto.getThumbnailUrl().isBlank()) {
-                // "https://..." + "/" + "challenges/uuid.jpg"
-                dto.setThumbnailUrl(s3UrlPrefix + "/" + dto.getThumbnailUrl());
-            }
-        });
+        // URL 변환 로직 교체
+        slice.getContent().forEach(dto ->
+                dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
+        );
 
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(slice);

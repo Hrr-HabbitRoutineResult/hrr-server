@@ -38,6 +38,7 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -95,8 +96,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
-	@Value("${aws.s3.url-prefix}")
-	private String s3UrlPrefix;
+	private final S3UrlUtil s3UrlUtil;
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -355,13 +355,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 					long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
 					boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
-					// 이미지 URL 조합 로직 추가
-					if (infoDto.getThumbnailUrl() != null && !infoDto.getThumbnailUrl().isBlank()) {
-						// 도메인 + "/" + 키 조합
-						infoDto.setThumbnailUrl(s3UrlPrefix + "/" + infoDto.getThumbnailUrl());
-					}
-
 					// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
+					infoDto.setThumbnailUrl(s3UrlUtil.toFullUrl(infoDto.getThumbnailUrl()));
 					infoDto.setIsUpcoming(isUpcomingResult);
 					infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
 					infoDto.setDaysOfWeek(daysMap.getOrDefault(infoDto.getChallengeId(), List.of()));

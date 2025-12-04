@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.global.s3.S3UrlUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +18,10 @@ import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 
 @Component
+@RequiredArgsConstructor
 public class ChallengeConverter {
 
-    @Value("${aws.s3.url-prefix}")
-    private String urlPrefix;
+    private final S3UrlUtil s3UrlUtil;
 
     public Challenge toChallengeEntity(
             ChallengeRequestDto.CreateChallengeDto req,
@@ -88,18 +90,12 @@ public class ChallengeConverter {
                 .profileImageUrl(owner.getProfileImage())
                 .build();
 
-        // 이미지 키가 있으면 도메인 + / 키
-        String fullImageUrl = null;
-        if (challenge.getImageKey() != null && !challenge.getImageKey().isBlank()) {
-            fullImageUrl = urlPrefix + "/" + challenge.getImageKey();
-        }
-
         // 상단 정보 DTO 생성 및 반환
         return ChallengeResponseDto.HeaderInfoDto.builder()
                 .challengeId(challenge.getId())
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
-                .imageUrl(fullImageUrl)
+                .imageUrl(s3UrlUtil.toFullUrl(challenge.getImageKey()))
                 .currentParticipantCount(challenge.getCurrentParticipants())
                 .maxParticipantCount(challenge.getMaxParticipants())
                 .startDate(startDate)
