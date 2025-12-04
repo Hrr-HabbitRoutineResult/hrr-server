@@ -39,6 +39,7 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -94,6 +95,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
+	@Value("${aws.s3.url-prefix}")
+	private String s3UrlPrefix;
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -352,6 +355,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 					long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
 					boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
+					// 이미지 URL 조합 로직 추가
+					if (infoDto.getThumbnailUrl() != null && !infoDto.getThumbnailUrl().isBlank()) {
+						// 도메인 + "/" + 키 조합
+						infoDto.setThumbnailUrl(s3UrlPrefix + "/" + infoDto.getThumbnailUrl());
+					}
+
 					// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
 					infoDto.setIsUpcoming(isUpcomingResult);
 					infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
@@ -387,7 +396,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// Round 생성
 		Round firstRound = roundConverter.toFirstRoundEntity(
 				saved,
-				req.getStartDate().toLocalDate()
+				req.getStartDate()
 		);
 		roundRepository.save(firstRound);
 
@@ -564,6 +573,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateCreateRequest(ChallengeRequestDto.CreateChallengeDto req) {
+		if (!req.getStartDate().isAfter(LocalDate.now())) {
+			// ErrorCode에 CHALLENGE_INVALID_START_DATE가 없다면 추가 필요,
+			// 혹은 BAD_REQUEST 등을 임시로 사용
+			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
+		}
+
 		// 인증 시간 검증: 종료 시간 > 시작 시간
 		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
 			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_VERIFY_TIME);

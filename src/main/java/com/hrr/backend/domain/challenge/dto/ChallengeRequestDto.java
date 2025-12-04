@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.challenge.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -46,9 +47,9 @@ public class ChallengeRequestDto {
         @NotNull(message = "verificationType은 필수입니다.")
         private VerificationType verificationType;
 
-        @Schema(description = "시작 시간", example = "2025-11-24T10:00")
+        @Schema(description = "시작 날짜 (내일 이후부터 가능)", example = "2025-11-24")
         @NotNull(message = "startDate는 필수입니다.")
-        private LocalDateTime startDate;
+        private LocalDate startDate;
 
         @Schema(description = "최대 참여 인원 (1명 이상)", example = "10")
         @NotNull(message = "maxParticipants는 필수입니다.")

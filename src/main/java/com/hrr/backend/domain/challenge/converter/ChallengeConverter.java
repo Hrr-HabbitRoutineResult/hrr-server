@@ -35,7 +35,7 @@ public class ChallengeConverter {
                 .password(password)
                 .title(req.getTitle())
                 .description(req.getDescription())
-                .startDate(req.getStartDate())
+                .startDate(req.getStartDate().atStartOfDay())
                 .verificationType(req.getVerificationType())
                 .verifyStartTime(req.getVerifyStartTime())
                 .verifyEndTime(req.getVerifyEndTime())
