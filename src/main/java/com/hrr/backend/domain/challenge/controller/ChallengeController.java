@@ -128,7 +128,7 @@ public class ChallengeController {
                   "password": "1234",
                   "category": "HEALTH",
                   "verificationType": "PHOTO",
-                  "startDate": "2025-11-24T10:00",
+                  "startDate": "2025-11-24",
                   "maxParticipants": 10,
                   "isViewerMode": false,
                   "rule": "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.",
