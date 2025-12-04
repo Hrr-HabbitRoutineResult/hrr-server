@@ -66,10 +66,33 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, challenges);
 	}
 
-	@GetMapping("/{challengeId}")
-	@Operation(summary = "챌린지 프로필 조회", description = "챌린지 프로필을 조회합니다.")
-	public void getChallengeProfile(@PathVariable("challengeId") Long challengeId) {
+	@GetMapping("/{challengeId}/info")
+	@Operation(summary = "챌린지 상세 상단 정보 조회", description = "챌린지 기본 정보, 방장, 내 참여 상태, 버튼 상태 등을 조회합니다.")
+	public ApiResponse<ChallengeResponseDto.HeaderInfoDto> getChallengeHeaderInfo(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		ChallengeResponseDto.HeaderInfoDto response = challengeService.getChallengeHeaderInfo(
+				challengeId,
+				userDetails.getUser()
+		);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
 
+	@GetMapping("/{challengeId}/profile")
+	@Operation(summary = "챌린지 프로필 조회 (참여 전/후 UI 통합)",
+			description = "로그인한 유저의 참여 상태에 따라 인증 현황을 포함하거나 제외하여 반환합니다.")
+	public ApiResponse<ChallengeResponseDto.ChallengeProfileDto> getChallengeProfile(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		ChallengeResponseDto.ChallengeProfileDto response = challengeService.getChallengeProfile(
+				userDetails.getUser(),
+				challengeId
+		);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
 	@PostMapping("/{challengeId}/click")
