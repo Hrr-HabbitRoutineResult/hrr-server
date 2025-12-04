@@ -6,6 +6,7 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.auth.service.JwtService;
+import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 
@@ -15,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -30,12 +32,11 @@ public class CommentController {
     @Operation(summary = "댓글 작성", description = "인증글에 댓글 또는 대댓글을 작성합니다.")
     @PostMapping("/{verificationId}")
     public ApiResponse<CommentResponseDto> createComment(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long verificationId,
             @RequestBody CommentCreateRequestDto requestDto
     ) {
-        String token = jwtService.resolveToken(request);
-        Long userId = jwtService.extractUserId(token);
+        Long userId = userDetails.getUser().getId();
 
         CommentResponseDto response = commentService.createComment(verificationId, userId, requestDto);
 
@@ -47,8 +48,9 @@ public class CommentController {
     @GetMapping("/{verificationId}")
     public ApiResponse<CommentListResponseDto> getComments(
             @PathVariable Long verificationId,
-            Pageable pageable) {
-        CommentListResponseDto response = commentService.getComments(verificationId);
+            Pageable pageable
+    ) {
+        CommentListResponseDto response = commentService.getComments(verificationId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
@@ -56,12 +58,11 @@ public class CommentController {
     @Operation(summary = "댓글 수정", description = "본인이 작성한 댓글만 수정할 수 있습니다.")
     @PatchMapping("/{commentId}")
     public ApiResponse<CommentResponseDto> updateComment(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long commentId,
             @RequestBody CommentUpdateRequestDto requestDto
     ) {
-        String token = jwtService.resolveToken(request);
-        Long userId = jwtService.extractUserId(token);
+        Long userId = userDetails.getUser().getId();
 
         CommentResponseDto response = commentService.updateComment(commentId, userId, requestDto);
 
@@ -73,11 +74,10 @@ public class CommentController {
     @Operation(summary = "댓글 삭제", description = "댓글을 Soft Delete 방식으로 삭제합니다.")
     @DeleteMapping("/{commentId}")
     public ApiResponse<Void> deleteComment(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long commentId
     ) {
-        String token = jwtService.resolveToken(request);
-        Long userId = jwtService.extractUserId(token);
+        Long userId = userDetails.getUser().getId();
 
         commentService.deleteComment(commentId, userId);
 

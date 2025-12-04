@@ -4,8 +4,7 @@ import com.hrr.backend.domain.comment.dto.CommentCreateRequestDto;
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
-
-import java.awt.print.Pageable;
+import org.springframework.data.domain.Pageable;
 
 public interface CommentService {
 

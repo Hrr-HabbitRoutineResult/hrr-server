@@ -19,8 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -81,29 +81,42 @@ public class CommentServiceImpl implements CommentService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-        // 1. 부모 댓글(Depth 0)만 페이징하여 조회 + 삭제 안 된 것만 필터링
+        // 부모 댓글(Depth 0)만 페이징하여 조회 + 삭제 안 된 것만 필터링
         Page<Comment> parentPage = commentRepository
                 .findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0, pageable);
 
+        List<Comment> parents = parentPage.getContent();
         List<CommentResponseDto> result = new ArrayList<>();
 
-        // 2. 부모 댓글 순회 -> 자식 댓글(대댓글) 조회 후 리스트 추가
-        for (Comment parent : parentPage.getContent()) {
-            // 부모 추가
-            result.add(CommentConverter.toDto(parent));
+        if (!parents.isEmpty()) {
+            // 부모 댓글 목록에 대한 모든 자식 댓글을 한 번에 조회
+            List<Comment> children = commentRepository
+                    .findByParentInAndIsDeletedFalseOrderByCreatedAtAsc(parents);
 
-            // 자식 조회 (대댓글은 페이지네이션 없이 해당 부모의 모든 자식을 가져옴)
-            List<Comment> children = commentRepository.findByParentAndIsDeletedFalseOrderByCreatedAtAsc(parent);
+            // parentId 기준으로 자식 댓글들을 그룹핑
+            Map<Long, List<Comment>> childrenMap = children.stream()
+                    .collect(Collectors.groupingBy(
+                            c -> c.getParent().getId(),
+                            LinkedHashMap::new,
+                            Collectors.toList()
+                    ));
 
-            for (Comment child : children) {
-                result.add(CommentConverter.toDto(child));
+            for (Comment parent : parents) {
+                // 부모 댓글 추가
+                result.add(CommentConverter.toDto(parent));
+
+                // 부모에 해당하는 자식(대댓글)들 추가
+                List<Comment> childList = childrenMap.getOrDefault(parent.getId(), Collections.emptyList());
+                for (Comment child : childList) {
+                    result.add(CommentConverter.toDto(child));
+                }
             }
         }
 
-        // 3. DTO 반환 (페이지네이션 정보 포함)
+        // DTO 반환 (페이지네이션 정보는 "부모 댓글" 기준)
         return CommentListResponseDto.builder()
                 .comments(result)
-                .currentPage(parentPage.getNumber() + 1) // 1부터 시작하도록 +1
+                .currentPage(parentPage.getNumber() + 1)
                 .totalPages(parentPage.getTotalPages())
                 .totalParentElements(parentPage.getTotalElements())
                 .size(parentPage.getSize())
@@ -141,7 +154,8 @@ public class CommentServiceImpl implements CommentService {
         if (!comment.getUser().getId().equals(userId)) {
             throw new GlobalException(ErrorCode.COMMENT_UNAUTHORIZED);
         }
-// 엔티티에 @SQLDelete가 적용되어 있으므로 repository.delete를 호출하면 update 쿼리가 실행O
+
+        // 엔티티에 @SQLDelete가 적용되어 있으므로 repository.delete를 호출하면 update 쿼리가 실행
         commentRepository.delete(comment);
     }
 }

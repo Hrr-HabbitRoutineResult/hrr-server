@@ -23,7 +23,7 @@ public interface VerificationService {
     );
 /* 사용자 본인 인증글 목록 조회 */
     VerificationMyResponseDto.MyPostList getMyVerifications(
-            String accessToken,
+            Long userId,
             Long challengeId,
             Long roundId,
             Pageable pageable

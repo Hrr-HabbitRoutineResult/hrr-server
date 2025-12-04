@@ -24,4 +24,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * 삭제되지 않은 댓글만
      */
     List<Comment> findByParentAndIsDeletedFalseOrderByCreatedAtAsc(Comment parent);
+
+    /**
+     * 여러 부모 댓글에 대한 대댓글을 한 번에 조회 (N+1 방지용)
+     */
+    List<Comment> findByParentInAndIsDeletedFalseOrderByCreatedAtAsc(List<Comment> parents);
+
 }
