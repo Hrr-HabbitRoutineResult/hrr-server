@@ -20,17 +20,17 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/user")
+@RequestMapping("/api/v1/follow")
 @Tag(name = "Follow", description = "팔로우 관련 API")
 public class FollowController {
 
     private final FollowService followService;
     private final FollowListService followListService;
 
-    // ===== 팔로우/팔로우 취소 =====
+    // ===== 팔로우/언팔로우 =====
 
     @Operation(summary = "사용자 팔로우", description = "특정 사용자를 팔로우합니다.")
-    @PostMapping("/{followedUserId}/follow")
+    @PostMapping("/{followedUserId}")
     public ApiResponse<FollowResponseDto> followUser(
             @Parameter(description = "팔로우할 사용자 ID", required = true)
             @PathVariable Long followedUserId,
@@ -44,7 +44,7 @@ public class FollowController {
     }
 
     @Operation(summary = "사용자 팔로우 취소", description = "특정 사용자 팔로우를 취소합니다.")
-    @DeleteMapping("/{unfollowedUserId}/unfollow")
+    @DeleteMapping("/{unfollowedUserId}")
     public ApiResponse<FollowResponseDto> unfollowUser(
             @Parameter(description = "팔로우 취소할 사용자 ID", required = true)
             @PathVariable Long unfollowedUserId,
