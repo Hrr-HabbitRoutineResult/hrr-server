@@ -76,9 +76,9 @@ public class ChallengeRequestDto {
         @NotEmpty(message = "daysOfWeek는 최소 1개 이상이어야 합니다.")
         private List<ChallengeDays> daysOfWeek;
 
-        @Schema(description = "챌린지 이미지 URL", example = "https://example.com/images/my-challenge.png")
+        @Schema(description = "챌린지 이미지 Key", example = "challenges/uuid_image.jpg")
         @NotBlank(message = "챌린지 대표 이미지는 필수입니다.")
-        private String imageUrl;
+        private String imageKey;
     }
 
     @Getter

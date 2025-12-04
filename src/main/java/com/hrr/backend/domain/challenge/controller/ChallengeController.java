@@ -135,7 +135,7 @@ public class ChallengeController {
                   "verifyStartTime": "06:00:00",
                   "verifyEndTime": "23:00:00",
                   "daysOfWeek": ["MONDAY", "WEDNESDAY", "FRIDAY"],
-                  "imageUrl": "https://example.com/images/challenge-default.png"
+                  "imageKey": "challenges/uuid-image-file.jpg"
                 }
                 """
 							)

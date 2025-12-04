@@ -38,7 +38,7 @@ public class ChallengeConverter {
                 .rule(req.getRule())
                 .currentParticipants(1)
                 .status(ChallengeStatus.UPCOMING)
-                .imageUrl(req.getImageUrl())
+                .imageKey(req.getImageKey())
                 .likeCount(0)
                 .build();
 
@@ -89,7 +89,7 @@ public class ChallengeConverter {
                 .challengeId(challenge.getId())
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
-                .imageUrl(challenge.getImageUrl())
+                .imageUrl(challenge.getImageKey())
                 .currentParticipantCount(challenge.getCurrentParticipants())
                 .maxParticipantCount(challenge.getMaxParticipants())
                 .startDate(startDate)
