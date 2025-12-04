@@ -3,6 +3,8 @@ package com.hrr.backend.domain.comment.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Builder
 public class CommentResponseDto {
@@ -23,5 +25,6 @@ public class CommentResponseDto {
     private String content;
     private int likesCount;
 
-    private String createdAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

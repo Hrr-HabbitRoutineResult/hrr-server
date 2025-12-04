@@ -34,7 +34,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     Page<Verification> findByUserChallenge_User_IdAndUserChallenge_Challenge_IdAndRoundId(
             Long userId,
             Long challengeId,
-            Integer roundId,
+            Long roundId,
             Pageable pageable
     );
     /** 챌린지 + 라운드 전체 인증글 조회 */

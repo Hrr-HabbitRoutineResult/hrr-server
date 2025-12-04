@@ -28,7 +28,7 @@ public class CommentController {
     /** 댓글 작성 */
     @Operation(summary = "댓글 작성", description = "인증글에 댓글 또는 대댓글을 작성합니다.")
     @PostMapping("/{verificationId}")
-    public ResponseEntity<?> createComment(
+    public ApiResponse<CommentResponseDto> createComment(
             HttpServletRequest request,
             @PathVariable Long verificationId,
             @RequestBody CommentCreateRequestDto requestDto
@@ -38,22 +38,23 @@ public class CommentController {
 
         CommentResponseDto response = commentService.createComment(verificationId, userId, requestDto);
 
-        return ResponseEntity.ok(ApiResponse.onSuccess(SuccessCode.COMMENT_POST_OK, response));
+        return ApiResponse.onSuccess(SuccessCode.COMMENT_POST_OK, response);
     }
 
     /** 댓글/대댓글 조회 */
     @Operation(summary = "댓글/대댓글 조회", description = "특정 인증글의 모든 댓글 및 대댓글을 조회합니다.")
     @GetMapping("/{verificationId}")
-    public ResponseEntity<CommentListResponseDto> getComments(
+    public ApiResponse<CommentListResponseDto> getComments(
             @PathVariable Long verificationId
     ) {
-        return ResponseEntity.ok(commentService.getComments(verificationId));
+        CommentListResponseDto response = commentService.getComments(verificationId);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
     /** 댓글 수정 */
     @Operation(summary = "댓글 수정", description = "본인이 작성한 댓글만 수정할 수 있습니다.")
     @PatchMapping("/{commentId}")
-    public ResponseEntity<?> updateComment(
+    public ApiResponse<CommentResponseDto> updateComment(
             HttpServletRequest request,
             @PathVariable Long commentId,
             @RequestBody CommentUpdateRequestDto requestDto
@@ -61,20 +62,16 @@ public class CommentController {
         String token = jwtService.resolveToken(request);
         Long userId = jwtService.extractUserId(token);
 
-        commentService.updateComment(commentId, userId, requestDto);
-
         CommentResponseDto response = commentService.updateComment(commentId, userId, requestDto);
 
-        return ResponseEntity.ok(
-                ApiResponse.onSuccess(SuccessCode.COMMENT_UPDATE_OK, response)
-        );
+        return ApiResponse.onSuccess(SuccessCode.COMMENT_POST_OK, response);
 
     }
 
     /** 댓글 삭제 */
     @Operation(summary = "댓글 삭제", description = "댓글을 Soft Delete 방식으로 삭제합니다.")
     @DeleteMapping("/{commentId}")
-    public ResponseEntity<?> deleteComment(
+    public ApiResponse<Void> deleteComment(
             HttpServletRequest request,
             @PathVariable Long commentId
     ) {
@@ -83,6 +80,6 @@ public class CommentController {
 
         commentService.deleteComment(commentId, userId);
 
-        return ResponseEntity.ok(ApiResponse.onSuccess(SuccessCode.COMMENT_DELETE_OK, null));
+        return ApiResponse.onSuccess(SuccessCode.COMMENT_DELETE_OK, null);
     }
 }

@@ -1,9 +1,11 @@
 package com.hrr.backend.domain.verification.service;
 
+import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.dto.*;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.converter.VerificationConverter;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
@@ -25,6 +27,7 @@ public class VerificationServiceImpl implements VerificationService {
 
     private final UserChallengeRepository userChallengeRepository;
     private final VerificationRepository verificationRepository;
+    private final RoundRecordRepository roundRecordRepository;
 
     /* URL 검증용 정규식 */
     private static final String URL_REGEX =
@@ -53,8 +56,12 @@ public class VerificationServiceImpl implements VerificationService {
 
         validateTextUrlFormat(request.getTextUrl());
 
+        RoundRecord roundRecord = roundRecordRepository.findByUserChallengeAndRoundId(uc, roundId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
         Verification verification = Verification.createTextVerification(
                 uc,
+                roundRecord,
                 request.getTitle(),
                 request.getContent(),
                 request.getTextUrl(),
@@ -84,8 +91,12 @@ public class VerificationServiceImpl implements VerificationService {
         // 임시 URL 생성
         String fakeUrl = "https://dummy.image/" + UUID.randomUUID();
 
+        RoundRecord roundRecord = roundRecordRepository.findByUserChallengeAndRoundId(uc, roundId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
         Verification verification = Verification.createPhotoVerification(
                 uc,
+                roundRecord,
                 title,
                 fakeUrl,
                 isQuestion,
@@ -133,7 +144,7 @@ public class VerificationServiceImpl implements VerificationService {
                     .findByUserChallenge_User_IdAndUserChallenge_Challenge_IdAndRoundId(
                             userId,
                             challengeId,
-                            roundId.intValue(),
+                            roundId,
                             pageable
                     );
         } else {

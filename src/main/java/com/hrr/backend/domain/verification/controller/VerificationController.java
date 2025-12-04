@@ -1,15 +1,15 @@
 package com.hrr.backend.domain.verification.controller;
 
-import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
-import com.hrr.backend.domain.verification.dto.VerificationMyResponseDto;
-import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
-import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.dto.*;
 import com.hrr.backend.domain.verification.service.VerificationService;
 import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Verification", description = "인증 관련 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/v1/verification")
+@RequestMapping("/api/v1/verification")
 public class VerificationController {
 
     private final VerificationService verificationService;
@@ -30,33 +30,23 @@ public class VerificationController {
     /** 텍스트 인증 */
     @Operation(summary = "텍스트 인증", description = "글 인증으로 게시물을 작성합니다.")
     @PostMapping("/text")
-    public ResponseEntity<VerificationResponseDto> createTextVerification(
+    public ApiResponse<VerificationResponseDto> createTextVerification(
             @RequestParam Long userId,
             @RequestParam Long challengeId,
             @RequestParam(required = false) Long roundId,
-            @RequestBody VerificationRequestDto request
+            @Valid @RequestBody VerificationRequestDto request
     ) {
+        VerificationResponseDto response = verificationService.createTextVerification(
+                challengeId, roundId, userId, request
+        );
 
-        // 1) 제목 필수 검증
-        if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
-            throw new GlobalException(ErrorCode.VERIFICATION_TITLE_REQUIRED);
-        }
-
-        // 2) content 필수 검증
-        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
-            throw new GlobalException(ErrorCode.VERIFICATION_TEXT_REQUIRED);
-        }
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(verificationService.createTextVerification(
-                        challengeId, roundId, userId, request
-                ));
+        return ApiResponse.onSuccess(SuccessCode.VERIFICATION_POST_OK, response);
     }
 
     /** 사진 인증 */
     @Operation(summary = "사진 인증", description = "사진 인증 게시물을 작성합니다.")
     @PostMapping(value = "/photo", consumes = "multipart/form-data")
-    public ResponseEntity<VerificationResponseDto> createPhotoVerification(
+    public ApiResponse<VerificationResponseDto> createPhotoVerification(
             @RequestParam Long userId,
             @RequestParam Long challengeId,
             @RequestParam(required = false) Long roundId,
@@ -81,15 +71,16 @@ public class VerificationController {
             throw new GlobalException(ErrorCode.VERIFICATION_FILE_NOT_IMAGE);
         }
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(verificationService.createPhotoVerification(
-                        challengeId, roundId, userId, file, title, isQuestion
-                ));
+        VerificationResponseDto response = verificationService.createPhotoVerification(
+                challengeId, roundId, userId, file, title, isQuestion
+        );
+
+        return ApiResponse.onSuccess(SuccessCode.VERIFICATION_POST_OK, response);
     }
 // 사용자 본인 인증글 목록 조회
 @Operation(summary = "사용자 본인의 인증글 목록 조회", description = "본인이 작성한 인증글의 목록을 조회합니다.")
     @GetMapping("/me")
-    public ResponseEntity<VerificationMyResponseDto.MyPostList> getMyVerifications(
+public ApiResponse<VerificationMyResponseDto.MyPostList> getMyVerifications(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long challengeId,
@@ -107,18 +98,18 @@ public class VerificationController {
         VerificationMyResponseDto.MyPostList result =
                 verificationService.getMyVerifications(accessToken, challengeId, roundId, pageable);
 
-        return ResponseEntity.ok(result);
+    return ApiResponse.onSuccess(SuccessCode.OK, result);
     }
     /** 인증글 상세 조회 */
     @Operation(summary = "인증글 상세 조회", description = "verificationId로 인증글 1개를 조회합니다.")
     @GetMapping("/{verificationId}")
-    public ResponseEntity<VerificationDetailResponseDto> getVerificationDetail(
+    public ApiResponse<VerificationDetailResponseDto> getVerificationDetail(
             @PathVariable Long verificationId
     ) {
         VerificationDetailResponseDto result =
                 verificationService.getVerificationDetail(verificationId);
 
-        return ResponseEntity.ok(result);
+        return ApiResponse.onSuccess(SuccessCode.OK, result);
     }
 
     /** 챌린지 + 라운드별 인증글 전체 조회 */
@@ -128,7 +119,7 @@ public class VerificationController {
     )
     //@GetMapping("/challenge/{challengeId}/round/{roundId}")
     @GetMapping("/challenge/{challengeId}")
-    public ResponseEntity<?> getVerificationsByChallengeAndRound(
+    public ApiResponse<VerificationListResponseDto.ListResponse> getVerificationsByChallengeAndRound(
             @PathVariable Long challengeId,
             //@PathVariable Long roundId,
             @RequestParam(required = false) Long roundId,
@@ -139,13 +130,11 @@ public class VerificationController {
         // createdAt 기준 최신순 정렬
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        return ResponseEntity.ok(
-                verificationService.getVerificationsByChallengeAndRound(
-                        challengeId,
-                        roundId,
-                        pageable
-                )
+        VerificationListResponseDto.ListResponse result = verificationService.getVerificationsByChallengeAndRound(
+                challengeId, roundId, pageable
         );
+
+        return ApiResponse.onSuccess(SuccessCode.OK, result);
     }
 
 }

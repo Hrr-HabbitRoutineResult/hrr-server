@@ -47,6 +47,11 @@ public class CommentServiceImpl implements CommentService {
             parent = commentRepository.findById(requestDto.getParentId())
                     .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_INVALID_PARENT));
 
+            //부모 댓글의 dpth가 1이상 존재해서 대댓글인 경우에 더 이상 답글을 달 수 없도록 진행
+            if (parent.getDepth() >= 1) {
+                throw new GlobalException(ErrorCode.COMMENT_DEPTH_EXCEEDED);
+            }
+
             // 부모 댓글의 인증글과 현재 인증글이 다르면 에러
             if (!parent.getVerification().getId().equals(verificationId)) {
                 throw new GlobalException(ErrorCode.COMMENT_INVALID_PARENT);
@@ -123,7 +128,7 @@ public class CommentServiceImpl implements CommentService {
         if (!comment.getUser().getId().equals(userId)) {
             throw new GlobalException(ErrorCode.COMMENT_UNAUTHORIZED);
         }
-
-        comment.softDelete();
+// 엔티티에 @SQLDelete가 적용되어 있으므로 repository.delete를 호출하면 update 쿼리가 실행O
+        commentRepository.delete(comment);
     }
 }
