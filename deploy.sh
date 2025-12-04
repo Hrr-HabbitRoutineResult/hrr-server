@@ -44,6 +44,7 @@ export KAKAO_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.KAKAO_CLIENT_SECRET')
 export PROD_KAKAO_REDIRECT_URI=$(echo "$SECRET_JSON" | jq -r '.PROD_KAKAO_REDIRECT_URI')
 export SPRING_PROFILES_ACTIVE=prod # Spring Profile 설정
 export FIREBASE_SERVICE_ACCOUNT_JSON=$(echo "$SECRET_JSON" | jq -r '.FIREBASE_SERVICE_ACCOUNT_JSON')
+export KAKAO_APP_REDIRECT_URI=$(echo "$SECRET_JSON" | jq -r '.KAKAO_APP_REDIRECT_URI')
 
 echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
 
