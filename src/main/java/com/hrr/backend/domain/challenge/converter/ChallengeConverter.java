@@ -113,7 +113,7 @@ public class ChallengeConverter {
                 .build();
     }
 
-    // ▼▼▼ [새로 추가된 메서드] ▼▼▼
+    // 챌린지 프로필 DTO
     public ChallengeResponseDto.ChallengeProfileDto toProfileDto(
             Challenge challenge,
             boolean isParticipating,
