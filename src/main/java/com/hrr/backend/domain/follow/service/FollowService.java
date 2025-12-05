@@ -1,6 +1,5 @@
 package com.hrr.backend.domain.follow.service;
 
-import com.hrr.backend.domain.follow.dto.FollowActionResponseDto;
 import com.hrr.backend.domain.follow.dto.FollowRequestDto;
 import com.hrr.backend.domain.follow.dto.FollowResponseDto;
 import com.hrr.backend.domain.follow.entity.Follow;
@@ -86,19 +85,19 @@ public class FollowService {
     }
 
     /**
-     * 사용자 언팔로우
+     * 사용자 팔로우 취소
      * @param currentUserId 현재 로그인한 사용자 ID
-     * @param unfollowedUserId 언팔로우할 사용자 ID
+     * @param unfollowedUserId 팔로우 취소할 사용자 ID
      * @return FollowResponseDto
      */
     @Transactional
     public FollowResponseDto unfollowUser(Long currentUserId, Long unfollowedUserId) {
-        log.info("사용자 언팔로우 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
+        log.info("사용자 팔로우 취소 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
         // 대상 사용자가 존재하는지 확인
         userRepository.findById(unfollowedUserId)
                 .orElseThrow(() -> {
-                    log.warn("언팔로우할 사용자를 찾을 수 없습니다 - userId: {}", unfollowedUserId);
+                    log.warn("팔로우 취소할 사용자를 찾을 수 없습니다 - userId: {}", unfollowedUserId);
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
@@ -111,7 +110,7 @@ public class FollowService {
 
         // 팔로우 관계 삭제
         followRepository.delete(follow);
-        log.info("사용자 언팔로우 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
+        log.info("사용자 팔로우 취소 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
         return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId);
     }
@@ -120,10 +119,10 @@ public class FollowService {
      * 팔로우 요청 승인
      * @param currentUserId 현재 로그인한 사용자 ID (요청 받은 사람)
      * @param followId 팔로우 ID
-     * @return FollowActionResponseDto
+     * @return FollowResponseDto
      */
     @Transactional
-    public FollowActionResponseDto approveFollowRequest(Long currentUserId, Long followId) {
+    public FollowResponseDto approveFollowRequest(Long currentUserId, Long followId) {
         log.info("팔로우 요청 승인 - userId: {}, followId: {}", currentUserId, followId);
 
         // 팔로우 요청 조회
@@ -149,17 +148,17 @@ public class FollowService {
         follow.approve();
         log.info("팔로우 요청 승인 완료 - followId: {}", followId);
 
-        return FollowActionResponseDto.of("Follow request approved successfully", followId);
+        return FollowResponseDto.of("Follow request approved successfully", followId);
     }
 
     /**
      * 팔로우 요청 거절/삭제
      * @param currentUserId 현재 로그인한 사용자 ID (요청 받은 사람)
      * @param followId 팔로우 ID
-     * @return FollowActionResponseDto
+     * @return FollowResponseDto
      */
     @Transactional
-    public FollowActionResponseDto rejectFollowRequest(Long currentUserId, Long followId) {
+    public FollowResponseDto rejectFollowRequest(Long currentUserId, Long followId) {
         log.info("팔로우 요청 거절 - userId: {}, followId: {}", currentUserId, followId);
 
         // 팔로우 요청 조회
@@ -179,7 +178,7 @@ public class FollowService {
         followRepository.delete(follow);
         log.info("팔로우 요청 거절 완료 - followId: {}", followId);
 
-        return FollowActionResponseDto.of("Follow request rejected successfully", followId);
+        return FollowResponseDto.of("Follow request rejected successfully", followId);
     }
 
     /**
