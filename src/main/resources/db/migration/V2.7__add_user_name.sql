@@ -25,3 +25,7 @@ CALL add_name_column_if_not_exists();
 
 -- 3. 임시 프로시저 삭제 (환경 정리)
 DROP PROCEDURE add_name_column_if_not_exists;
+
+-- nickname 컬럼의 속성을 NULL로 변경합니다.
+ALTER TABLE `user`
+    MODIFY COLUMN `nickname` VARCHAR(20) NULL;
