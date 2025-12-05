@@ -9,10 +9,13 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
@@ -46,7 +49,8 @@ public class AuthService {
                     user.getId(),
                     accessToken,
                     refreshToken,
-                    user.getNickname(),
+					user.getName(),
+					user.getNickname(),
                     user.getLoginStatus(),
                     nextStep
             );
@@ -102,6 +106,7 @@ public class AuthService {
 				user.getId(),
 				accessToken,
 				refreshToken,
+				user.getName(),
 				user.getNickname(),
 				user.getLoginStatus(),
 				nextStep
@@ -111,6 +116,7 @@ public class AuthService {
 			throw e;
 		} catch (Exception e) {
 			// 외부 카카오 서버 통신 오류 처리
+			log.error(String.valueOf(e));
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}
