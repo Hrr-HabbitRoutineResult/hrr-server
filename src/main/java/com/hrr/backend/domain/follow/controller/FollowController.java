@@ -5,6 +5,7 @@ import com.hrr.backend.domain.follow.dto.FollowRequestDto;
 import com.hrr.backend.domain.follow.dto.FollowResponseDto;
 import com.hrr.backend.domain.follow.service.FollowListService;
 import com.hrr.backend.domain.follow.service.FollowService;
+import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
@@ -15,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,9 +38,9 @@ public class FollowController {
     public ApiResponse<FollowResponseDto> followUser(
             @Parameter(description = "팔로우할 사용자 ID", required = true)
             @PathVariable Long followedUserId,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("팔로우 요청 - currentUserId: {}, followedUserId: {}", currentUserId, followedUserId);
 
         FollowResponseDto response = followService.followUser(currentUserId, followedUserId);
@@ -51,9 +52,9 @@ public class FollowController {
     public ApiResponse<FollowResponseDto> unfollowUser(
             @Parameter(description = "팔로우 취소할 사용자 ID", required = true)
             @PathVariable Long unfollowedUserId,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("팔로우 취소 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
 
         FollowResponseDto response = followService.unfollowUser(currentUserId, unfollowedUserId);
@@ -69,9 +70,9 @@ public class FollowController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int size,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("내 팔로잉 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
 
         Pageable pageable = PageRequest.of(page, size);
@@ -86,9 +87,9 @@ public class FollowController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int size,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("내 팔로워 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
 
         Pageable pageable = PageRequest.of(page, size);
@@ -99,9 +100,9 @@ public class FollowController {
     @Operation(summary = "받은 팔로우 요청 목록 조회", description = "현재 사용자가 받은 대기 중인 팔로우 요청 목록을 조회합니다.")
     @GetMapping("/me/requests")
     public ApiResponse<List<FollowRequestDto>> getPendingFollowRequests(
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("팔로우 요청 목록 조회 - currentUserId: {}", currentUserId);
 
         List<FollowRequestDto> response = followService.getPendingFollowRequests(currentUserId);
@@ -119,9 +120,9 @@ public class FollowController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int size,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("사용자 팔로잉 목록 조회 요청 - userId: {}, currentUserId: {}, page: {}, size: {}",
                 userId, currentUserId, page, size);
 
@@ -139,9 +140,9 @@ public class FollowController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int size,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("사용자 팔로워 목록 조회 요청 - userId: {}, currentUserId: {}, page: {}, size: {}",
                 userId, currentUserId, page, size);
 
@@ -157,9 +158,9 @@ public class FollowController {
     public ApiResponse<FollowResponseDto> approveFollowRequest(
             @Parameter(description = "팔로우 ID", required = true)
             @PathVariable Long followId,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("팔로우 요청 승인 - currentUserId: {}, followId: {}", currentUserId, followId);
 
         FollowResponseDto response = followService.approveFollowRequest(currentUserId, followId);
@@ -171,9 +172,9 @@ public class FollowController {
     public ApiResponse<FollowResponseDto> rejectFollowRequest(
             @Parameter(description = "팔로우 ID", required = true)
             @PathVariable Long followId,
-            Authentication authentication
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = customUserDetails.getUser().getId();
         log.info("팔로우 요청 거절 - currentUserId: {}, followId: {}", currentUserId, followId);
 
         FollowResponseDto response = followService.rejectFollowRequest(currentUserId, followId);
