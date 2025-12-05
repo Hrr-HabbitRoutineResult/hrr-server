@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
@@ -49,7 +50,8 @@ public class AuthService {
                     user.getId(),
                     accessToken,
                     refreshToken,
-                    user.getNickname(),
+					user.getName(),
+					user.getNickname(),
                     user.getLoginStatus(),
                     nextStep
             );
@@ -105,6 +107,7 @@ public class AuthService {
 				user.getId(),
 				accessToken,
 				refreshToken,
+				user.getName(),
 				user.getNickname(),
 				user.getLoginStatus(),
 				nextStep
@@ -114,6 +117,7 @@ public class AuthService {
 			throw e;
 		} catch (Exception e) {
 			// 외부 카카오 서버 통신 오류 처리
+			log.error(String.valueOf(e));
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}
