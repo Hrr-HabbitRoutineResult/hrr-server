@@ -51,6 +51,7 @@ public class Verification extends BaseEntity {
 
     @Column(nullable = false)
     @ColumnDefault("false")
+    @Builder.Default
     private Boolean isResolved = false;
 
     public static Verification createTextVerification(
