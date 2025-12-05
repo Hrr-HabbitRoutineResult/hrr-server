@@ -80,6 +80,21 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
+	@GetMapping("/{challengeId}/profile")
+	@Operation(summary = "챌린지 프로필 조회 (참여 전/후 UI 통합)",
+			description = "로그인한 유저의 참여 상태에 따라 인증 현황을 포함하거나 제외하여 반환합니다.")
+	public ApiResponse<ChallengeResponseDto.ChallengeProfileDto> getChallengeProfile(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		ChallengeResponseDto.ChallengeProfileDto response = challengeService.getChallengeProfile(
+				userDetails.getUser(),
+				challengeId
+		);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
+
 	@PostMapping("/{challengeId}/click")
 	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
 	public ApiResponse<Long> clickChallenge(@PathVariable("challengeId") Long challengeId) {

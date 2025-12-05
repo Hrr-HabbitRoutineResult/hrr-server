@@ -13,6 +13,15 @@ import org.hibernate.annotations.ColumnDefault;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+        name = "verification",
+        indexes = {
+                // 날짜 범위 검색 최적화
+                @Index(name = "idx_verification_created_at", columnList = "created_at"),
+                // 상태값 필터링 최적화
+                @Index(name = "idx_verification_status", columnList = "status")
+        }
+)
 public class Verification extends BaseEntity {
 
     @Id
