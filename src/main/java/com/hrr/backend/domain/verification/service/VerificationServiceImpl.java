@@ -89,6 +89,9 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 현재 진행 중인 라운드 조회
         Round currentRound = challenge.getCurrentRound();
+        if (currentRound == null) {
+            return verificationConverter.toStatDto(0, totalParticipantCount, null);
+        }
 
         Long currentRoundId = currentRound.getId();
 
@@ -99,7 +102,7 @@ public class VerificationServiceImpl implements VerificationService {
             return verificationConverter.toStatDto(0, totalParticipantCount, null);
         }
 
-        // 6. 인증 인원 집계
+        // 인증 인원 집계
         LocalDate targetDate = targetDateTime.toLocalDate();
         Integer certifiedCount = verificationRepository.countDistinctCertifiers(
                 currentRoundId,
