@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -46,19 +45,25 @@ public class FollowListService {
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
+        // TODO: 비공개 계정 팔로우 목록 조회 권한 체크 추가 필요
+        // - 공개 계정: 누구나 조회 가능
+        // - 비공개 계정: 본인 또는 승인된 팔로워만 조회 가능
+
         // 팔로워 목록 조회 (Slice 페이징)
         Slice<User> followersSlice = followRepository.findFollowersByUserId(userId, pageable);
         log.info("팔로워 목록 조회 완료 - userId: {}, hasNext: {}", userId, followersSlice.hasNext());
 
         // 팔로워가 없으면 빈 Slice 반환
         if (followersSlice.isEmpty()) {
-            return new SliceResponseDto<>(followersSlice.map(user -> null));
+            return new SliceResponseDto<>(followersSlice.map(user ->
+                    FollowListResponseDto.of(user, false)
+            ));
         }
 
         // N+1 방지: 한 번의 쿼리로 현재 사용자가 팔로우 중인 ID 목록 조회
         List<Long> followerIds = followersSlice.getContent().stream()
                 .map(User::getId)
-                .collect(Collectors.toList());
+                .toList();
 
         Set<Long> followingIds = new HashSet<>(
                 followRepository.findFollowingIdsByFollowerIdAndFollowingIds(currentUserId, followerIds)
@@ -90,19 +95,25 @@ public class FollowListService {
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
+        // TODO: 비공개 계정 팔로우 목록 조회 권한 체크 추가 필요
+        // - 공개 계정: 누구나 조회 가능
+        // - 비공개 계정: 본인 또는 승인된 팔로워만 조회 가능
+
         // 팔로잉 목록 조회 (Slice 페이징)
         Slice<User> followingsSlice = followRepository.findFollowingsByUserId(userId, pageable);
         log.info("팔로잉 목록 조회 완료 - userId: {}, hasNext: {}", userId, followingsSlice.hasNext());
 
         // 팔로잉이 없으면 빈 Slice 반환
         if (followingsSlice.isEmpty()) {
-            return new SliceResponseDto<>(followingsSlice.map(user -> null));
+            return new SliceResponseDto<>(followingsSlice.map(user ->
+                    FollowListResponseDto.of(user, false)
+            ));
         }
 
         // N+1 방지: 한 번의 쿼리로 현재 사용자가 팔로우 중인 ID 목록 조회
         List<Long> followingIds = followingsSlice.getContent().stream()
                 .map(User::getId)
-                .collect(Collectors.toList());
+                .toList();
 
         Set<Long> currentUserFollowingIds = new HashSet<>(
                 followRepository.findFollowingIdsByFollowerIdAndFollowingIds(currentUserId, followingIds)
