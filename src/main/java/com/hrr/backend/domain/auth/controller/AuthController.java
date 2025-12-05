@@ -101,5 +101,21 @@ public class AuthController {
         AuthResponseDto.TokenReissueResponse response = authService.reissueToken(refreshToken);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
+
+	/**
+	 * 카카오 엑세스 토큰을 통해 로그인
+	 * 카카오 Access Token을 받아, 우리 서비스의 JWT를 반환합니다.
+	 */
+	@PostMapping("/login/kakao")
+	@Operation(summary = "카카오 로그인 (SDK 방식)",
+		description = "전달받은 카카오 Access Token으로 유저 정보를 조회하고 로그인/회원가입 처리합니다.")
+	public ApiResponse<AuthResponseDto.LoginResponse> kakaoLoginByToken(
+		@RequestBody @Valid AuthRequestDto.KakaoAccessTokenDto request) {
+
+		// 서비스 로직 호출
+		AuthResponseDto.LoginResponse loginResponse = authService.kakaoLogin(request.getAccessToken());
+
+		return ApiResponse.onSuccess(SuccessCode.OK, loginResponse);
+	}
 }
 
