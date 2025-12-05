@@ -15,4 +15,9 @@ public interface VerificationService {
             int size
     );
 
+    /**
+     * 인증 인원 통계 조회 (상단 헤더용)
+     */
+    VerificationResponseDto.StatDto getVerificationStat(Long challengeId);
+
 }

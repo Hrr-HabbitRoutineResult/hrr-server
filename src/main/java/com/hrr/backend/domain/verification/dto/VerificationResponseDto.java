@@ -48,4 +48,21 @@ public class VerificationResponseDto {
         private LocalDateTime createdDate;
     }
 
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @Schema(description = "인증 통계 정보 DTO (헤더용)")
+    public static class StatDto {
+
+        @Schema(description = "집계된 인증 인원 수", example = "15")
+        private Integer certifiedCount;
+
+        @Schema(description = "전체 참가자 수", example = "30")
+        private Integer totalParticipantCount;
+
+        @Schema(description = "집계 기준 날짜", example = "2025-12-05")
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy.MM.dd")
+        private LocalDateTime baseDate;
+    }
+
 }

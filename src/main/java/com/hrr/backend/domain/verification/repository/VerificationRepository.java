@@ -49,4 +49,27 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             Pageable pageable
     );
 
+    // 가장 최근 인증 날짜 조회 (COMPLETED 상태만)
+    @Query("SELECT MAX(v.createdAt) FROM Verification v " +
+            "JOIN v.roundRecord r " +
+            "WHERE r.round.id = :roundId " +
+            "AND v.status = :status")
+    LocalDateTime findLatestVerificationTime(
+            @Param("roundId") Long roundId,
+            @Param("status") VerificationStatus status
+    );
+
+    // 특정 날짜(범위)의 인증 인원 수 (중복 제거, COMPLETED 상태만)
+    @Query("SELECT COUNT(DISTINCT r.userChallenge.id) FROM Verification v " +
+            "JOIN v.roundRecord r " +
+            "WHERE r.round.id = :roundId " +
+            "AND v.status = :status " +
+            "AND v.createdAt BETWEEN :start AND :end")
+    Integer countDistinctCertifiers(
+            @Param("roundId") Long roundId,
+            @Param("status") VerificationStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
 }

@@ -26,4 +26,16 @@ public class VerificationConverter {
                 .build();
     }
 
+    public VerificationResponseDto.StatDto toStatDto(
+            Integer certifiedCount,
+            Integer totalParticipantCount,
+            LocalDateTime baseDate
+    ) {
+        return VerificationResponseDto.StatDto.builder()
+                .certifiedCount(certifiedCount)
+                .totalParticipantCount(totalParticipantCount)
+                .baseDate(baseDate)
+                .build();
+    }
+
 }

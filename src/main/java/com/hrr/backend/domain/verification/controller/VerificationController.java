@@ -40,4 +40,15 @@ public class VerificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    @GetMapping("/stat")
+    @Operation(summary = "인증 인원 통계 조회", description = "현재 진행 중인 라운드의 실시간(또는 최근) 인증 인원 수를 조회합니다.")
+    public ApiResponse<VerificationResponseDto.StatDto> getVerificationStat(
+            @RequestParam(name = "challengeId") Long challengeId
+    ) {
+        VerificationResponseDto.StatDto response =
+                verificationService.getVerificationStat(challengeId);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
 }

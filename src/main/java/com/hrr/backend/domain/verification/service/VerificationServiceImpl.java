@@ -71,6 +71,46 @@ public class VerificationServiceImpl implements VerificationService {
         return new SliceResponseDto<>(dtoSlice);
     }
 
+
+    @Override
+    public VerificationResponseDto.StatDto getVerificationStat(Long challengeId) {
+        // 챌린지 조회
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+        // 챌린지 상태 검증 (ONGOING, RECRUITING 아니면 에러)
+        ChallengeStatus status = challenge.getStatus();
+        if (status != ChallengeStatus.ONGOING && status != ChallengeStatus.RECRUITING) {
+            throw new GlobalException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+
+        // 현재 참가자 수 (위 검증을 통과했으므로 무조건 존재)
+        Integer totalParticipantCount = challenge.getCurrentParticipants();
+
+        // 현재 진행 중인 라운드 조회
+        Round currentRound = challenge.getCurrentRound();
+
+        Long currentRoundId = currentRound.getId();
+
+        // 기준 시간 결정
+        LocalDateTime targetDateTime = determineTargetDateTime(challenge, currentRoundId);
+
+        if (targetDateTime == null) {
+            return verificationConverter.toStatDto(0, totalParticipantCount, null);
+        }
+
+        // 6. 인증 인원 집계
+        LocalDate targetDate = targetDateTime.toLocalDate();
+        Integer certifiedCount = verificationRepository.countDistinctCertifiers(
+                currentRoundId,
+                VerificationStatus.COMPLETED,
+                targetDate.atStartOfDay(),
+                targetDate.atTime(LocalTime.MAX)
+        );
+
+        return verificationConverter.toStatDto(certifiedCount, totalParticipantCount, targetDateTime);
+    }
+
     // 타입 변환 헬퍼 메서드
     private VerificationPostType mapToPostType(VerificationType verificationType) {
         // Challenge Entity의 VerificationType(PHOTO, TEXT)을
@@ -80,6 +120,29 @@ public class VerificationServiceImpl implements VerificationService {
         } else {
             // 나머지는 CAMERA로 취급
             return VerificationPostType.CAMERA;
+        }
+    }
+
+    // 기준 시간 결정 메서드
+    private LocalDateTime determineTargetDateTime(Challenge challenge, Long roundId) {
+        LocalTime now = LocalTime.now();
+        LocalTime start = challenge.getVerifyStartTime();
+        LocalTime end = challenge.getVerifyEndTime();
+
+        boolean isVerificationTime;
+        if (start.isBefore(end)) {
+            isVerificationTime = !now.isBefore(start) && !now.isAfter(end);
+        } else {
+            isVerificationTime = !now.isBefore(start) || !now.isAfter(end);
+        }
+
+        if (isVerificationTime) {
+            return LocalDateTime.now();
+        } else {
+            return verificationRepository.findLatestVerificationTime(
+                    roundId,
+                    VerificationStatus.COMPLETED
+            );
         }
     }
 
