@@ -26,7 +26,7 @@ public class VerificationController {
 
     private final VerificationService verificationService;
 
-    @GetMapping("")
+    @GetMapping("/profile")
     @Operation(summary = "챌린지 인증 피드 조회", description = "챌린지의 설정(글/사진)에 맞는 인증 목록을 조회합니다.")
     public ApiResponse<SliceResponseDto<VerificationResponseDto.FeedDto>> getVerificationFeed(
             @RequestParam(name = "challengeId") Long challengeId,
