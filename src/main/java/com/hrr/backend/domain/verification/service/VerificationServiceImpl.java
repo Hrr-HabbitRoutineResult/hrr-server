@@ -104,14 +104,18 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 인증 인원 집계
         LocalDate targetDate = targetDateTime.toLocalDate();
-        Integer certifiedCount = verificationRepository.countDistinctCertifiers(
+        Long certifiedCount = verificationRepository.countDistinctCertifiers(
                 currentRoundId,
                 VerificationStatus.COMPLETED,
                 targetDate.atStartOfDay(),
                 targetDate.atTime(LocalTime.MAX)
         );
 
-        return verificationConverter.toStatDto(certifiedCount, totalParticipantCount, targetDateTime);
+        return verificationConverter.toStatDto(
+                certifiedCount.intValue(),
+                totalParticipantCount,
+                targetDateTime
+        );
     }
 
     // 타입 변환 헬퍼 메서드

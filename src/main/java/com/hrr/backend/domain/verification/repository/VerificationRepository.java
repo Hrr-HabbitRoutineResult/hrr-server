@@ -65,7 +65,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "WHERE r.round.id = :roundId " +
             "AND v.status = :status " +
             "AND v.createdAt BETWEEN :start AND :end")
-    Integer countDistinctCertifiers(
+    Long countDistinctCertifiers(
             @Param("roundId") Long roundId,
             @Param("status") VerificationStatus status,
             @Param("start") LocalDateTime start,
