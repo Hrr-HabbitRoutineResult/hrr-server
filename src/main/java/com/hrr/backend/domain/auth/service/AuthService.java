@@ -9,10 +9,13 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
@@ -46,7 +49,8 @@ public class AuthService {
                     user.getId(),
                     accessToken,
                     refreshToken,
-                    user.getNickname(),
+					user.getName(),
+					user.getNickname(),
                     user.getLoginStatus(),
                     nextStep
             );
@@ -74,4 +78,45 @@ public class AuthService {
 
         return new AuthResponseDto.TokenReissueResponse(newAccessToken);
     }
+
+	/**
+	 * 테스트용 / sdk 환경에 사용할 용도로 카카오 엑세스 토큰을 받아 내부 로그인 처리를 하는 메소드 입니다.
+	 * 위의 socialLogin 메소드에서 socialType을 kakao로 고정하고, 카카오 엑세스 토큰을 발급받는 과정을 제외하고 동일합니다.
+	 *
+	 * @param kakaoAccessToken 카카오 sdk 통해서 받아온 엑세스 토큰
+	 * @return 토큰, userId 등 필요 정보
+	 */
+	public AuthResponseDto.LoginResponse kakaoLogin(String kakaoAccessToken) {
+
+		try {
+			// 카카오 유저 정보 조회
+			KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(kakaoAccessToken);
+
+			// DB에 유저 upsert
+			User user = socialUserService.upsertKakaoUser(kakaoUser);
+
+			// JWT 생성
+			String accessToken = jwtService.generateAccessToken(user.getId());
+			String refreshToken = jwtService.generateRefreshToken(user.getId());
+
+			// 다음단계 게산
+			String nextStep = user.determineNextStep();
+
+			return new AuthResponseDto.LoginResponse(
+				user.getId(),
+				accessToken,
+				refreshToken,
+				user.getName(),
+				user.getNickname(),
+				user.getLoginStatus(),
+				nextStep
+			);
+		} catch (GlobalException e) {
+			// KakaoAuthService 내부에서 GlobalException 이미 던지면 그대로 전달
+			throw e;
+		} catch (Exception e) {
+			// 외부 카카오 서버 통신 오류 처리
+			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+		}
+	}
 }

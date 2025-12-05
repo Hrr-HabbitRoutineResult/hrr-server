@@ -21,6 +21,12 @@ import org.hibernate.annotations.ColumnDefault;
         name = "user_challenge",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"user_id", "challenge_id"})
+        },
+        indexes = {
+                // 챌린지 ID 기준 조회 최적화 (FK)
+                @Index(name = "idx_user_challenge_challenge_id", columnList = "challenge_id"),
+                // 유저 ID 기준 조회 최적화
+                @Index(name = "idx_user_challenge_user_id", columnList = "user_id")
         }
 )
 public class UserChallenge extends BaseEntity {

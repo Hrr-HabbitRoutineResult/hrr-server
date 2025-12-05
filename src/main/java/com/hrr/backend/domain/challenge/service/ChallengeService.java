@@ -24,8 +24,11 @@ public interface ChallengeService {
 		int size
 	);
 
+	// 챌린지 상단 헤더 조회
+	ChallengeResponseDto.HeaderInfoDto getChallengeHeaderInfo(Long challengeId, User user);
+
 	// 챌린지 프로필 조회
-	//Integer getChallengeProfile(Long challengeId);
+	ChallengeResponseDto.ChallengeProfileDto getChallengeProfile(User user, Long challengeId);
 
 	// 챌린지 클릭 처리
 	Long clickChallenge(Long challengeId);
