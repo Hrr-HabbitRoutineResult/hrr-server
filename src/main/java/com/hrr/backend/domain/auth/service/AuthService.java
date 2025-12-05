@@ -116,7 +116,6 @@ public class AuthService {
 			throw e;
 		} catch (Exception e) {
 			// 외부 카카오 서버 통신 오류 처리
-			log.error(String.valueOf(e));
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}
