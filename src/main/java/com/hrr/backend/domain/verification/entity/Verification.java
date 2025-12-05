@@ -6,6 +6,7 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Getter
@@ -38,6 +39,10 @@ public class Verification extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private VerificationStatus status; // TEMPORARY, COMPLETED
+
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private Boolean isResolved = false;
 
     public static Verification createTextVerification(
             RoundRecord roundRecord,
