@@ -3,6 +3,7 @@ package com.hrr.backend.domain.user.service;
 import com.hrr.backend.domain.user.dto.UserTermRequestDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserTerm;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.user.repository.UserTermRepository;
 import com.hrr.backend.domain.term.entity.Term;
 import com.hrr.backend.domain.term.repository.TermRepository;
@@ -21,6 +22,7 @@ public class UserTermServiceImpl implements UserTermService {
 
     private final UserTermRepository userTermRepository;
     private final TermRepository termRepository;
+	private final UserRepository userRepository;
 
     @Override
     public void saveUserTerms(User user, UserTermRequestDto.AgreeRequest request) {
@@ -63,5 +65,9 @@ public class UserTermServiceImpl implements UserTermService {
 
         // 4. 유저 상태 업데이트
         user.updateLoginStatus(com.hrr.backend.domain.user.entity.enums.LoginStatus.TERMS_DONE);
+
+		// DB 반영
+		userRepository.save(user);
+
     }
 }
