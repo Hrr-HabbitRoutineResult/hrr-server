@@ -1,17 +1,16 @@
 package com.hrr.backend.domain.verification.converter;
 
-import java.time.LocalDateTime;
-
-import org.springframework.stereotype.Component;
-
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 @Component
 public class VerificationConverter {
 
     public VerificationResponseDto.FeedDto toFeedDto(Verification verification) {
+        boolean hasLink = verification.getTextUrl() != null && !verification.getTextUrl().isBlank();
 
         return VerificationResponseDto.FeedDto.builder()
                 .verificationId(verification.getId())
@@ -19,7 +18,7 @@ public class VerificationConverter {
                 .title(verification.getTitle())
                 .content(verification.getContent())
                 .imageUrl(verification.getPhotoUrl())
-                .linkUrl(verification.getTextUrl())
+                .hasLink(hasLink)
                 .isQuestion(verification.getIsQuestion())
                 .isResolved(verification.getIsResolved())
                 .createdDate(verification.getCreatedAt())

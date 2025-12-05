@@ -31,11 +31,11 @@ public class VerificationResponseDto {
         @Schema(description = "내용 (글 인증 미리보기용)", example = "이 부분 어떻게 해결하나요?")
         private String content;
 
-        @Schema(description = "인증 사진 URL (사진 인증인 경우)", example = "https://example.com/photo.jpg")
+        @Schema(description = "인증 사진 URL", example = "https://example.com/photo.jpg")
         private String imageUrl;
 
-        @Schema(description = "외부 링크 URL (있을 경우 링크 아이콘 표시)", example = "https://velog.io/my-post")
-        private String linkUrl;
+        @Schema(description = "외부 링크 포함 여부 (true: 링크 있음, false: 없음)", example = "true")
+        private Boolean hasLink;
 
         @Schema(description = "질문글 여부 (Q 마크 표시)", example = "true")
         private Boolean isQuestion;
