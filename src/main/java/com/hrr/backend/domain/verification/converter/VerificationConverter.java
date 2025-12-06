@@ -9,6 +9,7 @@ import com.hrr.backend.domain.verification.dto.VerificationMyResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.global.response.PageResponseDto;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -19,6 +20,9 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class VerificationConverter {
+
+
+    private final S3UrlUtil s3UrlUtil;
 
    /**
    * Verification 엔티티를 VerificationResponseDto로 변환
@@ -32,7 +36,7 @@ public class VerificationConverter {
                 .title(verification.getTitle())
                 .content(verification.getContent())
                 .textUrl(verification.getTextUrl())
-                .photoUrl(verification.getPhotoUrl())
+                .photoUrl(s3UrlUtil.toFullUrl(verification.getPhotoUrl()))
                 .isQuestion(verification.getIsQuestion())
                 .status(verification.getStatus())
                 .createdAt(verification.getCreatedAt())
