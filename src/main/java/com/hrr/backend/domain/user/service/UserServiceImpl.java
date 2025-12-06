@@ -1,5 +1,12 @@
 package com.hrr.backend.domain.user.service;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
 import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
@@ -11,6 +18,7 @@ import com.hrr.backend.global.s3.S3UrlUtil;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -176,8 +184,69 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+	/**
+	 * 키워드가 닉네임에 포함된 사용자 조회
+	 *
+	 * @param keyword 검색어
+	 * @param page 페이지 번호
+	 * @param size 조회할 데이터 개수
+	 */
+	@Override
+	public SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(User user, String keyword, int page, int size) {
 
-    private String normalize(String raw) {
+		Long currentUserId = user.getId();
+
+		Pageable pageable = PageRequest.of(page, size);
+
+		// DB 조회
+		Slice<User> usersSlice = userRepository.findByNicknameContaining(normalize(keyword), pageable);
+
+		// DTO 변환을 위한 필터링된 사용자 리스트
+		List<User> targetUsers = usersSlice.getContent().stream()
+			.filter(target -> !target.getId().equals(currentUserId))
+			.toList();
+
+		// N+1 문제 해결을 위한 Bulk 조회
+		List<Long> targetIds = targetUsers.stream()
+			.map(User::getId)
+			.collect(Collectors.toList());
+
+		// 현재 사용자가 대상 사용자들을 팔로우하고 있는 Follow 엔티티 리스트를 한 번의 쿼리로 조회
+		List<Long> existingFollowIds = followRepository.findFollowingIdsByFollowerIdAndFollowingIds(currentUserId, targetIds);
+
+		// Set 생성: O(1) 시간에 팔로우 여부를 확인하기 위해 Set으로 변환
+		Set<Long> followingIdSet = new HashSet<>(existingFollowIds);
+
+		// DTO 변환
+		List<UserResponseDto.ProfileDto> profileDtos = targetUsers.stream()
+			.map(target -> {
+				// Set을 사용하여 O(1) 복잡도로 팔로우 여부 확인
+				boolean isFollowing = followingIdSet.contains(target.getId());
+
+				return UserResponseDto.ProfileDto.builder()
+					.userId(target.getId())
+					.profileImage(target.getProfileImage())
+					.nickname(target.getNickname())
+					.followerCount(null)
+					.followingCount(null)
+					.level(target.getUserLevel())
+					.isFollowing(isFollowing) // Set에서 가져온 값 사용
+					.build();
+			})
+			.collect(Collectors.toList());
+
+		// SliceResponseDto 생성 및 반환
+		Slice<UserResponseDto.ProfileDto> resultSlice = new SliceImpl<>(
+			profileDtos,
+			pageable,
+			usersSlice.hasNext()
+		);
+
+		// 최종 응답 DTO 반환
+		return SliceResponseDto.of(resultSlice);
+	}
+
+	private String normalize(String raw) {
         if (raw == null) return "";
         return raw.trim();
     }
