@@ -6,6 +6,8 @@ import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.global.s3.S3UrlUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -27,6 +29,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final UserChallengeRepository userChallengeRepository;
+
+    private final S3UrlUtil s3UrlUtil;
 
     // 프로필 조회 관련
 
@@ -58,6 +62,11 @@ public class UserServiceImpl implements UserService {
         // Repository에서 참가중인 챌린지 조회
         Slice<UserResponseDto.OngoingChallengeDto> slice =
                 userChallengeRepository.findOngoingChallengesByUser(user, pageable);
+
+        // URL 변환 로직 교체
+        slice.getContent().forEach(dto ->
+                dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
+        );
 
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(slice);
