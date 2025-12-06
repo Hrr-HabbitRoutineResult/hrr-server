@@ -79,7 +79,7 @@ public class Verification extends BaseEntity {
                 .textUrl(textUrl)
                 .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.TEMPORARY)
+                .status(VerificationStatus.COMPLETED)
                 .build();
     }
 
@@ -102,7 +102,7 @@ public class Verification extends BaseEntity {
                 .content(content)
                 .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.TEMPORARY)
+                .status(VerificationStatus.COMPLETED)
                 .build();
     }
 
