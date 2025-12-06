@@ -45,3 +45,4 @@ aws:
     region: ap-northeast-2
     bucket: hrr-bucket
     prefix: uploads
+    url-prefix: https://hrr-bucket.s3.ap-northeast-2.amazonaws.com

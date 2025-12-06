@@ -6,6 +6,8 @@ import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.global.s3.S3UrlUtil;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -19,6 +21,16 @@ import com.hrr.backend.domain.user.entity.enums.LoginStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
+import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.global.common.enums.ChallengeDays;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // 기본적으로 읽기 전용 (조회 성능 최적화)
@@ -27,6 +39,11 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final UserChallengeRepository userChallengeRepository;
+
+    private final ChallengeRepository challengeRepository;
+    private final VerificationRepository verificationRepository;
+
+    private final S3UrlUtil s3UrlUtil;
 
     // 프로필 조회 관련
 
@@ -58,6 +75,43 @@ public class UserServiceImpl implements UserService {
         // Repository에서 참가중인 챌린지 조회
         Slice<UserResponseDto.OngoingChallengeDto> slice =
                 userChallengeRepository.findOngoingChallengesByUser(user, pageable);
+
+        // URL 변환 로직 교체
+        slice.getContent().forEach(dto ->
+                dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
+        );
+
+		// 인증 완료 여부 추가 - 오늘 포함 가장 최근 인증 요일에 완료 여부
+		slice.getContent().forEach(dto -> {
+			Long challengeId = dto.getChallengeId();
+			// 챌린지 요일/인증 시간 로딩
+			Challenge challenge = challengeRepository.findByIdWithDays(challengeId)
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+			// 유저-챌린지 매핑 (userChallengeId 필요)
+			Long userChallengeId = userChallengeRepository
+					.findByUserIdAndChallengeId(userId, challengeId)
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
+					.getId();
+
+			// 오늘 포함 가장 최근 인증 요일 계산
+			LocalDate targetDate = findLastestDateIncludingToday(challenge);
+			boolean verified = false;
+			if (targetDate != null) {
+				LocalDateTime start = LocalDateTime.of(targetDate, challenge.getVerifyStartTime());
+				LocalDateTime end = LocalDateTime.of(targetDate, challenge.getVerifyEndTime());
+				verified = verificationRepository.existsTodayVerification(	// 오늘 완료 여부를 확인하기 위한 메소드지만 파라미터 조정으로 활용
+						userChallengeId,
+						VerificationStatus.COMPLETED,
+						start,
+						end
+				);
+			}
+
+			// DTO 반영
+			dto.setVerified(verified);
+		});
+
 
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(slice);
@@ -126,5 +180,26 @@ public class UserServiceImpl implements UserService {
     private String normalize(String raw) {
         if (raw == null) return "";
         return raw.trim();
+    }
+
+    // 오늘 포함, 챌린지의 인증 요일 중 가장 최근 날짜 계산 (최대 7일 탐색)
+    private LocalDate findLastestDateIncludingToday(Challenge challenge) {
+        // 챌린지의 요일 집합
+        var targetDays = challenge.getChallengeDays().stream()
+                .map(ChallengeDayJoin::getDayOfWeek)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (targetDays.isEmpty()) return null;
+
+        LocalDate today = LocalDate.now();
+        for (int i = 0; i < 7; i++) {
+            LocalDate candidate = today.minusDays(i);
+            ChallengeDays asEnum = ChallengeDays.from(candidate.getDayOfWeek());
+            if (targetDays.contains(asEnum)) {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 }

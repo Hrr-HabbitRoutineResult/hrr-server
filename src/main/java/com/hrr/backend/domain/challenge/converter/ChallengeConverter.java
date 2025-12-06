@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.global.s3.S3UrlUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
@@ -15,7 +18,10 @@ import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 
 @Component
+@RequiredArgsConstructor
 public class ChallengeConverter {
+
+    private final S3UrlUtil s3UrlUtil;
 
     public Challenge toChallengeEntity(
             ChallengeRequestDto.CreateChallengeDto req,
@@ -31,14 +37,14 @@ public class ChallengeConverter {
                 .password(password)
                 .title(req.getTitle())
                 .description(req.getDescription())
-                .startDate(req.getStartDate())
+                .startDate(req.getStartDate().atStartOfDay())
                 .verificationType(req.getVerificationType())
                 .verifyStartTime(req.getVerifyStartTime())
                 .verifyEndTime(req.getVerifyEndTime())
                 .rule(req.getRule())
                 .currentParticipants(1)
                 .status(ChallengeStatus.UPCOMING)
-                .imageUrl(req.getImageUrl())
+                .imageKey(req.getImageKey())
                 .likeCount(0)
                 .build();
 
@@ -89,12 +95,13 @@ public class ChallengeConverter {
                 .challengeId(challenge.getId())
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
-                .imageUrl(challenge.getImageUrl())
+                .imageUrl(s3UrlUtil.toFullUrl(challenge.getImageKey()))
                 .currentParticipantCount(challenge.getCurrentParticipants())
                 .maxParticipantCount(challenge.getMaxParticipants())
                 .startDate(startDate)
                 .endDate(endDate)
                 .remainDays(remainDays)
+				.isPublic(challenge.getIsPublic())
                 .isObserverMode(challenge.getIsViewerMode())
                 .isParticipant(isParticipant)
                 .isLiked(isLiked)
@@ -103,7 +110,7 @@ public class ChallengeConverter {
                 .build();
     }
 
-    // ▼▼▼ [새로 추가된 메서드] ▼▼▼
+    // 챌린지 프로필 DTO
     public ChallengeResponseDto.ChallengeProfileDto toProfileDto(
             Challenge challenge,
             boolean isParticipating,
