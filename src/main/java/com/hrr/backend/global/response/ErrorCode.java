@@ -1,5 +1,6 @@
 package com.hrr.backend.global.response;
 
+import com.google.api.Http;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 
@@ -43,7 +44,7 @@ public enum ErrorCode implements BaseCode{
     EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
     EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
     EMBEDDING_LENGTH_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4009", "임베딩 길이가 올바르지 않습니다. (expected: 768)"),
-
+    USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."),
 	// challenge wait
 	CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
 	CHALLENGE_WAIT_NOT_FOUND(HttpStatus.NOT_FOUND, "WAIT4041", "알림 신청 내역을 찾을 수 없습니다."),
@@ -60,8 +61,15 @@ public enum ErrorCode implements BaseCode{
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
 
+    //round
+    ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4041", "라운드를 찾을 수 없습니다."),
+    ROUND_NOT_MATCH_CHALLENGE(HttpStatus.BAD_REQUEST, "ROUND4002", "라운드가 해당 챌린지에 속하지 않습니다."),
+    ROUND_NOT_STARTED(HttpStatus.BAD_REQUEST, "ROUND4003", "아직 시작되지 않은 라운드입니다."),
+    ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
+    ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
 
-	// mission
+
+    // mission
 	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
 
     // term
@@ -83,6 +91,15 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4049", "해당 인증글을 찾을 수 없습니다."),
     VERIFICATION_ROUND_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40010", "유효하지 않은 라운드입니다."),
     VERIFICATION_FILTER_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40011", "조회 필터 조건이 올바르지 않습니다."),
+    VERIFICATION_FILE_EMPTY(HttpStatus.BAD_REQUEST, "VERIFICATION40012", "파일이 비어있습니다."),
+    VERIFICATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "VERIFICATION40013", "이미 인증을 완료했습니다."),
+    VERIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "VERIFICATION40314", "인증에 대한 접근 권한이 없습니다."),
+
+    //file upload
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE4002", "파일 크기가 제한을 초과했습니다."),
+    FILE_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "FILE4003", "지원하지 않는 파일 형식입니다."),
+
 
     // comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT4041", "존재하지 않는 댓글입니다."),

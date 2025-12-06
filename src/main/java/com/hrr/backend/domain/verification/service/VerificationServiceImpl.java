@@ -1,194 +1,125 @@
 package com.hrr.backend.domain.verification.service;
 
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
-import com.hrr.backend.domain.user.entity.UserChallenge;
-import com.hrr.backend.domain.verification.dto.*;
-import com.hrr.backend.domain.user.repository.UserChallengeRepository;
-import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
+import com.hrr.backend.domain.round.repository.RoundRepository;
+import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
+import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.verification.converter.VerificationConverter;
+import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
+import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.UUID;
+import java.time.LocalDate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class VerificationServiceImpl implements VerificationService {
 
-    private final UserChallengeRepository userChallengeRepository;
     private final VerificationRepository verificationRepository;
+    private final UserRepository userRepository;
+    private final UserChallengeRepository userChallengeRepository;
+    private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
+    private final VerificationConverter verificationConverter;
 
-    /* URL 검증용 정규식 */
-    private static final String URL_REGEX =
-            "^(https?://)[\\w.-]+(?:\\.[\\w\\.-]+)+[/#?]?.*$";
-
-    private void validateTextUrlFormat(String textUrl) {
-        if (textUrl == null || textUrl.isBlank()) return; // 비어있으면 허용
-        if (!textUrl.matches(URL_REGEX)) {
-            throw new GlobalException(ErrorCode.VERIFICATION_URL_INVALID);
-        }
-    }
-
-    /** 텍스트 인증 */
     @Override
+    @Transactional
     public VerificationResponseDto createTextVerification(
             Long challengeId,
-            Long roundId,
             Long userId,
             VerificationRequestDto request
     ) {
 
-        UserChallenge uc = userChallengeRepository
-                .findByUser_IdAndChallenge_Id(userId, challengeId)
-                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_USER_CHALLENGE_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        validateTextUrlFormat(request.getTextUrl());
+        Round round = roundRepository.findCurrentRoundByChallengeId(challengeId, LocalDate.now())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ROUND_INVALID));
 
-        RoundRecord roundRecord = roundRecordRepository.findByUserChallengeAndRoundId(uc, roundId)
-                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        Long roundId = round.getId();
+
+        UserChallenge userChallenge = userChallengeRepository
+                .findByUserIdAndChallengeId(userId, challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        RoundRecord roundRecord = roundRecordRepository
+                .findByUserChallengeAndRoundId(userChallenge, roundId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_RECORD_NOT_FOUND));
 
         Verification verification = Verification.createTextVerification(
-                uc,
+                userChallenge,
                 roundRecord,
                 request.getTitle(),
                 request.getContent(),
                 request.getTextUrl(),
-                request.getIsQuestion(),
+                request.getPhotoUrl(),
+                request.getIsQuestion() != null ? request.getIsQuestion() : false,
                 roundId
         );
 
-        Verification saved = verificationRepository.save(verification);
-        return VerificationConverter.toResponse(saved);
+        Verification savedVerification = verificationRepository.save(verification);
+
+        roundRecord.increaseVerificationCount();
+
+        return verificationConverter.toResponseDto(savedVerification);
     }
 
-    /** 사진 인증 */
     @Override
+    @Transactional
     public VerificationResponseDto createPhotoVerification(
             Long challengeId,
-            Long roundId,
             Long userId,
-            MultipartFile file,
+            String content,
+            String s3Key,
             String title,
             Boolean isQuestion
     ) {
 
-        UserChallenge uc = userChallengeRepository
-                .findByUser_IdAndChallenge_Id(userId, challengeId)
-                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_USER_CHALLENGE_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // 임시 URL 생성
-        String fakeUrl = "https://dummy.image/" + UUID.randomUUID();
+        Round round = roundRepository.findCurrentRoundByChallengeId(challengeId, LocalDate.now())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ROUND_INVALID));
 
-        RoundRecord roundRecord = roundRecordRepository.findByUserChallengeAndRoundId(uc, roundId)
-                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        Long roundId = round.getId();
+
+        UserChallenge userChallenge = userChallengeRepository
+                .findByUserIdAndChallengeId(userId, challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        RoundRecord roundRecord = roundRecordRepository
+                .findByUserChallengeAndRoundId(userChallenge, roundId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_RECORD_NOT_FOUND));
+
+        String photoUrl = s3Key;
 
         Verification verification = Verification.createPhotoVerification(
-                uc,
+                userChallenge,
                 roundRecord,
                 title,
-                fakeUrl,
-                isQuestion,
+                content,
+                photoUrl,
+                isQuestion != null ? isQuestion : false,
                 roundId
         );
 
         Verification saved = verificationRepository.save(verification);
-        return VerificationConverter.toResponse(saved);
+
+        roundRecord.increaseVerificationCount();
+
+        return verificationConverter.toResponseDto(saved);
     }
-
-    @Override
-    @Transactional(readOnly = true)
-    public VerificationMyResponseDto.MyPostList getMyVerifications(
-            Long userId,
-            Long challengeId,
-            Long roundId,
-            Pageable pageable
-    ) {
-        /** 필터 조합 검증 */
-        if (challengeId == null && roundId != null) {
-            throw new GlobalException(ErrorCode.VERIFICATION_FILTER_INVALID);
-        }
-
-        /** roundId 검증 */
-        if (roundId != null && roundId < 1) {
-            throw new GlobalException(ErrorCode.VERIFICATION_ROUND_INVALID);
-        }
-
-        Page<Verification> page;
-
-        if (challengeId != null && roundId != null) {
-            page = verificationRepository
-                    .findByUserChallenge_User_IdAndUserChallenge_Challenge_IdAndRoundId(
-                            userId,
-                            challengeId,
-                            roundId,
-                            pageable
-                    );
-        } else {
-            page = verificationRepository
-                    .findByUserChallenge_User_Id(userId, pageable);
-        }
-
-        return VerificationConverter.toMyPostList(page);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public VerificationDetailResponseDto getVerificationDetail(Long verificationId) {
-
-        Verification verification = verificationRepository.findById(verificationId)
-                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
-
-        return VerificationConverter.toDetailResponse(verification);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public VerificationListResponseDto.ListResponse getVerificationsByChallengeAndRound(
-            Long challengeId,
-            Long roundId,
-            Pageable pageable
-    ) {
-
-        /** 1) challengeId, roundId 필수값 검증 */
-        if (challengeId == null) {
-            throw new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND);
-        }
-
-        Page<Verification> page;
-
-        if (roundId == null) {
-
-            page = verificationRepository.findByUserChallenge_Challenge_Id(
-                    challengeId,
-                    pageable
-            );
-
-        } else {
-
-            /** roundId가 들어온 경우만 필터링 */
-            if (roundId < 1) {
-                throw new GlobalException(ErrorCode.VERIFICATION_ROUND_INVALID);
-            }
-
-            page = verificationRepository.findByUserChallenge_Challenge_IdAndRoundId(
-                    challengeId,
-                    roundId,
-                    pageable
-            );
-        }
-
-        /** 5) DTO 변환 */
-        return VerificationConverter.toChallengeRoundList(page);
-    }
-
 }

@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class VerificationResponseDto {
 
     private Long verificationId;
+    private Long roundId;
     private Long challengeId;
     private Long userChallengeId;
 
@@ -34,9 +35,11 @@ public class VerificationResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private Long userId;
+    private String userNickname;
+
     /** 채택 완료 여부 */
     private Boolean isAdopted;
-
-    /** 지금은 null 가능 */
-    private Long roundId;
+    /**현재 라운드 인증 횟수*/
+    private Integer verificationCount;
 }
