@@ -13,6 +13,7 @@ import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,7 @@ public class CommentController {
     public ApiResponse<CommentResponseDto> createComment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long verificationId,
-            @RequestBody CommentCreateRequestDto requestDto
+            @Valid @RequestBody CommentCreateRequestDto requestDto
     ) {
         Long userId = userDetails.getUser().getId();
 

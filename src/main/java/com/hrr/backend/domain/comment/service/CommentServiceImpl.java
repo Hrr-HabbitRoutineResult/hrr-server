@@ -46,7 +46,7 @@ public class CommentServiceImpl implements CommentService {
 
         // parentId 가 있으면 대댓글
         if (requestDto.getParentId() != null) {
-            parent = commentRepository.findById(requestDto.getParentId())
+            parent = commentRepository.findByIdAndIsDeletedFalse(requestDto.getParentId())
                     .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_INVALID_PARENT));
 
             //부모 댓글의 dpth가 1이상 존재해서 대댓글인 경우에 더 이상 답글을 달 수 없도록 진행
@@ -130,10 +130,15 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public CommentResponseDto updateComment(Long commentId, Long userId, CommentUpdateRequestDto requestDto) {
 
-        Comment comment = commentRepository.findById(commentId)
+        Comment comment = commentRepository.findByIdAndIsDeletedFalse(commentId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
 
+        if (comment.isDeleted()) {
+                      throw new GlobalException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+
         if (!comment.getUser().getId().equals(userId)) {
+
             throw new GlobalException(ErrorCode.COMMENT_UNAUTHORIZED);
         }
 
@@ -148,7 +153,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void deleteComment(Long commentId, Long userId) {
 
-        Comment comment = commentRepository.findById(commentId)
+        Comment comment = commentRepository.findByIdAndIsDeletedFalse(commentId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
 
         if (!comment.getUser().getId().equals(userId)) {

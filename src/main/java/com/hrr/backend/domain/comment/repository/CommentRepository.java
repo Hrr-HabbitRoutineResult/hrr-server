@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
@@ -30,4 +31,5 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      */
     List<Comment> findByParentInAndIsDeletedFalseOrderByCreatedAtAsc(List<Comment> parents);
 
+    Optional<Comment> findByIdAndIsDeletedFalse(Long id);
 }
