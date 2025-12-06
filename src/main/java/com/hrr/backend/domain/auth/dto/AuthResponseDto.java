@@ -10,6 +10,7 @@ public class AuthResponseDto {
             Long userId,
             String accessToken,
             String refreshToken,
+			String name,
             String nickname,
             LoginStatus loginStatus,
             String nextStep

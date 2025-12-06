@@ -29,8 +29,10 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull
-    @Column(name = "nickname", length = 20, nullable = false, unique = true)
+	@Column(name = "name")	// 로그인 시 제공받는 이름. 중복이 가능하기에 unique 설정 x. 소셜 타입에 따라 이름 제공이 되지 않을 수 있어 nullable.
+	private String name;
+
+    @Column(name = "nickname", length = 20, unique = true)
     private String nickname;
 
     @Column(name = "email", length = 255)
@@ -103,10 +105,10 @@ public class User extends BaseEntity {
 	private List<UserMission> userMissions = new ArrayList<>();
 
     /** 카카오 로그인용 팩토리 메서드 */
-    public static User newKakao(Long kakaoId, String nickname, String profileImage) {
+    public static User newKakao(Long kakaoId, String name, String profileImage) {
         User user = new User();
         user.kakaoId = kakaoId;
-        user.nickname = nickname;
+        user.name = name;
         user.profileImage = profileImage;
         // 초기 로그인 상태 명시적으로 설정 (nullable=false 대응)
         user.loginStatus = LoginStatus.NEW;
@@ -117,6 +119,11 @@ public class User extends BaseEntity {
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
+
+	/** 이름 업데이트 */
+	public void updateName(String name) {
+		this.name = name;
+	}
 
     /** 프로필 이미지 업데이트 */
     public void updateProfileImage(String profileImage) {

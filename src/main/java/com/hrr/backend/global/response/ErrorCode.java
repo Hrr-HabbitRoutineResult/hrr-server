@@ -1,6 +1,5 @@
 package com.hrr.backend.global.response;
 
-import com.google.api.Http;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 
@@ -68,8 +67,7 @@ public enum ErrorCode implements BaseCode{
     ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
     ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
 
-
-    // mission
+	// mission
 	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
 
     // term
@@ -107,7 +105,16 @@ public enum ErrorCode implements BaseCode{
     COMMENT_UNAUTHORIZED(HttpStatus.FORBIDDEN, "COMMENT4033", "본인이 작성한 댓글만 수정/삭제할 수 있습니다."),
     COMMENT_INVALID_PARENT(HttpStatus.BAD_REQUEST, "COMMENT4004", "유효하지 않은 부모 댓글입니다."),
     COMMENT_DEPTH_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4005", "대댓글의 depth 값이 올바르지 않습니다."),
-    COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다.")
+    COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다."),
+
+    // follow
+    CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),
+    ALREADY_FOLLOWING(HttpStatus.CONFLICT, "FOLLOW4091", "이미 팔로우 중인 사용자입니다."),
+    FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW4041", "팔로우 관계를 찾을 수 없습니다."),
+
+	// search
+	MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),
+	COUNTING_LOG_TABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5002", "집계가 실패하였습니다."),
     ;
 
 	private final HttpStatus status;
