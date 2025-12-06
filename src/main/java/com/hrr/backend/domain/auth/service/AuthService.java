@@ -1,5 +1,7 @@
 package com.hrr.backend.domain.auth.service;
 
+import java.time.Duration;
+
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
 import com.hrr.backend.domain.auth.dto.KakaoTokenResponse;
@@ -11,6 +13,7 @@ import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -119,4 +122,27 @@ public class AuthService {
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}
+
+	public void logout(String tokenHeader) {
+
+		// "Bearer " 접두사 제거
+		String token = tokenHeader.startsWith("Bearer ")
+			? tokenHeader.substring(7)
+			: tokenHeader;
+
+		// 토큰의 남은 유효 기간 계산 (Duration 타입)
+		// JWT의 exp 클레임과 현재 시간을 비교하여 남은 시간을 계산
+		Duration remainingExpiration = jwtService.getRemainingExpiration(token);
+
+		if (remainingExpiration.isNegative() || remainingExpiration.isZero()) {
+			// 이미 만료된 토큰인 경우, 굳이 블랙리스트에 넣을 필요는 없어 패스
+			return;
+		}
+
+		// 토큰을 블랙리스트에 등록 (TTL은 남은 유효 기간으로 설정)
+		jwtService.blacklistToken(token, remainingExpiration);
+
+	}
+
+
 }
