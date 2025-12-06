@@ -125,7 +125,7 @@ public class AuthController {
 
 		authService.logout(authorizationHeader);
 
-		return ApiResponse.onSuccess(SuccessCode.OK, null);
+		return ApiResponse.onSuccess(SuccessCode.OK, "로그아웃에 성공했습니다.");
 	}
 }
 

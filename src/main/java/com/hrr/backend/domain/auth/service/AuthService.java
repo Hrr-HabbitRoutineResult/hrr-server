@@ -131,7 +131,7 @@ public class AuthService {
 			: tokenHeader;
 
 		// 토큰의 남은 유효 기간 계산 (Duration 타입)
-		// JWT의 exp 클레임과 현재 시간을 비교하여 남은 시간을 계산하는 로직이 필요합니다.
+		// JWT의 exp 클레임과 현재 시간을 비교하여 남은 시간을 계산
 		Duration remainingExpiration = jwtService.getRemainingExpiration(token);
 
 		if (remainingExpiration.isNegative() || remainingExpiration.isZero()) {
