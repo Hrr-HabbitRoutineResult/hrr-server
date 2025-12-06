@@ -60,7 +60,7 @@ public class VerificationResponseDto {
         @Schema(description = "전체 참가자 수", example = "30")
         private Integer totalParticipantCount;
 
-        @Schema(description = "집계 기준 날짜", example = "2025-12-05")
+        @Schema(description = "집계 기준 날짜", example = "2025.12.05")
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy.MM.dd")
         private LocalDateTime baseDate;
     }
