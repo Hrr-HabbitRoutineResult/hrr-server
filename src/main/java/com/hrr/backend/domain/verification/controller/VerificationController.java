@@ -55,7 +55,7 @@ public class VerificationController {
     /** TEXT 인증 생성 */
     @Operation(summary = "글 인증 생성")
     @PostMapping("/{challengeId}/text")
-    public ApiResponse<VerificationResponseDto> createTextVerification(
+    public ApiResponse<VerificationResponseDto.CreateResponseDto> createTextVerification(
             @Parameter(description = "챌린지 ID")
             @PathVariable Long challengeId,
 
@@ -65,8 +65,7 @@ public class VerificationController {
     ) {
         Long userId = userDetails.getUser().getId();
 
-        // Service에서 현재 라운드를 자동 조회하여 처리
-        VerificationResponseDto response = verificationService.createTextVerification(
+        VerificationResponseDto.CreateResponseDto response = verificationService.createTextVerification(
                 challengeId, userId, request
         );
 
@@ -76,7 +75,7 @@ public class VerificationController {
     /** PHOTO 인증 생성 */
     @Operation(summary = "사진 인증 생성")
     @PostMapping("/{challengeId}/photo")
-    public ApiResponse<VerificationResponseDto> createPhotoVerification(
+    public ApiResponse<VerificationResponseDto.CreateResponseDto> createPhotoVerification(
             @Parameter(description = "챌린지 ID", required = true)
             @PathVariable Long challengeId,
 
@@ -86,7 +85,7 @@ public class VerificationController {
     ) {
         Long userId = userDetails.getUser().getId();
 
-        VerificationResponseDto response = verificationService.createPhotoVerification(
+        VerificationResponseDto.CreateResponseDto response = verificationService.createPhotoVerification(
                 challengeId,
                 userId,
                 request.getContent(),

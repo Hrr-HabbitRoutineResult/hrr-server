@@ -142,4 +142,19 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    // 내 인증 모아보기
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.roundRecord r " +
+            "WHERE r.userChallenge.id = :userChallengeId " +
+            "AND v.status = :status " +
+            "ORDER BY " +
+            "  CASE WHEN (v.isQuestion = true AND v.isResolved = false) THEN 0 ELSE 1 END ASC, " +
+            "  v.createdAt DESC")
+    Page<Verification> findMyVerifications(
+            @Param("userChallengeId") Long userChallengeId,
+            @Param("status") VerificationStatus status,
+            Pageable pageable
+    );
+
 }

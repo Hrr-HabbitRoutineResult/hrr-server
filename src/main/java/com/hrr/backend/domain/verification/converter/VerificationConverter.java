@@ -61,16 +61,16 @@ public class VerificationConverter {
     /**
      * 인증글 생성 직후 응답 DTO 변환 (단건 상세)
      */
-    public VerificationResponseDto toResponseDto(Verification verification) {
-        return VerificationResponseDto.builder()
+    public VerificationResponseDto.CreateResponseDto toResponseDto(Verification verification) {
+        return VerificationResponseDto.CreateResponseDto.builder()
                 .verificationId(verification.getId())
-                .roundId(verification.getRoundRecord().getRound().getId()) // RoundRecord 통해 접근
+                .roundId(verification.getRoundRecord().getRound().getId())
                 .challengeId(verification.getRoundRecord().getUserChallenge().getChallenge().getId())
                 .type(verification.getType())
                 .title(verification.getTitle())
                 .content(verification.getContent())
                 .textUrl(verification.getTextUrl())
-                .photoUrl(s3UrlUtil.toFullUrl(verification.getPhotoUrl())) // S3 Full URL 변환
+                .photoUrl(s3UrlUtil.toFullUrl(verification.getPhotoUrl()))
                 .isQuestion(verification.getIsQuestion())
                 .status(verification.getStatus())
                 .createdAt(verification.getCreatedAt())
