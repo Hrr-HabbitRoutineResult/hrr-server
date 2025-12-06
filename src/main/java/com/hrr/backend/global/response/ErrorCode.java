@@ -69,6 +69,9 @@ public enum ErrorCode implements BaseCode{
     INVALID_TERM_ID_IN_REQUEST(HttpStatus.BAD_REQUEST, "TERM4004", "요청에 유효하지 않은 약관 ID가 포함되어 있습니다."),
     TERM_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "TERM5005", "약관 동의 저장 중 오류가 발생했습니다."),
 
+	// search
+	MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),
+	COUNTING_LOG_TABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5002", "집계가 실패하였습니다.")
     ;
 
 	private final HttpStatus status;
