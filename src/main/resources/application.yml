@@ -47,6 +47,7 @@ kakao:
   redirect-uri: ${KAKAO_REDIRECT_URI}
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
+  app-redirect-uri: ${KAKAO_APP_REDIRECT_URI:hrrapp://oauth/kakao}
 
 model:
   api:

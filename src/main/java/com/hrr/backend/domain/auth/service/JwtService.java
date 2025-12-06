@@ -5,14 +5,19 @@ import com.hrr.backend.global.response.ErrorCode;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Date;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
@@ -24,6 +29,10 @@ public class JwtService {
 	// 리프레시 토큰 만료시간
 	@Value("${jwt.refresh-token-validity}")
 	private long refreshTokenValidity;
+
+	private final StringRedisTemplate redisTemplate;
+
+	private static final String BLACKLIST_PREFIX = "token_blacklist:";
 
 	private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -107,5 +116,53 @@ public class JwtService {
         }
         return null;
     }
+
+	// 토큰을 더 이상 사용하지 못 하게 무효화
+	public void blacklistToken(String token, Duration expirationDuration) {
+		redisTemplate.opsForValue().set(
+			BLACKLIST_PREFIX + token,
+			"invalidated",
+			expirationDuration
+		);
+	}
+
+	// 블랙리스트 포함 여부 조회
+	public boolean isTokenBlacklisted(String token) {
+		return redisTemplate.hasKey(BLACKLIST_PREFIX + token);
+	}
+
+	/**
+	 * JWT 토큰에서 남은 유효 기간(TTL)을 계산하여 반환
+	 * * @param token JWT 문자열 (Bearer 접두사가 없는 순수 토큰)
+	 * @return 토큰의 남은 유효 기간 (Duration). 이미 만료되었거나 파싱 오류 시 Duration.ZERO 반환.
+	 */
+	public Duration getRemainingExpiration(String token) {
+		try {
+			// 토큰 파싱 및 Claims 획득
+			Claims claims = Jwts.parserBuilder()
+				.setSigningKey(getSigningKey()) // 토큰 검증에 사용된 시크릿 키
+				.build()
+				.parseClaimsJws(token)
+				.getBody();
+
+			// 만료 시간 (exp 클레임) 획득
+			Date expiration = claims.getExpiration();
+			Date now = new Date();
+
+			// 남은 시간 계산
+			if (expiration.after(now)) {
+				// 만료 시간이 현재 시간보다 늦다면, 남은 밀리초를 계산
+				long diffInMillis = expiration.getTime() - now.getTime();
+				return Duration.ofMillis(diffInMillis);
+			} else {
+				// 이미 만료된 토큰인 경우
+				return Duration.ZERO;
+			}
+
+		} catch (Exception e) {
+
+			return Duration.ZERO;
+		}
+	}
 
 }
