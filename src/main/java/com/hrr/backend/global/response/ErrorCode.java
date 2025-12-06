@@ -44,6 +44,8 @@ public enum ErrorCode implements BaseCode{
     EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
     EMBEDDING_LENGTH_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4009", "임베딩 길이가 올바르지 않습니다. (expected: 768)"),
     USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."),
+	CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."),
+
 	// challenge wait
 	CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
 	CHALLENGE_WAIT_NOT_FOUND(HttpStatus.NOT_FOUND, "WAIT4041", "알림 신청 내역을 찾을 수 없습니다."),
@@ -59,13 +61,15 @@ public enum ErrorCode implements BaseCode{
     AUTH_KAKAO_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "AUTH007", "카카오 토큰 요청 중 오류가 발생했습니다."),
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
-
+    AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
+  
     //round
     ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4041", "라운드를 찾을 수 없습니다."),
     ROUND_NOT_MATCH_CHALLENGE(HttpStatus.BAD_REQUEST, "ROUND4002", "라운드가 해당 챌린지에 속하지 않습니다."),
     ROUND_NOT_STARTED(HttpStatus.BAD_REQUEST, "ROUND4003", "아직 시작되지 않은 라운드입니다."),
     ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
     ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
+	
 
 	// mission
 	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
