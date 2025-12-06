@@ -10,6 +10,8 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.hrr.backend.domain.search.entity.KeywordHourlyLog;
 import com.hrr.backend.domain.search.repository.KeywordHourlyLogRepository;
@@ -71,9 +73,16 @@ public class SearchScheduler {
 			keywordHourlyLogRepository.saveAll(logsToSave);
 			log.info("[SearchScheduler] {}개 로그 KeywordHourlyLog에 저장 완료.", logsToSave.size());
 
-			// DB 저장 성공 후에만 Redis 키 삭제 (트랜잭션 커밋 후)
-			Boolean deleted = redisTemplate.delete(targetHourKey);
-			log.info("[SearchScheduler] Redis 키 삭제 완료: {} (deleted={})", targetHourKey, deleted);
+			// 트랜잭션 커밋 성공 후에만 Redis 키 삭제
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+					Boolean deleted = redisTemplate.delete(targetHourKey);
+					log.info("[SearchScheduler] Redis 키 삭제 완료: {} (deleted={})", targetHourKey, deleted);
+			}
+        });
+
+
 		} catch (Exception e) {
 			log.error("[SearchScheduler] Redis 마이그레이션 실패. 다음에 재시도 필요.");
 			// 트랜잭션 롤백으로 DB 저장 취소, Redis 데이터는 보존되어 재시도 가능
