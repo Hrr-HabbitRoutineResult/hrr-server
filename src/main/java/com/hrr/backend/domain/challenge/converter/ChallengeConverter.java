@@ -101,6 +101,7 @@ public class ChallengeConverter {
                 .startDate(startDate)
                 .endDate(endDate)
                 .remainDays(remainDays)
+				.isPublic(challenge.getIsPublic())
                 .isObserverMode(challenge.getIsViewerMode())
                 .isParticipant(isParticipant)
                 .isLiked(isLiked)

@@ -138,6 +138,9 @@ public class ChallengeResponseDto {
 		@Schema(description = "종료까지 남은 일수 (D-Day)", example = "15")
 		private Long remainDays;
 
+		@Schema(description = "챌린지 공개 여부", example = "true")
+		private Boolean isPublic;
+
 		// 상태 플래그
 		@Schema(description = "관찰자 모드 여부", example = "true")
 		private Boolean isObserverMode;
