@@ -43,7 +43,8 @@ public enum ErrorCode implements BaseCode{
     EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
     EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
     EMBEDDING_LENGTH_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4009", "임베딩 길이가 올바르지 않습니다. (expected: 768)"),
-	CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "챌린지 시작 날짜는 내일 이후여야 합니다."),
+    USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."),
+	CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."),
 
 	// challenge wait
 	CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
@@ -59,7 +60,16 @@ public enum ErrorCode implements BaseCode{
     AUTH_EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "AUTH006", "외부 인증 서버와 통신 중 오류가 발생했습니다."),
     AUTH_KAKAO_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "AUTH007", "카카오 토큰 요청 중 오류가 발생했습니다."),
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
-	AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
+    AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
+    AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
+  
+    //round
+    ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4041", "라운드를 찾을 수 없습니다."),
+    ROUND_NOT_MATCH_CHALLENGE(HttpStatus.BAD_REQUEST, "ROUND4002", "라운드가 해당 챌린지에 속하지 않습니다."),
+    ROUND_NOT_STARTED(HttpStatus.BAD_REQUEST, "ROUND4003", "아직 시작되지 않은 라운드입니다."),
+    ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
+    ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
+	
 
 	// mission
 	RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),
@@ -70,6 +80,36 @@ public enum ErrorCode implements BaseCode{
     TERM_ALREADY_AGREED(HttpStatus.BAD_REQUEST, "TERM4003", "이미 약관 동의를 완료한 사용자입니다."),
     INVALID_TERM_ID_IN_REQUEST(HttpStatus.BAD_REQUEST, "TERM4004", "요청에 유효하지 않은 약관 ID가 포함되어 있습니다."),
     TERM_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "TERM5005", "약관 동의 저장 중 오류가 발생했습니다."),
+
+    // verification
+    VERIFICATION_TEXT_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4001", "글 인증에서는 내용이 반드시 필요합니다."),
+    VERIFICATION_URL_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION4002", "잘못된 URL 형식입니다."),
+    VERIFICATION_NOT_TEXT_TYPE(HttpStatus.BAD_REQUEST, "VERIFICATION4003", "이 챌린지는 글 인증 방식이 아닙니다."),
+    VERIFICATION_USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4044", "챌린지 참가 이력이 없습니다."),
+    VERIFICATION_ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4045", "해당 라운드를 찾을 수 없습니다."),
+    VERIFICATION_FILE_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4006", "사진 인증에서는 파일이 반드시 필요합니다."),
+    VERIFICATION_FILE_NOT_IMAGE(HttpStatus.BAD_REQUEST, "VERIFICATION4007", "이미지 파일만 업로드할 수 있습니다."),
+    VERIFICATION_TITLE_REQUIRED(HttpStatus.BAD_REQUEST, "VERIFICATION4008", "제목은 필수 입력 값입니다."),
+    VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "VERIFICATION4049", "해당 인증글을 찾을 수 없습니다."),
+    VERIFICATION_ROUND_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40010", "유효하지 않은 라운드입니다."),
+    VERIFICATION_FILTER_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40011", "조회 필터 조건이 올바르지 않습니다."),
+    VERIFICATION_FILE_EMPTY(HttpStatus.BAD_REQUEST, "VERIFICATION40012", "파일이 비어있습니다."),
+    VERIFICATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "VERIFICATION40013", "이미 인증을 완료했습니다."),
+    VERIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "VERIFICATION40314", "인증에 대한 접근 권한이 없습니다."),
+
+    //file upload
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE4002", "파일 크기가 제한을 초과했습니다."),
+    FILE_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "FILE4003", "지원하지 않는 파일 형식입니다."),
+
+
+    // comment
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT4041", "존재하지 않는 댓글입니다."),
+    COMMENT_CONTENT_EMPTY(HttpStatus.BAD_REQUEST, "COMMENT4002", "댓글 내용은 비어 있을 수 없습니다."),
+    COMMENT_UNAUTHORIZED(HttpStatus.FORBIDDEN, "COMMENT4033", "본인이 작성한 댓글만 수정/삭제할 수 있습니다."),
+    COMMENT_INVALID_PARENT(HttpStatus.BAD_REQUEST, "COMMENT4004", "유효하지 않은 부모 댓글입니다."),
+    COMMENT_DEPTH_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4005", "대댓글의 depth 값이 올바르지 않습니다."),
+    COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다."),
 
     // follow
     CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),
