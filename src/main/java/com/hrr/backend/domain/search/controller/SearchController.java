@@ -38,12 +38,10 @@ public class SearchController {
 	}
 
 	@GetMapping("/popular-keyword")
-	@Operation(summary = "인기 검색어 조회", description = "현재 인기 검색어 Top N을 반환합니다. 최근 한 달 기록 기준입니다.")
-	public ApiResponse<List<String>> getPopularKeywords(
-		// 기본값 10개로 설정
-		@RequestParam(name = "limit", defaultValue = "10") int limit)
+	@Operation(summary = "인기 검색어 조회", description = "현재 인기 검색어 Top 10을 반환합니다. 최근 한 달 기록 기준입니다.")
+	public ApiResponse<List<String>> getPopularKeywords()
 	{
-		List<String> keywords = searchService.getTopNPopularKeywords(limit);
+		List<String> keywords = searchService.getTopNPopularKeywords(10);	// 기본값 10개로 설정
 
 		// List<String> 데이터를 ApiResponse의 data 필드에 담아 반환
 		return ApiResponse.onSuccess(SuccessCode.OK, keywords);
