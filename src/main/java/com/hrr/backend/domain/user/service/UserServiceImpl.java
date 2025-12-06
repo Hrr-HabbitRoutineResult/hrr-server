@@ -1,5 +1,8 @@
 package com.hrr.backend.domain.user.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
 import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
@@ -11,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -131,8 +135,52 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+	/**
+	 * 키워드가 닉네임에 포함된 사용자 조회
+	 *
+	 * @param keyword 검색어
+	 * @param page 페이지 번호
+	 * @param size 조회할 데이터 개수
+	 */
+	@Override
+	public SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(User user, String keyword, int page, int size) {
 
-    private String normalize(String raw) {
+		Pageable pageable = PageRequest.of(page, size);
+
+		// DB 조회
+		Slice<User> usersSlice = userRepository.findByNicknameContaining(keyword, pageable);
+
+		// DTO 변환 및 팔로잉 여부 추가
+		List<UserResponseDto.ProfileDto> profileDtos = usersSlice.getContent().stream()
+			.filter(target -> !target.getId().equals(user.getId()))
+			.map(target -> {
+				// 현재 사용자(user)가 검색된 사용자(target)를 팔로우하고 있는지 확인
+				boolean isFollowing = followRepository.existsByFollowerIdAndFollowingId(user.getId(), target.getId());
+
+				// DTO 생성 및 매핑
+				return UserResponseDto.ProfileDto.builder()
+					.userId(target.getId())
+					.profileImage(target.getProfileImage())
+					.nickname(target.getNickname())
+					.level(target.getUserLevel())
+					.isFollowing(isFollowing) // 팔로우 여부 추가
+					.build();
+			})
+			.collect(Collectors.toList());
+
+		// SliceResponseDto 생성 및 반환
+		// SliceImpl을 사용하여 DTO List와 기존 Slice의 메타데이터(Pageable, hasNext)를 결합
+		Slice<UserResponseDto.ProfileDto> resultSlice = new SliceImpl<>(
+			profileDtos,
+			pageable,
+			usersSlice.hasNext() // 다음 페이지 존재 여부
+		);
+
+		// 최종 응답 DTO 반환
+		return SliceResponseDto.of(resultSlice);
+	}
+
+	private String normalize(String raw) {
         if (raw == null) return "";
         return raw.trim();
     }
