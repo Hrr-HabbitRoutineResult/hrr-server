@@ -79,6 +79,10 @@ public class UserResponseDto {
         @Schema(description = "현재 회차 (인증 성공 횟수)", example = "6")
         private Integer currentRound;
 
+		@Setter
+		@Schema(description = "인증 완료 여부", example = "false")
+		private boolean isVerified;
+
         @JsonIgnore
         private LocalDateTime startDate;
     }
