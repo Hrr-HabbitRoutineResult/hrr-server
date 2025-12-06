@@ -117,5 +117,15 @@ public class AuthController {
 
 		return ApiResponse.onSuccess(SuccessCode.OK, loginResponse);
 	}
+
+	@PostMapping("/logout")
+	@Operation(summary = "로그아웃",
+		description = "로그아웃 시 토큰을 무효화 시킵니다.")
+	public ApiResponse<String> logout(@RequestHeader("Authorization") String authorizationHeader) {
+
+		authService.logout(authorizationHeader);
+
+		return ApiResponse.onSuccess(SuccessCode.OK, null);
+	}
 }
 
