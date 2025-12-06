@@ -193,7 +193,7 @@ public class UserServiceImpl implements UserService {
 		Pageable pageable = PageRequest.of(page, size);
 
 		// DB 조회
-		Slice<User> usersSlice = userRepository.findByNicknameContaining(keyword, pageable);
+		Slice<User> usersSlice = userRepository.findByNicknameContaining(normalize(keyword), pageable);
 
 		// DTO 변환 및 팔로잉 여부 추가
 		List<UserResponseDto.ProfileDto> profileDtos = usersSlice.getContent().stream()
@@ -207,6 +207,8 @@ public class UserServiceImpl implements UserService {
 					.userId(target.getId())
 					.profileImage(target.getProfileImage())
 					.nickname(target.getNickname())
+					.followerCount(null)	// 팔로워/팔로우 수 외에는 그대로 써서 Dto 재활용
+					.followingCount(null)
 					.level(target.getUserLevel())
 					.isFollowing(isFollowing) // 팔로우 여부 추가
 					.build();
