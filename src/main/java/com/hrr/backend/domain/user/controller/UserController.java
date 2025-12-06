@@ -142,13 +142,16 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
     }
 
-	@PostMapping("/search")
+	@GetMapping("/search")
 	@Operation(summary = "챌린저 검색", description = "검색 키워드가 닉네임에 포함된 사용자를 조회합니다.")
 	public ApiResponse<SliceResponseDto<UserResponseDto.ProfileDto>> searchChallengers(
 		@RequestParam(name = "keyword")
 		@NotBlank(message = "검색어는 필수입니다.") String keyword,
+
 		// 페이징
+		@Min(0)
 		@RequestParam(name = "page", defaultValue = "0") int page, // 페이지 번호 (0부터 시작)
+		@Min(1)
 		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
 
 		@Parameter(hidden = true)
