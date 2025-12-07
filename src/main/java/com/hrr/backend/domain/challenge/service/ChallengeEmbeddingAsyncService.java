@@ -7,7 +7,6 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +20,8 @@ public class ChallengeEmbeddingAsyncService {
     private final ChallengeEmbeddingRepository challengeEmbeddingRepository;
     private final EmbeddingClient embeddingClient;
 
-    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void calculateAndSaveEmbeddingAsync(Long challengeId, String challengeText) {
+    public void calculateAndSaveEmbedding(Long challengeId, String challengeText) {
         try {
             // 임베딩 계산
             float[] embedding = embeddingClient.getEmbedding(challengeText);
@@ -47,7 +45,7 @@ public class ChallengeEmbeddingAsyncService {
             challengeEmbeddingRepository.save(embeddingEntity);
 
         } catch (Exception e) {
-            log.error("예상치 못한 오류로 임베딩 계산 실패. challengeId={}", challengeId, e);
+            log.error("예상치 못한 오류로 임베딩 계산 실패. challengeId={}", challengeId);
         }
     }
 
