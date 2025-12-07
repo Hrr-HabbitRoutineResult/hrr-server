@@ -134,8 +134,8 @@ public class VerificationServiceImpl implements VerificationService {
         Long userChallengeId = userChallenge.getId();
 
         // 2. 통계 계산
-        Integer roundSequence = roundRecordRepository.countByUserChallengeId(userChallengeId);
-        Integer totalVerification = roundRecordRepository.sumVerificationCountByUserChallengeId(userChallengeId);
+        Long roundSequence = roundRecordRepository.countByUserChallengeId(userChallengeId);
+        Long totalVerification = roundRecordRepository.sumVerificationCountByUserChallengeId(userChallengeId);
         Integer warningCount = userChallenge.getKickWarnings();
 
         // 3. 내 인증글 조회

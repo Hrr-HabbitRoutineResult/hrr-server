@@ -45,9 +45,9 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
 
     // 내가 참여한 라운드 개수 (몇 라운드째 참여 중인지)
     @Query("SELECT COUNT(r) FROM RoundRecord r WHERE r.userChallenge.id = :userChallengeId")
-    Integer countByUserChallengeId(@Param("userChallengeId") Long userChallengeId);
+    Long countByUserChallengeId(@Param("userChallengeId") Long userChallengeId);
 
     // 내 총 인증 횟수 합계
     @Query("SELECT COALESCE(SUM(r.verificationCount), 0) FROM RoundRecord r WHERE r.userChallenge.id = :userChallengeId")
-    Integer sumVerificationCountByUserChallengeId(@Param("userChallengeId") Long userChallengeId);
+    Long sumVerificationCountByUserChallengeId(@Param("userChallengeId") Long userChallengeId);
 }

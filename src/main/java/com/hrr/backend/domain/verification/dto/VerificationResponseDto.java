@@ -87,13 +87,13 @@ public class VerificationResponseDto {
         private String nickname;
 
         @Schema(description = "누적 인증 횟수 (해당 챌린지 내 전체)", example = "15")
-        private Integer totalVerificationCount;
+        private Long totalVerificationCount;
 
         @Schema(description = "누적 경고 횟수", example = "1")
         private Integer warningCount;
 
         @Schema(description = "현재 참여 중인 라운드 순서 (예: 1회차, 2회차...)", example = "3")
-        private Integer currentRoundSequence;
+        private Long currentRoundSequence;
 
         @Schema(description = "내 인증글 목록 (페이징)")
         private SliceResponseDto<FeedDto> verifications;
