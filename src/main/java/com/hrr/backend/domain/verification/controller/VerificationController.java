@@ -27,10 +27,11 @@ public class VerificationController {
 
     private final VerificationService verificationService;
 
-    @GetMapping("/profile")
-    @Operation(summary = "챌린지 인증 피드 조회", description = "챌린지의 설정(글/사진)에 맞는 인증 목록을 조회합니다.")
+    @GetMapping("/{challengeId}/feed")
+    @Operation(summary = "챌린지 내 인증 현황 피드 조회", description = "챌린지의 설정(글/사진)에 맞는 인증 목록을 조회합니다.")
     public ApiResponse<SliceResponseDto<VerificationResponseDto.FeedDto>> getVerificationFeed(
-            @RequestParam(name = "challengeId") Long challengeId,
+            @PathVariable(name = "challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(name = "roundNumber") Integer roundNumber,
             @RequestParam(name = "page", defaultValue = "1") @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
@@ -41,13 +42,29 @@ public class VerificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
-    @GetMapping("/stat")
-    @Operation(summary = "인증 인원 통계 조회", description = "현재 진행 중인 라운드의 실시간(또는 최근) 인증 인원 수를 조회합니다.")
+    @GetMapping("/{challengeId}/stat")
+    @Operation(summary = "챌린지 내 인증 통계 조회", description = "현재 진행 중인 라운드의 실시간(또는 최근) 인증 인원 수를 조회합니다.")
     public ApiResponse<VerificationResponseDto.StatDto> getVerificationStat(
-            @RequestParam(name = "challengeId") Long challengeId
+            @PathVariable(name = "challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         VerificationResponseDto.StatDto response =
                 verificationService.getVerificationStat(challengeId);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @GetMapping("/{challengeId}/me")
+    @Operation(summary = "챌린지 내 인증 현황 (마이)", description = "내 누적 인증 횟수, 경고 횟수 및 내가 작성한 인증글 목록을 조회합니다.")
+    public ApiResponse<VerificationResponseDto.MyProfileDto> getMyVerificationProfile(
+            @PathVariable(name = "challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(name = "page", defaultValue = "1") @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        VerificationResponseDto.MyProfileDto response = verificationService.getMyVerificationProfile(
+                userDetails.getUser(), challengeId, page - 1, size
+        );
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
