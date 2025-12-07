@@ -112,7 +112,7 @@ public class FollowService {
         followRepository.delete(follow);
         log.info("사용자 팔로우 취소 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
-        return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId, FollowStatus.APPROVED);
+        return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId, null);
     }
 
     /**
@@ -178,7 +178,7 @@ public class FollowService {
         followRepository.delete(follow);
         log.info("팔로우 요청 거절 완료 - followId: {}", followId);
 
-        return FollowResponseDto.of("Follow request rejected successfully", followId, FollowStatus.PENDING);
+        return FollowResponseDto.of("Follow request rejected successfully", followId, null);
     }
 
     /**
