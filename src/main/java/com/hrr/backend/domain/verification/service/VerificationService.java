@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.verification.service;
 
+import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.global.response.SliceResponseDto;
@@ -53,4 +54,7 @@ public interface VerificationService {
             String title,
             Boolean isQuestion
     );
+
+    VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size);
+
 }

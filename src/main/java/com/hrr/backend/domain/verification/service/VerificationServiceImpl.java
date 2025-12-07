@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
+import com.hrr.backend.domain.comment.service.CommentService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,7 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -50,6 +53,8 @@ public class VerificationServiceImpl implements VerificationService {
     private final UserRepository userRepository;
     private final UserChallengeRepository userChallengeRepository;
     private final VerificationConverter verificationConverter;
+    private final CommentService commentService;
+
 
     @Override
     public SliceResponseDto<VerificationResponseDto.FeedDto> getVerificationFeed(
@@ -265,4 +270,38 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size) {
+
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        RoundRecord roundRecord = verification.getRoundRecord();
+        UserChallenge userChallenge = roundRecord.getUserChallenge();
+        User author = userChallenge.getUser();
+
+        boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
+
+        boolean canEdit = isMine;
+        boolean canDelete = isMine;
+        boolean canSelectComment =
+                isMine
+                        && Boolean.TRUE.equals(verification.getIsQuestion())
+                        && !Boolean.TRUE.equals(verification.getIsResolved());
+
+        Pageable pageable = PageRequest.of(page, size);
+        CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
+
+        return verificationConverter.toDetailDto(
+                verification,
+                comments,
+                isMine,
+                canEdit,
+                canDelete,
+                canSelectComment
+        );
+    }
+
 }
