@@ -22,6 +22,8 @@ public class CommentResponseDto {
     private boolean isAnonymous;
     private int depth;
 
+    private Boolean isAdopted;
+
     private String content;
     private int likesCount;
 

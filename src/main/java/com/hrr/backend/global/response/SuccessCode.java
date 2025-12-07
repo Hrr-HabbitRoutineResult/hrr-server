@@ -17,6 +17,7 @@ public enum SuccessCode implements BaseCode {
     COMMENT_POST_OK(HttpStatus.OK, "COMMENT2001","댓글이 작성되었습니다."),
     COMMENT_UPDATE_OK(HttpStatus.OK, "COMMENT2002", "댓글이 수정되었습니다."),
     COMMENT_DELETE_OK(HttpStatus.OK, "COMMENT2003", "댓글이 삭제되었습니다."),
+    COMMENT_ADOPT_OK(HttpStatus.OK, "COMMENT2004", "댓글이 채택되었습니다."),
 
     // verification
     VERIFICATION_POST_OK(HttpStatus.CREATED, "VERIFICATION2001", "인증글이 작성되었습니다."),

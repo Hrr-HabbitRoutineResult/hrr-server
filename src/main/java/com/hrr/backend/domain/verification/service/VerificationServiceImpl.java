@@ -3,8 +3,11 @@ package com.hrr.backend.domain.verification.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
+import com.hrr.backend.domain.comment.entity.Comment;
+import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.comment.service.CommentService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,6 +57,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final UserChallengeRepository userChallengeRepository;
     private final VerificationConverter verificationConverter;
     private final CommentService commentService;
+    private final CommentRepository commentRepository;
 
 
     @Override
@@ -304,5 +308,44 @@ public class VerificationServiceImpl implements VerificationService {
                 canSelectComment
         );
     }
+
+    @Transactional
+    @Override
+    public void adoptComment(Long verificationId, Long commentId, Long currentUserId) {
+
+        // 인증글 조회
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        // 작성자(질문 올린 유저) 확인
+        RoundRecord roundRecord = verification.getRoundRecord();
+        UserChallenge userChallenge = roundRecord.getUserChallenge();
+        User author = userChallenge.getUser();
+        Long authorId = author.getId();
+
+        // 질문 인증글인지 검증
+        if (!Boolean.TRUE.equals(verification.getIsQuestion())) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_QUESTION);
+        }
+
+        // 이미 해결된 인증글인지 검증 (한 번 채택하면 다시 못 바꾸게 막기)
+        if (Boolean.TRUE.equals(verification.getIsResolved())) {
+            throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_RESOLVED);
+        }
+
+        // 댓글 조회
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
+
+        // 해당 인증글의 댓글인지 검증
+        if (!comment.getVerification().getId().equals(verificationId)) {
+            throw new GlobalException(ErrorCode.COMMENT_INVALID);
+        }
+
+        // 도메인 메서드 호출로 상태 변경
+        comment.adopt();        // 댓글 채택
+        verification.resolve(); // 인증글 해결 상태로 변경
+    }
+
 
 }

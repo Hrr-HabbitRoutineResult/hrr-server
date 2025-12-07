@@ -58,4 +58,6 @@ public interface VerificationService {
 
     VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size);
 
+    void adoptComment(Long verificationId, Long commentId, Long currentUserId);
+
 }
