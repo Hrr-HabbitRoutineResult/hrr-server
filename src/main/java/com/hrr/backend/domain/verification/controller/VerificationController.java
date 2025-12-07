@@ -147,5 +147,31 @@ public class VerificationController {
 
     }
 
+    @PatchMapping("/{verificationId}")
+    @Operation(summary = "인증글 수정", description = "인증글을 수정합니다.")
+    public ApiResponse<VerificationDetailResponseDto> updateVerification(
+            @PathVariable Long verificationId,
+            @RequestBody VerificationUpdateRequestDto requestDto,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long currentUserId = userDetails.getUser().getId();
+        VerificationDetailResponseDto dto =
+                verificationService.updateVerification(verificationId, currentUserId, requestDto);
+
+        return ApiResponse.onSuccess(SuccessCode.VERIFICATION_UPDATE_OK, dto);
+    }
+
+    @DeleteMapping("/{verificationId}")
+    @Operation(summary = "인증글 삭제", description = "인증글을 삭제합니다.")
+    public ApiResponse<String> deleteVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        verificationService.deleteVerification(verificationId, userDetails.getUser().getId());
+
+        return ApiResponse.onSuccess(SuccessCode.VERIFICATION_DELETE_OK, null);
+    }
+
+
 
 }

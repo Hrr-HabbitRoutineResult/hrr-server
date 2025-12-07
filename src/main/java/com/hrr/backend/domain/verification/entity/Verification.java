@@ -127,4 +127,22 @@ public class Verification extends BaseEntity {
     public void setUserChallenge(UserChallenge uc) {
         this.userChallenge = uc;
     }
+
+    public void update(String title, String content, String textUrl, String photoUrl) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (content != null) {
+            this.content = content;
+        }
+        if (textUrl != null) {
+            this.textUrl = textUrl;
+        }
+        if (photoUrl != null) {
+            this.photoUrl = photoUrl;
+        }
+    }
+
+
+
 }

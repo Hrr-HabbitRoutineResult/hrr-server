@@ -9,6 +9,7 @@ import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.comment.service.CommentService;
+import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -323,6 +324,10 @@ public class VerificationServiceImpl implements VerificationService {
         User author = userChallenge.getUser();
         Long authorId = author.getId();
 
+        if (!author.getId().equals(currentUserId)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
+        }
+
         // 질문 인증글인지 검증
         if (!Boolean.TRUE.equals(verification.getIsQuestion())) {
             throw new GlobalException(ErrorCode.VERIFICATION_NOT_QUESTION);
@@ -345,6 +350,64 @@ public class VerificationServiceImpl implements VerificationService {
         // 도메인 메서드 호출로 상태 변경
         comment.adopt();        // 댓글 채택
         verification.resolve(); // 인증글 해결 상태로 변경
+    }
+
+    public VerificationDetailResponseDto updateVerification(Long verificationId, Long currentUserId, VerificationUpdateRequestDto requestDto) {
+
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        // 작성자 본인인지 권한 체크
+        User author = verification.getRoundRecord()
+                .getUserChallenge()
+                .getUser();
+
+        if (!author.getId().equals(currentUserId)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
+        }
+
+        // 엔티티 업데이트
+        verification.update(
+                requestDto.getTitle(),
+                requestDto.getContent(),
+                requestDto.getTextUrl(),
+                requestDto.getPhotoUrl()
+        );
+
+        // 댓글 목록 + 상세 DTO 구성
+        CommentListResponseDto comments = commentService.getComments(verificationId, PageRequest.of(1, 10));
+
+        boolean isMine = currentUserId.equals(author.getId());
+        boolean canEdit = isMine && !verification.getIsResolved();
+        boolean canDelete = isMine && !verification.getIsResolved();
+        boolean canSelectComment = verification.getIsQuestion() && !verification.getIsResolved() && isMine;
+
+        return verificationConverter.toDetailDto(
+                verification,
+                comments,
+                isMine,
+                canEdit,
+                canDelete,
+                canSelectComment
+        );
+    }
+
+
+    @Override
+    @Transactional
+    public void deleteVerification(Long verificationId, Long currentUserId) {
+
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+    // 작성자 본인인지 권한 체크
+        User author = verification.getRoundRecord()
+                .getUserChallenge()
+                .getUser();
+
+        if (!author.getId().equals(currentUserId)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
+        }
+        verificationRepository.delete(verification);
     }
 
 
