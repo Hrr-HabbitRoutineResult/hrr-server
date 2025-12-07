@@ -81,7 +81,7 @@ public class FollowService {
         log.info("사용자 팔로우 완료 - followerId: {}, followingId: {}, status: {}",
                 currentUserId, followedUserId, status);
 
-        return FollowResponseDto.of(message, followedUserId);
+        return FollowResponseDto.of(message, followedUserId, status);
     }
 
     /**
@@ -112,7 +112,7 @@ public class FollowService {
         followRepository.delete(follow);
         log.info("사용자 팔로우 취소 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
-        return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId);
+        return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId, FollowStatus.APPROVED);
     }
 
     /**
@@ -148,7 +148,7 @@ public class FollowService {
         follow.approve();
         log.info("팔로우 요청 승인 완료 - followId: {}", followId);
 
-        return FollowResponseDto.of("Follow request approved successfully", followId);
+        return FollowResponseDto.of("Follow request approved successfully", followId, FollowStatus.APPROVED);
     }
 
     /**
@@ -178,7 +178,7 @@ public class FollowService {
         followRepository.delete(follow);
         log.info("팔로우 요청 거절 완료 - followId: {}", followId);
 
-        return FollowResponseDto.of("Follow request rejected successfully", followId);
+        return FollowResponseDto.of("Follow request rejected successfully", followId, FollowStatus.PENDING);
     }
 
     /**
