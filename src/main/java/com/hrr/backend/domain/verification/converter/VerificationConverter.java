@@ -2,6 +2,8 @@ package com.hrr.backend.domain.verification.converter;
 
 import java.time.LocalDateTime;
 
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import org.springframework.stereotype.Component;
@@ -86,6 +88,24 @@ public class VerificationConverter {
                 .userId(verification.getRoundRecord().getUserChallenge().getUser().getId())
                 .userNickname(verification.getRoundRecord().getUserChallenge().getUser().getNickname())
                 .verificationCount(verification.getRoundRecord().getVerificationCount())
+                .build();
+    }
+
+    /**
+     * 챌린지 인증 현황 마이 DTO 변환
+     */
+    public VerificationResponseDto.MyProfileDto toMyProfileDto(
+            UserChallenge userChallenge,
+            Long totalVerificationCount,
+            Long currentRoundSequence,
+            SliceResponseDto<VerificationResponseDto.FeedDto> verifications
+    ) {
+        return VerificationResponseDto.MyProfileDto.builder()
+                .nickname(userChallenge.getUser().getNickname())
+                .totalVerificationCount(totalVerificationCount)
+                .warningCount(userChallenge.getKickWarnings())
+                .currentRoundSequence(currentRoundSequence)
+                .verifications(verifications)
                 .build();
     }
     public VerificationDetailResponseDto toDetailDto(
