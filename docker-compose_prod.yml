@@ -38,10 +38,12 @@ services:
     image: ychan0/hrr-server:v1.0.0
     container_name: hrr_app_prod
     environment:
+      TZ: Asia/Seoul
+
       # Secrets Manager에서 가져온 환경 변수 사용
       SPRING_PROFILES_ACTIVE: prod
 
-      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&sslMode=REQUIRED'
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=REQUIRED'
       SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
 
@@ -66,6 +68,8 @@ services:
     image: redis:7.4.2-alpine
     container_name: hrr_redis_prod
     restart: always
+    environment:
+      - TZ=Asia/Seoul
     volumes:
       - redis_data:/data
 
@@ -74,6 +78,8 @@ services:
     image: ychan0/hrr-model:v1.0.0
     container_name: hrr_model_prod
     restart: always
+    environment:
+      - TZ=Asia/Seoul
 
 volumes:
   db-data:
