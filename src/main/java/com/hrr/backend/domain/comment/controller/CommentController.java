@@ -14,7 +14,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -49,8 +52,15 @@ public class CommentController {
     @GetMapping("/{verificationId}")
     public ApiResponse<CommentListResponseDto> getComments(
             @PathVariable Long verificationId,
-            Pageable pageable
+
+			// 페이징
+			@Min(1)
+			@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
+			@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
     ) {
+
+		Pageable pageable = PageRequest.of(page, size);
+
         CommentListResponseDto response = commentService.getComments(verificationId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
