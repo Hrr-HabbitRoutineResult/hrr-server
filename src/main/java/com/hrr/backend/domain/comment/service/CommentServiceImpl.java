@@ -85,8 +85,28 @@ public class CommentServiceImpl implements CommentService {
         Page<Comment> parentPage = commentRepository
                 .findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0, pageable);
 
-        List<Comment> parents = parentPage.getContent();
+        List<Comment> parents = new ArrayList<>(parentPage.getContent());
+        Optional<Comment> adoptedOpt =
+                commentRepository.findAdoptedCommentsByVerificationId(verificationId);
+
+        Comment adoptedParent = null;
+
+        if (adoptedOpt.isPresent()) {
+            Comment adopted = adoptedOpt.get();
+
+            // 채택된 댓글이 부모인지 or 자식인지
+            adoptedParent = (adopted.getDepth() == 0)
+                    ? adopted
+                    : adopted.getParent();
+
+            // 현재 페이지 내 부모 목록에 포함되어 있다면 최상단으로 올리기
+            if (adoptedParent != null && parents.contains(adoptedParent)) {
+                parents.remove(adoptedParent);   // 기존 위치 제거
+                parents.add(0, adoptedParent);   // 최상단에 삽입
+            }
+        }
         List<CommentResponseDto> result = new ArrayList<>();
+
 
         if (!parents.isEmpty()) {
             // 부모 댓글 목록에 대한 모든 자식 댓글을 한 번에 조회
