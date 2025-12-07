@@ -297,7 +297,7 @@ public class VerificationServiceImpl implements VerificationService {
                 isMine
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
-        Pageable pageable = PageRequest.of(page - 1, size);
+        Pageable pageable = PageRequest.of(page, size);
         CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
 
         Long adoptedCommentId = comments.getComments().stream()
