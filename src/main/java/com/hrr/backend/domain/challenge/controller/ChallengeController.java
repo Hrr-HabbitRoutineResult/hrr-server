@@ -49,7 +49,8 @@ public class ChallengeController {
 		@RequestParam(name = "title", required = false) String title,
 
 		// 페이징
-		@RequestParam(name = "page", defaultValue = "0") int page, // 페이지 번호 (0부터 시작)
+		@Min(1)
+		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
 		@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
 	) {
 		// 목록 조회
@@ -59,7 +60,7 @@ public class ChallengeController {
 			sortType,
 			day,
 			title,
-			page,
+			page-1,
 			size
 		);
 
@@ -98,8 +99,6 @@ public class ChallengeController {
 	@PostMapping("/{challengeId}/click")
 	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
 	public ApiResponse<Long> clickChallenge(@PathVariable("challengeId") Long challengeId) {
-
-		// 테스트를 위해 임시로 클릭 수 반환
 
 		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.clickChallenge(challengeId));
 	}

@@ -38,6 +38,11 @@ public class UserMission {
 	@Column(name = "date", nullable = false)
 	private LocalDate date;
 
+	@Setter
 	@Column(name = "is_completed", nullable = false)
 	private Boolean isCompleted;
+
+	@Setter
+	@Column(name = "image_key")
+	private String imageKey;
 }
