@@ -85,8 +85,38 @@ public class CommentServiceImpl implements CommentService {
         Page<Comment> parentPage = commentRepository
                 .findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0, pageable);
 
-        List<Comment> parents = parentPage.getContent();
+        List<Comment> parents = new ArrayList<>(parentPage.getContent());
+
+        Optional<Comment> adoptedOpt =
+                commentRepository.findAdoptedCommentsByVerificationId(verificationId);
+
+        Comment adoptedParent = null;
+        List<CommentResponseDto> adoptedChildren = new ArrayList<>();
+
+        if (adoptedOpt.isPresent()) {
+            Comment adopted = adoptedOpt.get();
+
+            adoptedParent = (adopted.getDepth() == 0)
+                    ? adopted
+                    : adopted.getParent();
+
+            if (adoptedParent != null) {
+                // 자식들 조회
+                adoptedChildren = commentRepository
+                        .findByParentAndIsDeletedFalseOrderByCreatedAtAsc(adoptedParent)
+                        .stream()
+                        .map(CommentConverter::toDto)
+                        .toList();
+
+
+                // 중복 방지: 만약 현재 페이지 부모 리스트에 들어있다면 제거
+                Long adoptedParentId = adoptedParent.getId();
+                parents.removeIf(p -> p.getId().equals(adoptedParentId));
+            }
+        }
+
         List<CommentResponseDto> result = new ArrayList<>();
+
 
         if (!parents.isEmpty()) {
             // 부모 댓글 목록에 대한 모든 자식 댓글을 한 번에 조회
@@ -113,8 +143,9 @@ public class CommentServiceImpl implements CommentService {
             }
         }
 
-        // DTO 반환 (페이지네이션 정보는 "부모 댓글" 기준)
         return CommentListResponseDto.builder()
+                .adoptedParent(adoptedParent != null ? CommentConverter.toDto(adoptedParent) : null)
+                .adoptedChildren(adoptedChildren)
                 .comments(result)
                 .currentPage(parentPage.getNumber() + 1)
                 .totalPages(parentPage.getTotalPages())

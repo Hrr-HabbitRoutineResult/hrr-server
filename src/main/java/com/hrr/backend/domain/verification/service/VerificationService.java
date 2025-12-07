@@ -4,6 +4,7 @@ import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 public interface VerificationService {
@@ -57,5 +58,11 @@ public interface VerificationService {
     );
 
     VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size);
+
+    void adoptComment(Long verificationId, Long commentId, Long currentUserId);
+
+    VerificationDetailResponseDto updateVerification(Long verificationId, Long currentUserId, VerificationUpdateRequestDto requestDto);
+
+    void deleteVerification(Long verificationId, Long currentUserId);
 
 }

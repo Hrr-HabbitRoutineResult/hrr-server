@@ -96,6 +96,8 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_FILE_EMPTY(HttpStatus.BAD_REQUEST, "VERIFICATION40012", "파일이 비어있습니다."),
     VERIFICATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "VERIFICATION40013", "이미 인증을 완료했습니다."),
     VERIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "VERIFICATION40314", "인증에 대한 접근 권한이 없습니다."),
+    VERIFICATION_NOT_QUESTION(HttpStatus.BAD_REQUEST, "VERIFICATION40015", "질문 인증글이 아니어서 댓글을 채택할 수 없습니다."),
+    VERIFICATION_ALREADY_RESOLVED(HttpStatus.CONFLICT, "VERIFICATION40916", "이미 해결된 인증글입니다."),
 
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
@@ -109,6 +111,8 @@ public enum ErrorCode implements BaseCode{
     COMMENT_INVALID_PARENT(HttpStatus.BAD_REQUEST, "COMMENT4004", "유효하지 않은 부모 댓글입니다."),
     COMMENT_DEPTH_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4005", "대댓글의 depth 값이 올바르지 않습니다."),
     COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다."),
+    COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "COMMENT4037", "댓글에 접근할 수 없습니다."),
+    COMMENT_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4008", "유효하지 않은 댓글입니다."),
 
     // follow
     CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),
