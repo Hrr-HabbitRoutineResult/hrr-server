@@ -26,5 +26,6 @@ public class ChallengeItemDto {
     private String goal_text;
     private LocalTime verifyStartTime;
     private LocalTime verifyEndTime;
+    private String imageKey;
     private List<Float> embedding;
 }

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
+import com.hrr.backend.global.common.enums.VerificationType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -119,6 +120,9 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "챌린지 설명 (부제목)", example = "백준 실버3 매일 풀고 공유")
 		private String description;
+
+		@Schema(description = "인증 방법 (PHOTO: 사진, TEXT: 글)", example = "PHOTO")
+		private VerificationType verificationType;
 
 		@Schema(description = "챌린지 배경 이미지 URL", example = "https://example.com/image.jpg")
 		private String imageUrl;

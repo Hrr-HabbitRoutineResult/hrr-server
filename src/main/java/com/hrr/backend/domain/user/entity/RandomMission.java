@@ -26,4 +26,7 @@ public class RandomMission extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "category", nullable = false)
 	private Category category;
+
+	@Column(name = "image_key")
+	private String imageKey;
 }

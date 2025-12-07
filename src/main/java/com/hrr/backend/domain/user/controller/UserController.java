@@ -152,8 +152,8 @@ public class UserController {
 		@NotBlank(message = "검색어는 필수입니다.") String keyword,
 
 		// 페이징
-        @Min(1)
-        @RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1부터 시작)
+    @Min(1)
+    @RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1부터 시작)
 		@Min(1)
 		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기
 
