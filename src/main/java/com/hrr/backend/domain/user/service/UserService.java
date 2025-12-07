@@ -1,9 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.global.response.SliceResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 
 public interface UserService {
@@ -32,4 +30,7 @@ public interface UserService {
      * 닉네임 저장 + 로그인 상태 변경 + 다음 단계 계산
      */
     UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request);
+
+    // 사용자 기본 정보 수정
+    UpdateUserInfoResponseDto updateUserInfo(Long userId, UpdateUserInfoRequestDto requestDto);
 }

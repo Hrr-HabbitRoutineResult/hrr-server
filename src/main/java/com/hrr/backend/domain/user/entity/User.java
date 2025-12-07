@@ -130,6 +130,11 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    /** 프로필 공개 여부 업데이트 */
+    public void updateIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+
     /** 온보딩 진행 상태로 다음 단계 반환
      * new -> terms : 약관동의 화면
      * terms_done -> signup: 가입 정보 입력 화면

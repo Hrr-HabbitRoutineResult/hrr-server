@@ -1,8 +1,6 @@
 package com.hrr.backend.domain.user.controller;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserService;
 import com.hrr.backend.global.config.CustomUserDetails;
@@ -209,5 +207,32 @@ public class UserController {
     ) {
         UserResponseDto.MyInfoDto myInfo = userService.getMyInfo(customUserDetails.getUser().getId());
         return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
+    }
+
+    @Operation(
+            summary = "내 기본 정보 수정",
+            description = "사용자가 자신의 기본 정보(닉네임, 프로필 이미지, 프로필 공개여부)를 수정합니다"
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "정보 수정 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "닉네임이 이미 사용 중"
+            )
+    })
+    @PatchMapping("/me")
+    public ApiResponse<UpdateUserInfoResponseDto> updateUserInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateUserInfoRequestDto requestDto
+    ) {
+        UpdateUserInfoResponseDto response = userService.updateUserInfo(userDetails.getUser().getId(), requestDto);
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 }

@@ -1,8 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.follow.repository.FollowRepository;
-import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.LoginStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -122,6 +120,33 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+    // 사용자 기본 정보 수정
+    @Override
+    @Transactional
+    public UpdateUserInfoResponseDto updateUserInfo(Long userId, UpdateUserInfoRequestDto requestDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 닉네임이 제공된 경우 중복 검사 및 업데이트
+        if (requestDto.getNickname() != null && !requestDto.getNickname().equals(user.getNickname())) {
+            if (userRepository.existsByNickname(requestDto.getNickname())) {
+                throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
+            }
+            user.updateNickname(requestDto.getNickname());
+        }
+
+        // 프로필 이미지가 제공된 경우 업데이트
+        if (requestDto.getProfileImage() != null) {
+            user.updateProfileImage(requestDto.getProfileImage());
+        }
+
+        // 프로필 공개 여부가 제공된 경우 업데이트
+        if (requestDto.getIsPublic() != null) {
+            user.updateIsPublic(requestDto.getIsPublic());
+        }
+
+        return UpdateUserInfoResponseDto.from(user);
+    }
 
     private String normalize(String raw) {
         if (raw == null) return "";
