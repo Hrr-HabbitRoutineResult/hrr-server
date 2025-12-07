@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -32,6 +33,7 @@ public class S3Service {
 		// PutObjectRequest 생성
 		PutObjectRequest objectRequest = PutObjectRequest.builder()
 			.bucket(bucketName)
+			.acl(ObjectCannedACL.PUBLIC_READ)
 			.key(s3Key)
 			.build();
 
