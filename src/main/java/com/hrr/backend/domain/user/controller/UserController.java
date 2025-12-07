@@ -95,9 +95,9 @@ public class UserController {
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
 
-            @RequestParam(name = "page", defaultValue = "0")
-            @Min(0)
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
 
             @RequestParam(name = "size", defaultValue = "10")
             @Min(1) @Max(100)
@@ -105,7 +105,7 @@ public class UserController {
     ) {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, page, size);
+                userService.getOngoingChallenges(userId, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -122,16 +122,16 @@ public class UserController {
             @PathVariable
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
 
-            @RequestParam(name = "page", defaultValue = "0")
-            @Min(0)
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
 
             @RequestParam(name = "size", defaultValue = "10")
             @Min(1) @Max(100)
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, page, size);
+                userService.getOngoingChallenges(userId, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -152,16 +152,16 @@ public class UserController {
 		@NotBlank(message = "검색어는 필수입니다.") String keyword,
 
 		// 페이징
-		@Min(0)
-		@RequestParam(name = "page", defaultValue = "0") int page, // 페이지 번호 (0부터 시작)
+        @Min(1)
+        @RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1부터 시작)
 		@Min(1)
-		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
+		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기
 
 		@Parameter(hidden = true)
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
 		)
 	{
-		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page, size);
+		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page-1, size);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
@@ -188,17 +188,19 @@ public class UserController {
                                             "verificationId": 1,
                                             "challengeId": 101,
                                             "challengeTitle": "미라클 모닝",
+                                            "type": "TEXT",
                                             "title": "해피뉴이어! 올해 마지막 인증 올립니다",
                                             "content": "여기엔 상세내용이 들어가유~",
-                                            "imageUrl": "https://example.com/verification_image_1.jpg",
+                                            "imageUrl": null,
                                             "verifiedAt": "2025-09-18T08:00:00Z"
                                           },
                                           {
                                             "verificationId": 2,
                                             "challengeId": 102,
                                             "challengeTitle": "매일 책 10페이지 읽기",
+                                            "type": "PHOTO",
                                             "title": "오늘의 독서 인증",
-                                            "content": "몰입의 즐거움 완독!",
+                                            "content": null,
                                             "imageUrl": "https://example.com/verification_image_2.jpg",
                                             "verifiedAt": "2025-09-13T22:30:00Z"
                                           }
@@ -215,13 +217,14 @@ public class UserController {
                     )
             )
     })
+
     public ApiResponse<SliceResponseDto<UserVerificationResponseDto.VerificationItemDto>> getVerificationHistory(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
 
-            @RequestParam(name = "page", defaultValue = "0")
-            @Min(0)
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
 
             @RequestParam(name = "size", defaultValue = "10")
             @Min(1) @Max(100)
@@ -229,7 +232,7 @@ public class UserController {
     ) {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<UserVerificationResponseDto.VerificationItemDto> response =
-                userVerificationService.getVerificationHistory(userId, page, size);
+                userVerificationService.getVerificationHistory(userId, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }

@@ -27,6 +27,9 @@ public class UserVerificationResponseDto {
         @Schema(description = "챌린지 제목", example = "미라클 모닝")
         private String challengeTitle;
 
+        @Schema(description = "인증 타입", example = "TEXT", allowableValues = {"TEXT", "PHOTO"})
+        private String type;
+
         @Schema(description = "인증 제목", example = "해피뉴이어! 올해 마지막 인증 올립니다")
         private String title;
 

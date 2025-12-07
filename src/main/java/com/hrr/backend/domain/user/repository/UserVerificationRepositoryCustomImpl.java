@@ -36,6 +36,7 @@ public class UserVerificationRepositoryCustomImpl implements UserVerificationRep
                         qVerification.id.as("verificationId"),
                         qChallenge.id.as("challengeId"),
                         qChallenge.title.as("challengeTitle"),
+                        qVerification.type.stringValue().as("type"),
                         qVerification.title,
                         qVerification.content,
                         qVerification.photoUrl.as("imageUrl"),
