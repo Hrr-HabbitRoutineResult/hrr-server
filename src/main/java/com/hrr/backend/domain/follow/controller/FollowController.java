@@ -153,30 +153,30 @@ public class FollowController {
     // ===== 팔로우 요청 관리 =====
 
     @Operation(summary = "팔로우 요청 승인", description = "받은 팔로우 요청을 승인합니다.")
-    @PostMapping("/requests/{followId}/approve")
+    @PostMapping("/requests/{requesterId}/approve")
     public ApiResponse<FollowResponseDto> approveFollowRequest(
-            @Parameter(description = "팔로우 ID", required = true)
-            @PathVariable Long followId,
+            @Parameter(description = "팔로우 요청한 사용자 ID", required = true)
+            @PathVariable Long requesterId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 요청 승인 - currentUserId: {}, followId: {}", currentUserId, followId);
+        log.info("팔로우 요청 승인 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
 
-        FollowResponseDto response = followService.approveFollowRequest(currentUserId, followId);
+        FollowResponseDto response = followService.approveFollowRequest(currentUserId, requesterId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
     @Operation(summary = "팔로우 요청 거절", description = "받은 팔로우 요청을 거절합니다.")
-    @DeleteMapping("/requests/{followId}/reject")
+    @DeleteMapping("/requests/{requesterId}/reject")
     public ApiResponse<FollowResponseDto> rejectFollowRequest(
-            @Parameter(description = "팔로우 ID", required = true)
-            @PathVariable Long followId,
+            @Parameter(description = "팔로우 요청한 사용자 ID", required = true)
+            @PathVariable Long requesterId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 요청 거절 - currentUserId: {}, followId: {}", currentUserId, followId);
+        log.info("팔로우 요청 거절 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
 
-        FollowResponseDto response = followService.rejectFollowRequest(currentUserId, followId);
+        FollowResponseDto response = followService.rejectFollowRequest(currentUserId, requesterId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 }

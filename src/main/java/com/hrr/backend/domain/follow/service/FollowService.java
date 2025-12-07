@@ -118,67 +118,65 @@ public class FollowService {
     /**
      * 팔로우 요청 승인
      * @param currentUserId 현재 로그인한 사용자 ID (요청 받은 사람)
-     * @param followId 팔로우 ID
+     * @param requesterId 팔로우 요청한 사용자 ID
      * @return FollowResponseDto
      */
     @Transactional
-    public FollowResponseDto approveFollowRequest(Long currentUserId, Long followId) {
-        log.info("팔로우 요청 승인 - userId: {}, followId: {}", currentUserId, followId);
+    public FollowResponseDto approveFollowRequest(Long currentUserId, Long requesterId) {
+        log.info("팔로우 요청 승인 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
 
-        // 팔로우 요청 조회
-        Follow follow = followRepository.findById(followId)
+        // 요청한 사용자 존재 여부 확인
+        userRepository.findById(requesterId)
                 .orElseThrow(() -> {
-                    log.warn("팔로우 요청을 찾을 수 없습니다 - followId: {}", followId);
+                    log.warn("요청한 사용자를 찾을 수 없습니다 - userId: {}", requesterId);
+                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        // PENDING 상태의 팔로우 요청 조회
+        Follow follow = followRepository
+                .findByFollowerIdAndFollowingIdAndStatus(requesterId, currentUserId, FollowStatus.PENDING)
+                .orElseThrow(() -> {
+                    log.warn("팔로우 요청을 찾을 수 없습니다 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
                     return new GlobalException(ErrorCode.FOLLOW_REQUEST_NOT_FOUND);
                 });
 
-        // 권한 확인: 요청 받은 사람만 승인 가능
-        if (!follow.getFollowing().getId().equals(currentUserId)) {
-            log.warn("다른 사람의 팔로우 요청을 승인할 수 없습니다 - userId: {}, followId: {}", currentUserId, followId);
-            throw new GlobalException(ErrorCode.UNAUTHORIZED_FOLLOW_ACTION);
-        }
-
-        // 이미 승인된 요청인지 확인
-        if (follow.getStatus() == FollowStatus.APPROVED) {
-            log.warn("이미 승인된 팔로우 요청입니다 - followId: {}", followId);
-            throw new GlobalException(ErrorCode.ALREADY_APPROVED_FOLLOW);
-        }
-
         // 승인 처리
         follow.approve();
-        log.info("팔로우 요청 승인 완료 - followId: {}", followId);
+        log.info("팔로우 요청 승인 완료 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
 
-        return FollowResponseDto.of("Follow request approved successfully", followId, FollowStatus.APPROVED);
+        return FollowResponseDto.of("Follow request approved successfully", requesterId, FollowStatus.APPROVED);
     }
 
     /**
      * 팔로우 요청 거절/삭제
      * @param currentUserId 현재 로그인한 사용자 ID (요청 받은 사람)
-     * @param followId 팔로우 ID
+     * @param requesterId 팔로우 요청한 사용자 ID
      * @return FollowResponseDto
      */
     @Transactional
-    public FollowResponseDto rejectFollowRequest(Long currentUserId, Long followId) {
-        log.info("팔로우 요청 거절 - userId: {}, followId: {}", currentUserId, followId);
+    public FollowResponseDto rejectFollowRequest(Long currentUserId, Long requesterId) {
+        log.info("팔로우 요청 거절 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
 
-        // 팔로우 요청 조회
-        Follow follow = followRepository.findById(followId)
+        // 요청한 사용자 존재 여부 확인
+        userRepository.findById(requesterId)
                 .orElseThrow(() -> {
-                    log.warn("팔로우 요청을 찾을 수 없습니다 - followId: {}", followId);
+                    log.warn("요청한 사용자를 찾을 수 없습니다 - userId: {}", requesterId);
+                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        // PENDING 상태의 팔로우 요청 조회
+        Follow follow = followRepository
+                .findByFollowerIdAndFollowingIdAndStatus(requesterId, currentUserId, FollowStatus.PENDING)
+                .orElseThrow(() -> {
+                    log.warn("팔로우 요청을 찾을 수 없습니다 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
                     return new GlobalException(ErrorCode.FOLLOW_REQUEST_NOT_FOUND);
                 });
 
-        // 권한 확인: 요청 받은 사람만 거절 가능
-        if (!follow.getFollowing().getId().equals(currentUserId)) {
-            log.warn("다른 사람의 팔로우 요청을 거절할 수 없습니다 - userId: {}, followId: {}", currentUserId, followId);
-            throw new GlobalException(ErrorCode.UNAUTHORIZED_FOLLOW_ACTION);
-        }
-
         // 요청 삭제
         followRepository.delete(follow);
-        log.info("팔로우 요청 거절 완료 - followId: {}", followId);
+        log.info("팔로우 요청 거절 완료 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
 
-        return FollowResponseDto.of("Follow request rejected successfully", followId, null);
+        return FollowResponseDto.of("Follow request rejected successfully", requesterId, null);
     }
 
     /**
