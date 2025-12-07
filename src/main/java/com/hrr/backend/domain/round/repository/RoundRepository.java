@@ -1,5 +1,7 @@
 package com.hrr.backend.domain.round.repository;
 
+import java.util.Optional;
+
 import com.hrr.backend.domain.round.entity.Round;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,11 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 public interface RoundRepository extends JpaRepository<Round, Long> {
     /**
-     * 챌린지의 모든 라운드 조회 (라운드 번호 순)
+     * 챌린지의 모든 라운드 조회
      */
     @Query("SELECT r FROM Round r " +
             "WHERE r.challenge.id = :challengeId " +
