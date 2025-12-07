@@ -35,7 +35,7 @@ public class Follow extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
-    private FollowStatus status = FollowStatus.APPROVED;
+    private FollowStatus status = FollowStatus.PENDING;
 
     // 상태 변경 메서드
     public void approve() {
