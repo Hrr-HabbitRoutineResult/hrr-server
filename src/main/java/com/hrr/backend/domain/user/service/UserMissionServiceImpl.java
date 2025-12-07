@@ -21,6 +21,7 @@ import com.hrr.backend.domain.user.repository.UserMissionRepository;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.s3.S3UrlUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,8 @@ public class UserMissionServiceImpl implements UserMissionService {
 	private final ChallengeRepository challengeRepository;
 	private final RandomMissionRepository randomMissionRepository;
 	private final UserFavorRepository userFavorRepository;
+
+	private final S3UrlUtil s3UrlUtil;
 
 	@Override
 	@Transactional
@@ -113,6 +116,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 			.title(userMission.getMission().getTitle())
 			.content(userMission.getMission().getContent())
 			.isCompleted(userMission.getIsCompleted())
+			.imageKey(s3UrlUtil.toFullUrl(userMission.getMission().getImageKey()))
 			.build();
 	}
 

@@ -29,5 +29,8 @@ public class UserMissionResponseDto {
 		@Schema(description = "완료 여부", example = "true")
 		private Boolean isCompleted;
 
+		@Schema(description = "s3 key", example = "https")
+		private String imageKey;
+
 	}
 }
