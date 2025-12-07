@@ -126,7 +126,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 			.title(userMission.getMission().getTitle())
 			.content(userMission.getMission().getContent())
 			.isCompleted(userMission.getIsCompleted())
-			.imageKey(s3UrlUtil.toFullUrl(userMission.getMission().getImageKey()))
+			.imageUrl(s3UrlUtil.toFullUrl(userMission.getMission().getImageKey()))
 			.build();
 	}
 
