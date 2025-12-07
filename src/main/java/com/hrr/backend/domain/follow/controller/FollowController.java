@@ -63,8 +63,8 @@ public class FollowController {
 	@Operation(summary = "내 팔로잉 목록 조회", description = "현재 로그인한 사용자의 팔로잉 목록을 조회합니다.")
 	@GetMapping("/me/followings")
 	public ApiResponse<SliceResponseDto<FollowListResponseDto>> getMyFollowings(
-		@Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-		@RequestParam(defaultValue = "0") int page,
+		@Parameter(description = "페이지 번호 (1부터 시작)", example = "0")
+		@RequestParam(defaultValue = "1") int page,
 		@Parameter(description = "페이지 크기", example = "20")
 		@RequestParam(defaultValue = "20") int size,
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
@@ -72,7 +72,7 @@ public class FollowController {
 		Long currentUserId = customUserDetails.getUser().getId();
 		log.info("내 팔로잉 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
 
-		Pageable pageable = PageRequest.of(page, size);
+		Pageable pageable = PageRequest.of(page-1, size);
 		SliceResponseDto<FollowListResponseDto> followings = followListService.getFollowings(currentUserId, currentUserId, pageable);
 		return ApiResponse.onSuccess(SuccessCode.OK, followings);
 	}
@@ -80,8 +80,8 @@ public class FollowController {
 	@Operation(summary = "내 팔로워 목록 조회", description = "현재 로그인한 사용자의 팔로워 목록을 조회합니다.")
 	@GetMapping("/me/followers")
 	public ApiResponse<SliceResponseDto<FollowListResponseDto>> getMyFollowers(
-		@Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-		@RequestParam(defaultValue = "0") int page,
+		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+		@RequestParam(defaultValue = "1") int page,
 		@Parameter(description = "페이지 크기", example = "20")
 		@RequestParam(defaultValue = "20") int size,
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
@@ -89,7 +89,7 @@ public class FollowController {
 		Long currentUserId = customUserDetails.getUser().getId();
 		log.info("내 팔로워 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
 
-		Pageable pageable = PageRequest.of(page, size);
+		Pageable pageable = PageRequest.of(page-1, size);
 		SliceResponseDto<FollowListResponseDto> followers = followListService.getFollowers(currentUserId, currentUserId, pageable);
 		return ApiResponse.onSuccess(SuccessCode.OK, followers);
 	}
@@ -101,8 +101,8 @@ public class FollowController {
 	public ApiResponse<SliceResponseDto<FollowListResponseDto>> getUserFollowings(
 		@Parameter(description = "조회할 사용자 ID", required = true)
 		@PathVariable Long userId,
-		@Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-		@RequestParam(defaultValue = "0") int page,
+		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+		@RequestParam(defaultValue = "1") int page,
 		@Parameter(description = "페이지 크기", example = "20")
 		@RequestParam(defaultValue = "20") int size,
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
@@ -111,7 +111,7 @@ public class FollowController {
 		log.info("사용자 팔로잉 목록 조회 요청 - userId: {}, currentUserId: {}, page: {}, size: {}",
 			userId, currentUserId, page, size);
 
-		Pageable pageable = PageRequest.of(page, size);
+		Pageable pageable = PageRequest.of(page-1, size);
 		SliceResponseDto<FollowListResponseDto> followings = followListService.getFollowings(userId, currentUserId, pageable);
 		return ApiResponse.onSuccess(SuccessCode.OK, followings);
 	}
@@ -121,8 +121,8 @@ public class FollowController {
 	public ApiResponse<SliceResponseDto<FollowListResponseDto>> getUserFollowers(
 		@Parameter(description = "조회할 사용자 ID", required = true)
 		@PathVariable Long userId,
-		@Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-		@RequestParam(defaultValue = "0") int page,
+		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+		@RequestParam(defaultValue = "1") int page,
 		@Parameter(description = "페이지 크기", example = "20")
 		@RequestParam(defaultValue = "20") int size,
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
@@ -131,7 +131,7 @@ public class FollowController {
 		log.info("사용자 팔로워 목록 조회 요청 - userId: {}, currentUserId: {}, page: {}, size: {}",
 			userId, currentUserId, page, size);
 
-		Pageable pageable = PageRequest.of(page, size);
+		Pageable pageable = PageRequest.of(page-1, size);
 		SliceResponseDto<FollowListResponseDto> followers = followListService.getFollowers(userId, currentUserId, pageable);
 		return ApiResponse.onSuccess(SuccessCode.OK, followers);
 	}
