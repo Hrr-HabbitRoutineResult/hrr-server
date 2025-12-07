@@ -13,6 +13,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
@@ -129,6 +130,14 @@ public class ChallengeConverter {
                 .verifyStartTime(challenge.getVerifyStartTime())
                 .verifyEndTime(challenge.getVerifyEndTime())
                 .verifiedDaysThisWeek(verifiedDays) // 미참여시 null
+                .build();
+    }
+
+    // Round 엔티티 -> RoundDto 변환
+    public ChallengeResponseDto.RoundDto toRoundDto(Round round, boolean isCurrentRound) {
+        return ChallengeResponseDto.RoundDto.builder()
+                .roundNumber(round.getRoundNumber())
+                .isCurrentRound(isCurrentRound)
                 .build();
     }
 }

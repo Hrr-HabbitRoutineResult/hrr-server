@@ -9,6 +9,8 @@ import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
+
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,6 +22,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
+
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -84,39 +88,6 @@ public class UserController {
             description = "현재 로그인한 사용자가 참가중인 챌린지 목록을 조회합니다. " +
                     "ONGOING 상태의 챌린지만 반환됩니다."
     )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "성공",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    value = """
-                                    {
-                                      "resultType": "SUCCESS",
-                                      "error": null,
-                                      "success": {
-                                        "content": [
-                                          {
-                                            "challengeId": 301,
-                                            "title": "자잘자잘",
-                                            "description": "하루 5분씩 무엇이든 꼭 해야...",
-                                            "image": "http://example.com/challenge_301.jpg",
-                                            "currentRound": 6
-                                          }
-                                        ],
-                                        "currentPage": 1,
-                                        "size": 10,
-                                        "first": true,
-                                        "last": true,
-                                        "hasNext": false
-                                      }
-                                    }
-                                    """
-                            )
-                    )
-            )
-    })
     public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getMyOngoingChallenges(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
@@ -144,46 +115,6 @@ public class UserController {
             description = "특정 사용자가 참가중인 챌린지 목록을 조회합니다. " +
                     "ONGOING 상태의 챌린지만 반환됩니다.\n"
     )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "성공",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    value = """
-                                    {
-                                      "resultType": "SUCCESS",
-                                      "error": null,
-                                      "success": {
-                                        "content": [
-                                          {
-                                            "challengeId": 301,
-                                            "title": "자잘자잘",
-                                            "description": "하루 5분씩 무엇이든 꼭 해야...",
-                                            "image": "http://example.com/challenge_301.jpg",
-                                            "currentRound": 6
-                                          },
-                                          {
-                                            "challengeId": 302,
-                                            "title": "공부합시다",
-                                            "description": "매일 아침 영어 공부 1시간",
-                                            "image": "http://example.com/challenge_302.jpg",
-                                            "currentRound": 15
-                                          }
-                                        ],
-                                        "currentPage": 0,
-                                        "size": 10,
-                                        "first": true,
-                                        "last": false,
-                                        "hasNext": true
-                                      }
-                                    }
-                                    """
-                            )
-                    )
-            )
-    })
     public ApiResponse<SliceResponseDto<UserResponseDto.OngoingChallengeDto>> getUserOngoingChallenges(
             @PathVariable
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
@@ -210,4 +141,25 @@ public class UserController {
         UserResponseDto.MyInfoDto myInfo = userService.getMyInfo(customUserDetails.getUser().getId());
         return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
     }
+
+	@GetMapping("/search")
+	@Operation(summary = "챌린저 검색", description = "검색 키워드가 닉네임에 포함된 사용자를 조회합니다.")
+	public ApiResponse<SliceResponseDto<UserResponseDto.ProfileDto>> searchChallengers(
+		@RequestParam(name = "keyword")
+		@NotBlank(message = "검색어는 필수입니다.") String keyword,
+
+		// 페이징
+		@Min(0)
+		@RequestParam(name = "page", defaultValue = "0") int page, // 페이지 번호 (0부터 시작)
+		@Min(1)
+		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
+
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails customUserDetails
+		)
+	{
+		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page, size);
+
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
 }

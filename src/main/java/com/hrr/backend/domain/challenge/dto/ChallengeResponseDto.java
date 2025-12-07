@@ -204,4 +204,17 @@ public class ChallengeResponseDto {
 		private List<ChallengeDays> verifiedDaysThisWeek;
 	}
 
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "챌린지 라운드 목록 응답 DTO")
+	public static class RoundDto {
+
+		@Schema(description = "라운드 회차 (탭 UI 표시 및 식별용)", example = "1")
+		private Integer roundNumber;
+
+		@Schema(description = "현재 진행 중인 라운드인지 여부 (TRUE일 경우 UI 강조)", example = "true")
+		private Boolean isCurrentRound;
+	}
+
 }
