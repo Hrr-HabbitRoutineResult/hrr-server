@@ -161,7 +161,9 @@ public class VerificationConverter {
                 .canWriteComment(true) // 정책 상 언제든 댓글 작성 가능
                 .adoptedCommentId(adoptedCommentId)
                 .showResolvedBadge(verification.getIsResolved())
-                .commentCount(comments.getComments().size())
+                .commentCount(comments != null && comments.getComments() != null
+                        ? comments.getComments().size()
+                        : 0)
                 .comments(comments)
                 .build();
     }

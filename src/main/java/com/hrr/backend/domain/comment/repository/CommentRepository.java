@@ -30,7 +30,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByParentAndIsDeletedFalseOrderByCreatedAtAsc(Comment parent);
 
     @Query("SELECT c FROM Comment c WHERE c.verification.id = :verificationId AND c.isAdopted = true")
-    List<Comment> findAdoptedCommentsByVerificationId(@Param("verificationId") Long verificationId);
+    Optional<Comment> findAdoptedCommentsByVerificationId(@Param("verificationId") Long verificationId);
 
 
     /**

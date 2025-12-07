@@ -151,7 +151,7 @@ public class VerificationController {
     @Operation(summary = "인증글 수정", description = "인증글을 수정합니다.")
     public ApiResponse<VerificationDetailResponseDto> updateVerification(
             @PathVariable Long verificationId,
-            @RequestBody VerificationUpdateRequestDto requestDto,
+            @RequestBody @Valid VerificationUpdateRequestDto requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         Long currentUserId = userDetails.getUser().getId();

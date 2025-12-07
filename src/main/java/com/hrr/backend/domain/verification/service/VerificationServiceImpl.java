@@ -289,16 +289,15 @@ public class VerificationServiceImpl implements VerificationService {
         User author = userChallenge.getUser();
 
         boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
-
-        boolean canEdit = isMine;
-        boolean canDelete = isMine;
+        boolean isResolved = Boolean.TRUE.equals(verification.getIsResolved());
+        boolean canEdit = isMine && !isResolved;
+        boolean canDelete = isMine && !isResolved;
 
         boolean canSelectComment =
                 isMine
                         && Boolean.TRUE.equals(verification.getIsQuestion())
-                        && !Boolean.TRUE.equals(verification.getIsResolved());
-
-        Pageable pageable = PageRequest.of(page, size);
+                        && !isResolved;
+        Pageable pageable = PageRequest.of(page - 1, size);
         CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
 
         Long adoptedCommentId = comments.getComments().stream()
@@ -360,6 +359,8 @@ public class VerificationServiceImpl implements VerificationService {
         verification.resolve(); // 인증글 해결 상태로 변경
     }
 
+    @Override
+    @Transactional
     public VerificationDetailResponseDto updateVerification(Long verificationId, Long currentUserId, VerificationUpdateRequestDto requestDto) {
 
         Verification verification = verificationRepository.findById(verificationId)
@@ -383,12 +384,16 @@ public class VerificationServiceImpl implements VerificationService {
         );
 
         // 댓글 목록 + 상세 DTO 구성
-        CommentListResponseDto comments = commentService.getComments(verificationId, PageRequest.of(1, 10));
+        CommentListResponseDto comments = commentService.getComments(verificationId, PageRequest.of(0, 10));
 
         boolean isMine = currentUserId.equals(author.getId());
-        boolean canEdit = isMine && !verification.getIsResolved();
-        boolean canDelete = isMine && !verification.getIsResolved();
-        boolean canSelectComment = verification.getIsQuestion() && !verification.getIsResolved() && isMine;
+        boolean isResolved = Boolean.TRUE.equals(verification.getIsResolved());
+        boolean canEdit = isMine && !isResolved;
+        boolean canDelete = isMine && !isResolved;
+
+        boolean canSelectComment = Boolean.TRUE.equals(verification.getIsQuestion())
+                && !isResolved
+                && isMine;
         Long adoptedCommentId = comments.getComments().stream()
                 .filter(CommentResponseDto::isAdopted)
                 .map(CommentResponseDto::getCommentId)

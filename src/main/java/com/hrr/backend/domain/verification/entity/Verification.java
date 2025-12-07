@@ -5,6 +5,8 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -130,9 +132,14 @@ public class Verification extends BaseEntity {
 
     public void update(String title, String content, String textUrl, String photoUrl) {
         if (title != null) {
+            if (title.isBlank()) {
+                throw new GlobalException(ErrorCode.VERIFICATION_TITLE_REQUIRED);
+        }
             this.title = title;
         }
         if (content != null) {
+            if (content.isBlank()) {
+                throw new GlobalException(ErrorCode.VERIFICATION_TEXT_REQUIRED);}
             this.content = content;
         }
         if (textUrl != null) {
