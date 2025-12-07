@@ -109,6 +109,16 @@ public class UserMissionServiceImpl implements UserMissionService {
 			.orElse(false);
 	}
 
+	@Override
+	@Transactional
+	public void verifyRandomMission(User user, Long missionId, LocalDate date, String imageKey) {
+		UserMission userMission = userMissionRepository.findByUserAndDate(user, date).orElseThrow(()-> new GlobalException(
+			ErrorCode.RANDOM_MISSION_NOT_FOUND)
+		);
+		userMission.setImageKey(imageKey);
+		userMission.setIsCompleted(true);
+	}
+
 	// 사용 빈도가 적을 것 같아 별도의 클래스가 아닌 private 메소드로 생성
 	private UserMissionResponseDto.DetailDto convertToDetailDto(UserMission userMission) {
 		return UserMissionResponseDto.DetailDto.builder()
