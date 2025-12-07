@@ -137,7 +137,6 @@ class ChallengeRepositoryTest {
                 .description("테스트 설명")
                 .startDate(startDate)
                 .status(status)
-                // 아래 필드들은 @Column(nullable = false) 이므로 더미 값을 채워줍니다.
                 .category(Category.values()[0])
                 .verificationType(VerificationType.values()[0])
                 .isPublic(true)

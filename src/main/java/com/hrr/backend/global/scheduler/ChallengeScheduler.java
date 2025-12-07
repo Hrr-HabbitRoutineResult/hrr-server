@@ -49,7 +49,7 @@ public class ChallengeScheduler {
 		// 기준 시간: 오늘 00:00:00
 		LocalDateTime referenceTime = LocalDate.now().atStartOfDay();
 
-		// 1) 먼저 어떤 챌린지가 대상인지 ID만 조회
+		// 먼저 어떤 챌린지가 대상인지 ID만 조회
 		List<Long> idsToStart = challengeRepository.findIdsToStart(
 				ChallengeStatus.UPCOMING,
 				referenceTime
@@ -60,14 +60,14 @@ public class ChallengeScheduler {
 			return;
 		}
 
-		// 2) 실제 상태 변경 수행
+		// 실제 상태 변경 수행
 		int updatedCount = challengeRepository.updateChallengeStatusToOngoing(
 				ChallengeStatus.ONGOING,
 				ChallengeStatus.UPCOMING,
 				referenceTime
 		);
 
-		// 3) 변경 로그 (기준 시각 + 변경 건수 + 대상 ID)
+		// 변경 로그 (기준 시각 + 변경 건수 + 대상 ID)
 		log.info(
 				"[Scheduler] 챌린지 상태 변경 완료. 기준 시각: {}, 변경 건수: {}, 대상 ID: {}",
 				referenceTime,
