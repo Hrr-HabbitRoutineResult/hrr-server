@@ -86,25 +86,33 @@ public class CommentServiceImpl implements CommentService {
                 .findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0, pageable);
 
         List<Comment> parents = new ArrayList<>(parentPage.getContent());
+
         Optional<Comment> adoptedOpt =
                 commentRepository.findAdoptedCommentsByVerificationId(verificationId);
 
         Comment adoptedParent = null;
+        List<CommentResponseDto> adoptedChildren = new ArrayList<>();
 
         if (adoptedOpt.isPresent()) {
             Comment adopted = adoptedOpt.get();
 
-            // 채택된 댓글이 부모인지 or 자식인지
             adoptedParent = (adopted.getDepth() == 0)
                     ? adopted
                     : adopted.getParent();
 
-            // 현재 페이지 내 부모 목록에 포함되어 있다면 최상단으로 올리기
-            if (adoptedParent != null && parents.contains(adoptedParent)) {
-                parents.remove(adoptedParent);   // 기존 위치 제거
-                parents.add(0, adoptedParent);   // 최상단에 삽입
+            if (adoptedParent != null) {
+                // 자식들 조회
+                adoptedChildren = commentRepository
+                        .findByParentAndIsDeletedFalseOrderByCreatedAtAsc(adoptedParent)
+                        .stream()
+                        .map(CommentConverter::toDto)
+                        .toList();
+
+                // 중복 방지: 만약 현재 페이지 부모 리스트에 들어있다면 제거
+                parents.remove(adoptedParent);
             }
         }
+
         List<CommentResponseDto> result = new ArrayList<>();
 
 
@@ -133,8 +141,9 @@ public class CommentServiceImpl implements CommentService {
             }
         }
 
-        // DTO 반환 (페이지네이션 정보는 "부모 댓글" 기준)
         return CommentListResponseDto.builder()
+                .adoptedParent(adoptedParent != null ? CommentConverter.toDto(adoptedParent) : null)
+                .adoptedChildren(adoptedChildren)
                 .comments(result)
                 .currentPage(parentPage.getNumber() + 1)
                 .totalPages(parentPage.getTotalPages())
