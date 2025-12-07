@@ -108,8 +108,10 @@ public class CommentServiceImpl implements CommentService {
                         .map(CommentConverter::toDto)
                         .toList();
 
+
                 // 중복 방지: 만약 현재 페이지 부모 리스트에 들어있다면 제거
-                parents.remove(adoptedParent);
+                Long adoptedParentId = adoptedParent.getId();
+                parents.removeIf(p -> p.getId().equals(adoptedParentId));
             }
         }
 
