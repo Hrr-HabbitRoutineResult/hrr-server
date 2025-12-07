@@ -92,9 +92,9 @@ public class UserController {
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
 
-            @RequestParam(name = "page", defaultValue = "0")
-            @Min(0)
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
 
             @RequestParam(name = "size", defaultValue = "10")
             @Min(1) @Max(100)
@@ -102,7 +102,7 @@ public class UserController {
     ) {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, page, size);
+                userService.getOngoingChallenges(userId, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -119,16 +119,16 @@ public class UserController {
             @PathVariable
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
 
-            @RequestParam(name = "page", defaultValue = "0")
-            @Min(0)
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") int page,
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
 
             @RequestParam(name = "size", defaultValue = "10")
             @Min(1) @Max(100)
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, page, size);
+                userService.getOngoingChallenges(userId, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -149,8 +149,8 @@ public class UserController {
 		@NotBlank(message = "검색어는 필수입니다.") String keyword,
 
 		// 페이징
-		@Min(0)
-		@RequestParam(name = "page", defaultValue = "0") int page, // 페이지 번호 (0부터 시작)
+		@Min(1)
+		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (0부터 시작)
 		@Min(1)
 		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
 
@@ -158,7 +158,7 @@ public class UserController {
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
 		)
 	{
-		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page, size);
+		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page-1, size);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}

@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
+import com.hrr.backend.domain.comment.service.CommentService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,7 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -50,6 +53,8 @@ public class VerificationServiceImpl implements VerificationService {
     private final UserRepository userRepository;
     private final UserChallengeRepository userChallengeRepository;
     private final VerificationConverter verificationConverter;
+    private final CommentService commentService;
+
 
     @Override
     public SliceResponseDto<VerificationResponseDto.FeedDto> getVerificationFeed(
@@ -122,23 +127,22 @@ public class VerificationServiceImpl implements VerificationService {
 
     @Override
     public VerificationResponseDto.MyProfileDto getMyVerificationProfile(
-            Long userId,
+            User user,
             Long challengeId,
             int page,
             int size
     ) {
-        // 1. 유저 챌린지 조회
-        UserChallenge userChallenge = userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)
-                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED)); // 적절한 에러코드(NOT_JOINED) 필요 시 수정
+        // 유저 챌린지 조회
+        UserChallenge userChallenge = userChallengeRepository.findByUserIdAndChallengeId(user.getId(), challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
 
         Long userChallengeId = userChallenge.getId();
 
-        // 2. 통계 계산
+        // 통계 데이터 조회
         Long roundSequence = roundRecordRepository.countByUserChallengeId(userChallengeId);
         Long totalVerification = roundRecordRepository.sumVerificationCountByUserChallengeId(userChallengeId);
-        Integer warningCount = userChallenge.getKickWarnings();
 
-        // 3. 내 인증글 조회
+        // 내 인증글 목록 조회
         Pageable pageable = PageRequest.of(page, size);
         Page<Verification> verificationPage = verificationRepository.findMyVerifications(
                 userChallengeId,
@@ -146,15 +150,17 @@ public class VerificationServiceImpl implements VerificationService {
                 pageable
         );
 
+        // 목록 변환
         Slice<VerificationResponseDto.FeedDto> dtoSlice = verificationPage.map(verificationConverter::toFeedDto);
+        SliceResponseDto<VerificationResponseDto.FeedDto> sliceResponse = new SliceResponseDto<>(dtoSlice);
 
-        return VerificationResponseDto.MyProfileDto.builder()
-                .nickname(userChallenge.getUser().getNickname())
-                .totalVerificationCount(totalVerification)
-                .warningCount(warningCount)
-                .currentRoundSequence(roundSequence)
-                .verifications(new SliceResponseDto<>(dtoSlice))
-                .build();
+        // 최종 응답 변환
+        return verificationConverter.toMyProfileDto(
+                userChallenge,
+                totalVerification,
+                roundSequence,
+                sliceResponse
+        );
     }
 
     @Override
@@ -265,4 +271,38 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size) {
+
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        RoundRecord roundRecord = verification.getRoundRecord();
+        UserChallenge userChallenge = roundRecord.getUserChallenge();
+        User author = userChallenge.getUser();
+
+        boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
+
+        boolean canEdit = isMine;
+        boolean canDelete = isMine;
+        boolean canSelectComment =
+                isMine
+                        && Boolean.TRUE.equals(verification.getIsQuestion())
+                        && !Boolean.TRUE.equals(verification.getIsResolved());
+
+        Pageable pageable = PageRequest.of(page, size);
+        CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
+
+        return verificationConverter.toDetailDto(
+                verification,
+                comments,
+                isMine,
+                canEdit,
+                canDelete,
+                canSelectComment
+        );
+    }
+
 }
