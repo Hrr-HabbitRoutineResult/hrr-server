@@ -96,6 +96,7 @@ public class ChallengeConverter {
                 .challengeId(challenge.getId())
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
+                .verificationType(challenge.getVerificationType())
                 .imageUrl(s3UrlUtil.toFullUrl(challenge.getImageKey()))
                 .currentParticipantCount(challenge.getCurrentParticipants())
                 .maxParticipantCount(challenge.getMaxParticipants())
