@@ -9,8 +9,11 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -184,13 +187,18 @@ public class FollowService {
      * @param currentUserId 현재 로그인한 사용자 ID
      * @return List<FollowRequestDto>
      */
-    public List<FollowRequestDto> getPendingFollowRequests(Long currentUserId) {
-        log.info("받은 팔로우 요청 목록 조회 - userId: {}", currentUserId);
+    public SliceResponseDto<FollowRequestDto> getPendingFollowRequests(Long currentUserId, Pageable pageable) {
+        log.info("받은 팔로우 요청 목록 조회 - userId: {}, page: {}, size: {}",
+                currentUserId, pageable.getPageNumber(), pageable.getPageSize());
 
-        List<Follow> pendingFollows = followRepository.findPendingFollowRequests(currentUserId, FollowStatus.PENDING);
+        // Repository를 통해 Slice 형태로 PENDING 요청 조회
+        Slice<Follow> pendingFollowsSlice = followRepository.findPendingFollowRequests(
+                currentUserId, FollowStatus.PENDING, pageable
+        );
 
-        return pendingFollows.stream()
-                .map(FollowRequestDto::from)
-                .collect(Collectors.toList());
+        // DTO로 변환
+        Slice<FollowRequestDto> dtoSlice = pendingFollowsSlice.map(FollowRequestDto::from);
+
+        return new SliceResponseDto<>(dtoSlice);
     }
 }

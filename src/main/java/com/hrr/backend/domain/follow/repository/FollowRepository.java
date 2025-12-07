@@ -66,5 +66,5 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "WHERE f.following.id = :userId " +
             "AND f.status = :status " +
             "ORDER BY f.createdAt DESC")
-    List<Follow> findPendingFollowRequests(@Param("userId") Long userId, @Param("status") FollowStatus status);
+    Slice<Follow> findPendingFollowRequests(@Param("userId") Long userId, @Param("status") FollowStatus status, Pageable pageable);
 }

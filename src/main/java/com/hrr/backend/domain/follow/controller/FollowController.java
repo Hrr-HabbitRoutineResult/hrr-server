@@ -103,13 +103,19 @@ public class FollowController {
 
     @Operation(summary = "받은 팔로우 요청 목록 조회", description = "현재 사용자가 받은 대기 중인 팔로우 요청 목록을 조회합니다.")
     @GetMapping("/me/requests")
-    public ApiResponse<List<FollowRequestDto>> getPendingFollowRequests(
+    public ApiResponse<SliceResponseDto<FollowRequestDto>> getPendingFollowRequests(
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+            @Min(1)
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 요청 목록 조회 - currentUserId: {}", currentUserId);
+        log.info("받은 팔로우 요청 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
 
-        List<FollowRequestDto> response = followService.getPendingFollowRequests(currentUserId);
+        Pageable pageable = PageRequest.of(page - 1, size);
+        SliceResponseDto<FollowRequestDto> response = followService.getPendingFollowRequests(currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
