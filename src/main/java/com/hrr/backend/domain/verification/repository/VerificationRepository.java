@@ -1,12 +1,16 @@
 package com.hrr.backend.domain.verification.repository;
 
 import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -25,4 +29,132 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay
     );
+
+    // 피드 조회
+    // 조건: 라운드ID, 타입(사진/글), 상태(COMPLETED)
+    // 정렬: 미해결 질문(0) -> 그 외(1), 이후 최신순
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.roundRecord r " +
+            "JOIN FETCH r.userChallenge uc " +
+            "JOIN FETCH uc.user u " +
+            "WHERE r.round.id = :roundId " +
+            "AND v.type = :type " +
+            "AND v.status = :status " +
+            "ORDER BY " +
+            "  CASE WHEN (v.isQuestion = true AND v.isResolved = false) THEN 0 ELSE 1 END ASC, " +
+            "  v.createdAt DESC")
+    Page<Verification> findVerificationFeed(
+            @Param("roundId") Long roundId,
+            @Param("type") VerificationPostType type,
+            @Param("status") VerificationStatus status,
+            Pageable pageable
+    );
+
+    // 가장 최근 인증 날짜 조회 (COMPLETED 상태만)
+    @Query("SELECT MAX(v.createdAt) FROM Verification v " +
+            "JOIN v.roundRecord r " +
+            "WHERE r.round.id = :roundId " +
+            "AND v.status = :status")
+    LocalDateTime findLatestVerificationTime(
+            @Param("roundId") Long roundId,
+            @Param("status") VerificationStatus status
+    );
+
+    // 특정 날짜(범위)의 인증 인원 수 (중복 제거, COMPLETED 상태만)
+    @Query("SELECT COUNT(DISTINCT r.userChallenge.id) FROM Verification v " +
+            "JOIN v.roundRecord r " +
+            "WHERE r.round.id = :roundId " +
+            "AND v.status = :status " +
+            "AND v.createdAt BETWEEN :start AND :end")
+    Long countDistinctCertifiers(
+            @Param("roundId") Long roundId,
+            @Param("status") VerificationStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("SELECT v FROM Verification v " +
+            "JOIN v.roundRecord r " +
+            "JOIN r.userChallenge uc " +
+            "WHERE uc.user.id = :userId " +
+            "AND uc.challenge.id = :challengeId " +
+            "AND v.createdAt BETWEEN :start AND :end " +
+            "AND v.status = :status")
+    List<Verification> findWeeklyVerifications(
+            @Param("userId") Long userId,
+            @Param("challengeId") Long challengeId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("status") VerificationStatus status
+    );
+
+
+    /**
+     * 특정 라운드의 특정 사용자 인증 목록 조회
+     */
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.userChallenge uc " +
+            "JOIN FETCH uc.user " +
+            "WHERE v.roundId = :roundId " +
+            "AND v.userChallenge.id = :userChallengeId " +
+            "ORDER BY v.createdAt DESC")
+    List<Verification> findByRoundIdAndUserChallengeId(
+            @Param("roundId") Long roundId,
+            @Param("userChallengeId") Long userChallengeId
+    );
+
+    /**
+     * 특정 라운드의 모든 인증 목록 조회
+     */
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.userChallenge uc " +
+            "JOIN FETCH uc.user " +
+            "WHERE v.roundId = :roundId " +
+            "ORDER BY v.createdAt DESC")
+    Page<Verification> findByRoundId(@Param("roundId") Long roundId, Pageable pageable);
+
+    /**
+     * 사용자의 모든 인증 목록 조회 (챌린지별)
+     */
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.userChallenge uc " +
+            "WHERE uc.user.id = :userId " +
+            "AND uc.challenge.id = :challengeId " +
+            "ORDER BY v.createdAt DESC")
+    Page<Verification> findByUserIdAndChallengeId(
+            @Param("userId") Long userId,
+            @Param("challengeId") Long challengeId,
+            Pageable pageable
+    );
+
+    /**
+     * 특정 기간 동안의 인증 개수 조회
+     */
+    @Query("SELECT COUNT(v) FROM Verification v " +
+            "WHERE v.userChallenge.id = :userChallengeId " +
+            "AND v.roundId = :roundId " +
+            "AND v.status = :status " +
+            "AND v.createdAt BETWEEN :startDate AND :endDate")
+    Long countByUserChallengeAndRoundAndDateRange(
+            @Param("userChallengeId") Long userChallengeId,
+            @Param("roundId") Long roundId,
+            @Param("status") VerificationStatus status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    // 내 인증 모아보기
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.roundRecord r " +
+            "WHERE r.userChallenge.id = :userChallengeId " +
+            "AND v.status = :status " +
+            "ORDER BY " +
+            "  CASE WHEN (v.isQuestion = true AND v.isResolved = false) THEN 0 ELSE 1 END ASC, " +
+            "  v.createdAt DESC")
+    Page<Verification> findMyVerifications(
+            @Param("userChallengeId") Long userChallengeId,
+            @Param("status") VerificationStatus status,
+            Pageable pageable
+    );
+
 }

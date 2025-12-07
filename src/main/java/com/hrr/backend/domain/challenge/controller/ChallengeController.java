@@ -80,6 +80,21 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
+	@GetMapping("/{challengeId}/profile")
+	@Operation(summary = "챌린지 프로필 조회 (참여 전/후 UI 통합)",
+			description = "로그인한 유저의 참여 상태에 따라 인증 현황을 포함하거나 제외하여 반환합니다.")
+	public ApiResponse<ChallengeResponseDto.ChallengeProfileDto> getChallengeProfile(
+			@PathVariable("challengeId") Long challengeId,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		ChallengeResponseDto.ChallengeProfileDto response = challengeService.getChallengeProfile(
+				userDetails.getUser(),
+				challengeId
+		);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
+
 	@PostMapping("/{challengeId}/click")
 	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
 	public ApiResponse<Long> clickChallenge(@PathVariable("challengeId") Long challengeId) {
@@ -113,14 +128,14 @@ public class ChallengeController {
                   "password": "1234",
                   "category": "HEALTH",
                   "verificationType": "PHOTO",
-                  "startDate": "2025-11-24T10:00",
+                  "startDate": "2025-11-24",
                   "maxParticipants": 10,
                   "isViewerMode": false,
                   "rule": "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.",
                   "verifyStartTime": "06:00:00",
                   "verifyEndTime": "23:00:00",
                   "daysOfWeek": ["MONDAY", "WEDNESDAY", "FRIDAY"],
-                  "imageUrl": "https://example.com/images/challenge-default.png"
+                  "imageKey": "challenges/uuid-image-file.jpg"
                 }
                 """
 							)
@@ -197,6 +212,16 @@ public class ChallengeController {
 			@PathVariable("challengeId") Long challengeId
 	) {
 		ChallengeResponseDto.ChallengeLikeDto response = challengeService.unlikeChallenge(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
+
+	@GetMapping("/{challengeId}/rounds")
+	@Operation(summary = "챌린지 라운드 목록 조회", description = "챌린지의 전체 라운드 목록(1R, 2R...)을 회차순으로 반환합니다. 현재 진행 중인 라운드는 isCurrentRound=true로 표시됩니다.")
+	public ApiResponse<List<ChallengeResponseDto.RoundDto>> getChallengeRounds(
+			@PathVariable("challengeId") Long challengeId
+	) {
+		List<ChallengeResponseDto.RoundDto> response = challengeService.getChallengeRounds(challengeId);
+
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 }

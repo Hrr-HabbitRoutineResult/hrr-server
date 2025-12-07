@@ -53,6 +53,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = jwtService.resolveToken(request);
 
+		// 블랙리스트 확인
+		if (token != null) {
+			// 토큰이 블랙리스트에 등록되어 있는지 확인
+			if (jwtService.isTokenBlacklisted(token)) {
+				// 블랙리스트에 있으면 유효기간이 남아도 즉시 무효화
+				SecurityContextHolder.clearContext();
+
+				// 토큰 무효화 관련 GlobalException을 request에 저장하여 예외 핸들러가 처리하도록 함
+				request.setAttribute("jwtException", new GlobalException(ErrorCode.AUTH_TOKEN_INVALIDATED));
+
+				// 필터 체인을 계속 진행시켜 다음 필터가 예외를 처리
+				chain.doFilter(request, response);
+				return;
+			}
+		}
+
         // 헤더에 토큰이 있고, SecurityContext에 인증 정보가 없는 경우에만 인증 처리
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {

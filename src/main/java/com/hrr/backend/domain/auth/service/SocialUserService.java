@@ -21,7 +21,7 @@ public class SocialUserService {
     @Transactional
     public User upsertKakaoUser(KakaoUserResponse kakao) {
         Long kakaoId = kakao.getId();
-        String nickname = Optional.ofNullable(kakao.getKakaoAccount())
+        String name = Optional.ofNullable(kakao.getKakaoAccount())
                 .map(KakaoUserResponse.KakaoAccount::getProfile)
                 .map(KakaoUserResponse.KakaoAccount.Profile::getNickname)
                 .orElse("카카오유저");
@@ -33,13 +33,13 @@ public class SocialUserService {
 
         return userRepository.findByKakaoId(kakaoId)
                 .map(user -> {
-                    user.updateNickname(nickname);
+                    user.updateName(name);
                     user.updateProfileImage(profileImage);
                     return user;
                 })
                 .orElseGet(() -> {
                     // 신규 유저는 NEW 상태로 생성되게 변경
-                    return userRepository.save(User.newKakao(kakaoId, nickname, profileImage));
+                    return userRepository.save(User.newKakao(kakaoId, name, profileImage));
                 });
     }
 }

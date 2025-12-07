@@ -16,6 +16,8 @@ services:
     # 6시간마다 Nginx 설정을 재로드하여 갱신된 인증서 반영
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     restart: always
+    environment:
+      - TZ=Asia/Seoul
     depends_on:
       - app
 
@@ -30,6 +32,8 @@ services:
     # 12시간마다 갱신 시도하는 루프 스크립트
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     restart: always
+    environment:
+      - TZ=Asia/Seoul
 
 # ---- nginx 외 다른 서비스들은 외부 포트 사용 x ---
 
@@ -38,10 +42,12 @@ services:
     image: ychan0/hrr-server:v1.0.0
     container_name: hrr_app_prod
     environment:
+      TZ: Asia/Seoul
+
       # Secrets Manager에서 가져온 환경 변수 사용
       SPRING_PROFILES_ACTIVE: prod
 
-      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=UTC&characterEncoding=UTF-8&sslMode=REQUIRED'
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=REQUIRED'
       SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
 
@@ -55,6 +61,7 @@ services:
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       PROD_KAKAO_REDIRECT_URI: ${PROD_KAKAO_REDIRECT_URI}
+      KAKAO_APP_REDIRECT_URI: ${KAKAO_APP_REDIRECT_URI}
 
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
 
@@ -65,6 +72,8 @@ services:
     image: redis:7.4.2-alpine
     container_name: hrr_redis_prod
     restart: always
+    environment:
+      - TZ=Asia/Seoul
     volumes:
       - redis_data:/data
 
@@ -73,6 +82,8 @@ services:
     image: ychan0/hrr-model:v1.0.0
     container_name: hrr_model_prod
     restart: always
+    environment:
+      - TZ=Asia/Seoul
 
 volumes:
   db-data:

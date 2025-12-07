@@ -4,18 +4,25 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.global.s3.S3UrlUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 
 @Component
+@RequiredArgsConstructor
 public class ChallengeConverter {
+
+    private final S3UrlUtil s3UrlUtil;
 
     public Challenge toChallengeEntity(
             ChallengeRequestDto.CreateChallengeDto req,
@@ -31,14 +38,14 @@ public class ChallengeConverter {
                 .password(password)
                 .title(req.getTitle())
                 .description(req.getDescription())
-                .startDate(req.getStartDate())
+                .startDate(req.getStartDate().atStartOfDay())
                 .verificationType(req.getVerificationType())
                 .verifyStartTime(req.getVerifyStartTime())
                 .verifyEndTime(req.getVerifyEndTime())
                 .rule(req.getRule())
                 .currentParticipants(1)
                 .status(ChallengeStatus.UPCOMING)
-                .imageUrl(req.getImageUrl())
+                .imageKey(req.getImageKey())
                 .likeCount(0)
                 .build();
 
@@ -89,17 +96,48 @@ public class ChallengeConverter {
                 .challengeId(challenge.getId())
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
-                .imageUrl(challenge.getImageUrl())
+                .imageUrl(s3UrlUtil.toFullUrl(challenge.getImageKey()))
                 .currentParticipantCount(challenge.getCurrentParticipants())
                 .maxParticipantCount(challenge.getMaxParticipants())
                 .startDate(startDate)
                 .endDate(endDate)
                 .remainDays(remainDays)
+				.isPublic(challenge.getIsPublic())
                 .isObserverMode(challenge.getIsViewerMode())
                 .isParticipant(isParticipant)
                 .isLiked(isLiked)
                 .owner(ownerDto)
                 .actionButtonStatus(actionButtonStatus)
+                .build();
+    }
+
+    // 챌린지 프로필 DTO
+    public ChallengeResponseDto.ChallengeProfileDto toProfileDto(
+            Challenge challenge,
+            boolean isParticipating,
+            List<ChallengeDays> verifiedDays
+    ) {
+        // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환
+        List<ChallengeDays> targetDays = challenge.getChallengeDays().stream()
+                .map(ChallengeDayJoin::getDay)
+                .toList();
+
+        return ChallengeResponseDto.ChallengeProfileDto.builder()
+                .challengeId(challenge.getId())
+                .isParticipating(isParticipating)
+                .rule(challenge.getRule())
+                .targetDays(targetDays)
+                .verifyStartTime(challenge.getVerifyStartTime())
+                .verifyEndTime(challenge.getVerifyEndTime())
+                .verifiedDaysThisWeek(verifiedDays) // 미참여시 null
+                .build();
+    }
+
+    // Round 엔티티 -> RoundDto 변환
+    public ChallengeResponseDto.RoundDto toRoundDto(Round round, boolean isCurrentRound) {
+        return ChallengeResponseDto.RoundDto.builder()
+                .roundNumber(round.getRoundNumber())
+                .isCurrentRound(isCurrentRound)
                 .build();
     }
 }

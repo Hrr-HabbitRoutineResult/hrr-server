@@ -52,7 +52,7 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 				qChallenge.description,
 				qChallenge.currentParticipants.as("currentParticipantCount"),
 				qChallenge.maxParticipants.as("maxParticipantCount"),
-				qChallenge.imageUrl.as("thumbnailUrl"),
+				qChallenge.imageKey.as("thumbnailUrl"),
 				qChallenge.likeCount,
 				qChallenge.startDate
 			))
@@ -87,7 +87,7 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 				qChallenge.description,
 				qChallenge.currentParticipants.as("currentParticipantCount"),
 				qChallenge.maxParticipants.as("maxParticipantCount"),
-				qChallenge.imageUrl.as("thumbnailUrl"),
+				qChallenge.imageKey.as("thumbnailUrl"),
 				qChallenge.startDate
 				// DB에 없는 isUpcoming, dDayUntilStart, daysOfWeek 필드 제외
 
