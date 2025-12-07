@@ -34,6 +34,7 @@ public class RecommendationRepository {
                     c.rule AS goal_text,
                     c.verify_start_time,
                     c.verify_end_time,
+                    c.image_key,
                     ce.challenge_embedding
                 FROM challenge c
                 LEFT JOIN challenge_embedding ce
@@ -57,6 +58,7 @@ public class RecommendationRepository {
                     .goal_text(rs.getString("goal_text"))
                     .verifyStartTime(start)
                     .verifyEndTime(end)
+                    .imageKey(rs.getString("image_key"))
                     .embedding(bytesToFloatList(embeddingBytes))
                     .build();
         });
