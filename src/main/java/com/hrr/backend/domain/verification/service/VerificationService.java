@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.verification.service;
 
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.global.response.SliceResponseDto;
@@ -22,10 +23,10 @@ public interface VerificationService {
     VerificationResponseDto.StatDto getVerificationStat(Long challengeId);
 
     /**
-     * 내 인증 현황(프로필) 조회 (신규 기능)
+     * 챌린지 인증현황 마이 조회
      */
     VerificationResponseDto.MyProfileDto getMyVerificationProfile(
-            Long userId,
+            User user,
             Long challengeId,
             int page,
             int size
