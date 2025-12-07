@@ -84,7 +84,7 @@ public class Verification extends BaseEntity {
                 .textUrl(textUrl)
                 .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.TEMPORARY)
+                .status(VerificationStatus.COMPLETED)
                 .isResolved(false) // feat/90 필드 초기화
                 .build();
     }
@@ -108,7 +108,7 @@ public class Verification extends BaseEntity {
                 .content(content)
                 .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.TEMPORARY)
+                .status(VerificationStatus.COMPLETED)
                 .isResolved(false) // feat/90 필드 초기화
                 .build();
     }
