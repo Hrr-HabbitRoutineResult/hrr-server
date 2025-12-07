@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,6 +20,7 @@ import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Mission", description = "랜덤미션 관련 API")
@@ -52,8 +54,8 @@ public class UserMissionController {
 
 	@PostMapping("/verify")
 	@Operation(summary = "오늘의 랜덤미션 인증", description = "오늘의 랜덤미션을 인증합니다. ")
-	public ApiResponse<String> getRandomMission(
-		UserMissionRequestDto.VerificationDto request,
+	public ApiResponse<String> verifyRandomMission(
+		@Valid @RequestBody UserMissionRequestDto.VerificationDto request,
 
 		@Parameter(hidden = true)
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
