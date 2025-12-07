@@ -154,6 +154,7 @@ public class ChallengeRecommendationService {
                                     .goalText(base.getGoal_text())
                                     .verifyStartTime(base.getVerifyStartTime())
                                     .verifyEndTime(base.getVerifyEndTime())
+                                    .imageKey(base.getImageKey())
                                     .build();
                         })
                         .filter(Objects::nonNull)
