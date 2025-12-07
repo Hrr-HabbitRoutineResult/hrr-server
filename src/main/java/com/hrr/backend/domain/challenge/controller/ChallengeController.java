@@ -128,14 +128,14 @@ public class ChallengeController {
                   "password": "1234",
                   "category": "HEALTH",
                   "verificationType": "PHOTO",
-                  "startDate": "2025-11-24T10:00",
+                  "startDate": "2025-11-24",
                   "maxParticipants": 10,
                   "isViewerMode": false,
                   "rule": "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.",
                   "verifyStartTime": "06:00:00",
                   "verifyEndTime": "23:00:00",
                   "daysOfWeek": ["MONDAY", "WEDNESDAY", "FRIDAY"],
-                  "imageUrl": "https://example.com/images/challenge-default.png"
+                  "imageKey": "challenges/uuid-image-file.jpg"
                 }
                 """
 							)
@@ -212,6 +212,16 @@ public class ChallengeController {
 			@PathVariable("challengeId") Long challengeId
 	) {
 		ChallengeResponseDto.ChallengeLikeDto response = challengeService.unlikeChallenge(userDetails.getUser(), challengeId);
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
+
+	@GetMapping("/{challengeId}/rounds")
+	@Operation(summary = "챌린지 라운드 목록 조회", description = "챌린지의 전체 라운드 목록(1R, 2R...)을 회차순으로 반환합니다. 현재 진행 중인 라운드는 isCurrentRound=true로 표시됩니다.")
+	public ApiResponse<List<ChallengeResponseDto.RoundDto>> getChallengeRounds(
+			@PathVariable("challengeId") Long challengeId
+	) {
+		List<ChallengeResponseDto.RoundDto> response = challengeService.getChallengeRounds(challengeId);
+
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 }

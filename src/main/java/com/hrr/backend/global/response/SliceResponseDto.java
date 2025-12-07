@@ -24,4 +24,8 @@ public class SliceResponseDto<T> {
 		this.isLast = slice.isLast();
 		this.hasNext = slice.hasNext();
 	}
+
+	public static <T> SliceResponseDto<T> of(Slice<T> slice) {
+		return new SliceResponseDto<>(slice);
+	}
 }

@@ -32,4 +32,14 @@ public interface UserService {
      * 닉네임 저장 + 로그인 상태 변경 + 다음 단계 계산
      */
     UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request);
+
+	/**
+	 * 키워드가 닉네임에 포함된 사용자 조회
+	 */
+	SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
+			User user,
+			String keyword,
+			int page,
+			int size
+	);
 }

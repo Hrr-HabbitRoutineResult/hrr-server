@@ -60,4 +60,7 @@ public interface ChallengeService {
 
 	// 챌린지 좋아요 취소
 	ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(User user, Long challengeId);
+
+	// 챌린지 라운드 목록 조회
+	List<ChallengeResponseDto.RoundDto> getChallengeRounds(Long challengeId);
 }

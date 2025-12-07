@@ -36,7 +36,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                         qChallenge.id.as("challengeId"),
                         qChallenge.title,
                         qChallenge.description,
-                        qChallenge.imageUrl.as("thumbnailUrl"),
+                        qChallenge.imageKey.as("thumbnailUrl"),
                         qRoundRecord.verificationCount.as("currentRound"),
                         qChallenge.startDate
                 ))
