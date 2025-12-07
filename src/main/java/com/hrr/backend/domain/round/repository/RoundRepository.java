@@ -47,4 +47,7 @@ public interface RoundRepository extends JpaRepository<Round, Long> {
     @Query("SELECT r FROM Round r " +
             "WHERE r.endDate = :endDate")
     List<Round> findAllByEndDate(@Param("endDate") LocalDate endDate);
+
+    // 챌린지 ID로 모든 라운드를 회차 오름차순(1R, 2R, ...)으로 조회
+    List<Round> findAllByChallengeIdOrderByRoundNumberAsc(Long challengeId);
 }

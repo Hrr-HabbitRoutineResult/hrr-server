@@ -564,6 +564,29 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toChallengeLikeDto(updatedChallenge, false);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public List<ChallengeResponseDto.RoundDto> getChallengeRounds(Long challengeId) {
+		// 챌린지 조회
+		Challenge challenge = findChallenge(challengeId);
+
+		// 라운드 목록 조회
+		List<Round> rounds = roundRepository.findAllByChallengeIdOrderByRoundNumberAsc(challengeId);
+
+		// 현재 라운드 ID 추출 (Null Safe)
+		Long currentRoundId = (challenge.getCurrentRound() != null)
+				? challenge.getCurrentRound().getId()
+				: -1L;
+
+		// 변환
+		return rounds.stream()
+				.map(round -> {
+					boolean isCurrent = round.getId().equals(currentRoundId);
+					return challengeConverter.toRoundDto(round, isCurrent);
+				})
+				.toList();
+	}
+
 	/**
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
 	 */
