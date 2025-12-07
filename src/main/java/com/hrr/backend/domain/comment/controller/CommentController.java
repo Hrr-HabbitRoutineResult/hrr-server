@@ -59,7 +59,7 @@ public class CommentController {
 			@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
     ) {
 
-		Pageable pageable = PageRequest.of(page, size);
+		Pageable pageable = PageRequest.of(page-1, size);
 
         CommentListResponseDto response = commentService.getComments(verificationId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
