@@ -113,34 +113,7 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.getDailyTopChallenges(number));
 	}
 
-	@Operation(
-			summary = "챌린지 생성",
-			requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-					content = @Content(
-							mediaType = "application/json",
-							examples = @ExampleObject(
-									value = """
-                {
-                  "title": "매일 1만 보 걷기",
-                  "description": "하루에 만 보 이상 걷는 습관",
-                  "isPublic": false,
-                  "password": "1234",
-                  "category": "HEALTH",
-                  "verificationType": "PHOTO",
-                  "startDate": "2025-11-24",
-                  "maxParticipants": 10,
-                  "isViewerMode": false,
-                  "rule": "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.",
-                  "verifyStartTime": "06:00:00",
-                  "verifyEndTime": "23:00:00",
-                  "daysOfWeek": ["MONDAY", "WEDNESDAY", "FRIDAY"],
-                  "imageKey": "challenges/uuid-image-file.jpg"
-                }
-                """
-							)
-					)
-			)
-	)
+	@Operation(summary = "챌린지 생성", description = "챌린지를 생성합니다. 챌린지를 생성하는 동시에 방장으로 참여하게 됩니다.")
 	@PostMapping("")
 	public ApiResponse<ChallengeResponseDto.CreateChallengeDto> createChallenge(
 			@Parameter(hidden = true)
