@@ -5,16 +5,11 @@ import java.time.LocalDateTime;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.domain.round.entity.RoundRecord;
-import com.hrr.backend.domain.user.entity.UserChallenge;
 import org.springframework.stereotype.Component;
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
-
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.challenge.entity.Challenge;
-
-import com.hrr.backend.domain.user.entity.User;
-
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
