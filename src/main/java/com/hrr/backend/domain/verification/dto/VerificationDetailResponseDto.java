@@ -1,85 +1,76 @@
 package com.hrr.backend.domain.verification.dto;
 
+import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * 인증 상세 조회 응답 DTO
- * 추후 상세 조회 API 구현 시 사용
- */
-@Getter
+@Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "인증 상세 조회 응답 DTO")
+@NoArgsConstructor
 public class VerificationDetailResponseDto {
 
     private Long verificationId;
-
     private Long roundId;
-
     private Integer roundNumber;
 
     private Long challengeId;
-
     private String challengeName;
 
     private VerificationPostType type;
-
     private String title;
-
     private String content;
-
     private String textUrl;
-
     private String photoUrl;
 
     private Boolean isQuestion;
-
+    private Boolean isResolved;
     private VerificationStatus status;
 
     private LocalDateTime createdAt;
-
     private LocalDateTime updatedAt;
 
-    private UserInfo author;
+    // 권한/상태 플래그
+    private Boolean isMine;
+    private Boolean canEdit;
+    private Boolean canDelete;
+    private Boolean canSelectComment;
 
+    // 작성자 정보
+    private UserInfo user;
+
+    // 라운드 정보
     private RoundInfo roundInfo;
 
-    @Getter
+    // 댓글 목록 + 페이징 정보
+    private CommentListResponseDto comments;
+
+    @Data
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class UserInfo {
         private Long userId;
-
         private String nickname;
-
         private String profileImageUrl;
+        private UserChallengeRole role;
     }
 
-    @Getter
+    @Data
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class RoundInfo {
-        private Long roundId;
-
-        private Integer roundNumber;
-
         private String startDate;
-
         private String endDate;
-
         private Integer verificationCount;
-
         private Integer warnCount;
     }
 }

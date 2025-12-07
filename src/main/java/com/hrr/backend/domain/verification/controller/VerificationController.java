@@ -113,4 +113,21 @@ public class VerificationController {
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
+
+    @GetMapping("/{verificationId}")
+    @Operation(summary = "인증 게시물 상세 조회", description = "인증 게시물 + 댓글 목록을 상세 조회합니다.")
+    public ApiResponse<VerificationDetailResponseDto> getVerificationDetail(
+            @PathVariable Long verificationId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long currentUserId = (userDetails != null) ? userDetails.getUser().getId() : null;
+
+        VerificationDetailResponseDto response =
+                verificationService.getVerificationDetail(verificationId, currentUserId, page - 1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
 }
