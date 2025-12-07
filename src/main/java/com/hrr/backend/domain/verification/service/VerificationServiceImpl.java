@@ -3,9 +3,9 @@ package com.hrr.backend.domain.verification.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
+import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.comment.service.CommentService;
@@ -292,6 +292,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         boolean canEdit = isMine;
         boolean canDelete = isMine;
+
         boolean canSelectComment =
                 isMine
                         && Boolean.TRUE.equals(verification.getIsQuestion())
@@ -300,13 +301,20 @@ public class VerificationServiceImpl implements VerificationService {
         Pageable pageable = PageRequest.of(page, size);
         CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
 
+        Long adoptedCommentId = comments.getComments().stream()
+                .filter(CommentResponseDto::isAdopted)
+                .map(CommentResponseDto::getCommentId)
+                .findFirst()
+                .orElse(null);
+
         return verificationConverter.toDetailDto(
                 verification,
                 comments,
                 isMine,
                 canEdit,
                 canDelete,
-                canSelectComment
+                canSelectComment,
+                adoptedCommentId
         );
     }
 
@@ -381,6 +389,11 @@ public class VerificationServiceImpl implements VerificationService {
         boolean canEdit = isMine && !verification.getIsResolved();
         boolean canDelete = isMine && !verification.getIsResolved();
         boolean canSelectComment = verification.getIsQuestion() && !verification.getIsResolved() && isMine;
+        Long adoptedCommentId = comments.getComments().stream()
+                .filter(CommentResponseDto::isAdopted)
+                .map(CommentResponseDto::getCommentId)
+                .findFirst()
+                .orElse(null);
 
         return verificationConverter.toDetailDto(
                 verification,
@@ -388,7 +401,8 @@ public class VerificationServiceImpl implements VerificationService {
                 isMine,
                 canEdit,
                 canDelete,
-                canSelectComment
+                canSelectComment,
+                adoptedCommentId
         );
     }
 

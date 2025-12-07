@@ -109,7 +109,8 @@ public class VerificationConverter {
             boolean isMine,
             boolean canEdit,
             boolean canDelete,
-            boolean canSelectComment
+            boolean canSelectComment,
+            Long adoptedCommentId
     ) {
         RoundRecord roundRecord = verification.getRoundRecord();
         Round round = roundRecord.getRound();
@@ -157,6 +158,10 @@ public class VerificationConverter {
                 .canEdit(canEdit)
                 .canDelete(canDelete)
                 .canSelectComment(canSelectComment)
+                .canWriteComment(true) // 정책 상 언제든 댓글 작성 가능
+                .adoptedCommentId(adoptedCommentId)
+                .showResolvedBadge(verification.getIsResolved())
+                .commentCount(comments.getComments().size())
                 .comments(comments)
                 .build();
     }

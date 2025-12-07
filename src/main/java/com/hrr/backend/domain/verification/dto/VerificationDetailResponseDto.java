@@ -43,6 +43,12 @@ public class VerificationDetailResponseDto {
     private Boolean canDelete;
     private Boolean canSelectComment;
 
+    //프론트가 받기 쉽게
+    private boolean canWriteComment;
+    private Long adoptedCommentId;
+    private boolean showResolvedBadge;
+    private int commentCount;
+
     // 작성자 정보
     private UserInfo user;
 
