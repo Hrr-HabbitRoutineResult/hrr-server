@@ -23,7 +23,7 @@ public class FollowResponseDto {
     @Schema(description = "팔로우 상태", example = "APPROVED")
     private FollowStatus status;
 
-    public static FollowResponseDto of(String message, Long id) {
+    public static FollowResponseDto of(String message, Long id, FollowStatus status) {
         return FollowResponseDto.builder()
                 .message(message)
                 .id(id)
