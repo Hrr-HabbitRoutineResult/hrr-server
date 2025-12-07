@@ -11,7 +11,7 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=REQUIRED # 국제 표준시인 UTC 적용 및 UTF-8로 인코딩
+    url: jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=REQUIRED # UTF-8로 인코딩(시간대는 임시로 KST 적용)
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
 
