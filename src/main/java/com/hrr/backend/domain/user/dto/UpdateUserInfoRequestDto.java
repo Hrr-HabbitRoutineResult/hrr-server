@@ -16,8 +16,8 @@ public class UpdateUserInfoRequestDto {
     @Size(min = 1, max = 20, message = "닉네임은 1자 이상 20자 이하여야 합니다")
     private String nickname;
 
-    @Schema(description = "프로필 이미지 URL", example = "https://example.com/newprofile.jpg")
-    private String profileImage;
+    @Schema(description = "프로필 이미지 Key (S3)", example = "users/uuid-profile.jpg")
+    private String profileImageKey;
 
     @Schema(description = "프로필 공개 여부", example = "false")
     private Boolean isPublic;

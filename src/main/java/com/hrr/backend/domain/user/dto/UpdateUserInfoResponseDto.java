@@ -19,8 +19,8 @@ public class UpdateUserInfoResponseDto {
     @Schema(description = "닉네임", example = "흐르르")
     private String nickname;
 
-    @Schema(description = "프로필 이미지 URL", example = "https://example.com/newprofile.jpg")
-    private String profileImage;
+    @Schema(description = "프로필 이미지 URL", example = "https://hrr-bucket.s3.ap-northeast-2.amazonaws.com/users/uuid-profile.jpg")
+    private String profileImageUrl;
 
     @Schema(description = "프로필 공개 여부", example = "false")
     private Boolean isPublic;
@@ -28,10 +28,10 @@ public class UpdateUserInfoResponseDto {
     @Schema(description = "수정 일시", example = "2025-10-10T12:15:00")
     private LocalDateTime updatedAt;
 
-    public static UpdateUserInfoResponseDto from(User user) {
+    public static UpdateUserInfoResponseDto from(User user, String profileImageUrl) {
         return UpdateUserInfoResponseDto.builder()
                 .nickname(user.getNickname())
-                .profileImage(user.getProfileImage())
+                .profileImageUrl(profileImageUrl)
                 .isPublic(user.getIsPublic())
                 .updatedAt(user.getUpdatedAt())
                 .build();
