@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.user.entity;
 
+import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import com.hrr.backend.domain.user.entity.enums.UserRole;
@@ -90,9 +91,9 @@ public class User extends BaseEntity {
     private List<NotificationSetting> notificationSettings = new ArrayList<>();
 
     @Column(unique = true)
-    private Long kakaoId;
+    private String socialId;
 
-    @Enumerated(EnumType.STRING)
+	@Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private LoginStatus loginStatus = LoginStatus.NEW;
@@ -107,7 +108,7 @@ public class User extends BaseEntity {
     /** 카카오 로그인용 팩토리 메서드 */
     public static User newKakao(Long kakaoId, String name, String profileImage) {
         User user = new User();
-        user.kakaoId = kakaoId;
+		user.socialId = String.valueOf(kakaoId);
         user.name = name;
         user.profileImage = profileImage;
         // 초기 로그인 상태 명시적으로 설정 (nullable=false 대응)

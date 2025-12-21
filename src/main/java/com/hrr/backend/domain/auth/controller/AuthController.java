@@ -118,6 +118,13 @@ public class AuthController {
 		return ApiResponse.onSuccess(SuccessCode.OK, loginResponse);
 	}
 
+	@PostMapping("/login/apple")
+	public ApiResponse<AuthResponseDto.LoginResponse> appleLogin(
+		@RequestBody @Valid AuthRequestDto.AppleLoginRequest request) {
+
+		return ApiResponse.onSuccess(SuccessCode.OK, authService.appleLogin(request));
+	}
+
 	@PostMapping("/logout")
 	@Operation(summary = "로그아웃",
 		description = "로그아웃 시 토큰을 무효화 시킵니다.")

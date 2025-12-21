@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
+	private final AppleAuthService appleAuthService;
     private final SocialUserService socialUserService;
     private final JwtService jwtService;
 
@@ -122,6 +123,46 @@ public class AuthService {
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}
+
+	/**
+	 * 애플 로그인 구현
+	 *
+	 * @param request 요청 Dto
+	 * @return 토큰, userId 등 필요 정보
+	 */
+	public AuthResponseDto.LoginResponse appleLogin(AuthRequestDto.AppleLoginRequest request) {
+
+		try {
+			String socialId = appleAuthService.getAppleAccountId(request.getIdentityToken());
+			String appleRefreshToken = appleAuthService.getAppleRefreshToken(request.getAuthorizationCode());
+
+			// DB 저장 (애플은 RT 함께 저장)
+			User user = socialUserService.upsertAppleUser(socialId, request.getName(), appleRefreshToken);
+
+			// JWT 생성
+			String accessToken = jwtService.generateAccessToken(user.getId());
+			String refreshToken = jwtService.generateRefreshToken(user.getId());
+
+			// 다음단계 게산
+			String nextStep = user.determineNextStep();
+
+			return new AuthResponseDto.LoginResponse(
+				user.getId(),
+				accessToken,
+				refreshToken,
+				user.getName(),
+				user.getNickname(),
+				user.getLoginStatus(),
+				nextStep
+			);
+		} catch (GlobalException e) {
+			throw e;
+		} catch (Exception e) {
+			// 애플 서버 통신 오류 처리
+			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+		}
+	}
+
 
 	public void logout(String tokenHeader) {
 

@@ -64,6 +64,11 @@ public enum ErrorCode implements BaseCode{
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
     AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
 
+	// apple auth
+	AUTH_APPLE_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "APPLE001", "애플 토큰 요청 중 오류가 발생했습니다."),
+	AUTH_APPLE_ID_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "APPLE002", "유효하지 않은 애플 ID 토큰입니다."),
+	AUTH_APPLE_KEY_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "APPLE003", "애플 인증 키 생성 중 오류가 발생했습니다."),
+
     // round
     ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4041", "라운드를 찾을 수 없습니다."), // feat/90 & develop 공통
     ROUND_NOT_MATCH_CHALLENGE(HttpStatus.BAD_REQUEST, "ROUND4002", "라운드가 해당 챌린지에 속하지 않습니다."),
@@ -122,7 +127,7 @@ public enum ErrorCode implements BaseCode{
     // search
     MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),
     COUNTING_LOG_TABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5002", "집계가 실패하였습니다."),
-    ;
+	;
 
     private final HttpStatus status;
     private final String code;
