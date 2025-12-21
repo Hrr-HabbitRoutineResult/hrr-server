@@ -12,9 +12,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // ID로 유저 조회 (soft delete 미적용)
     Optional<User> findById(Long id);
 
-	// Social ID(kakao, apple)
-    Optional<User> findBySocialId(String socialId);
-
     boolean existsByNickname(String nickname);
 
 	/**
