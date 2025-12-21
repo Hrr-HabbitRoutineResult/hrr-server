@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.auth.service;
 
 import java.time.Duration;
+import java.util.Map;
 
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
@@ -133,11 +134,12 @@ public class AuthService {
 	public AuthResponseDto.LoginResponse appleLogin(AuthRequestDto.AppleLoginRequest request) {
 
 		try {
-			String socialId = appleAuthService.getAppleAccountId(request.getIdentityToken());
-			String appleRefreshToken = appleAuthService.getAppleRefreshToken(request.getAuthorizationCode());
+			Map<String, String> appleTokens = appleAuthService.getAppleTokens(request.getAuthorizationCode());
+			String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
+			String appleRefreshToken = appleTokens.get("refresh_token");
 
 			// DB 저장 (애플은 RT 함께 저장)
-			User user = socialUserService.upsertAppleUser(socialId, request.getName(), appleRefreshToken);
+			User user = socialUserService.upsertAppleUser(socialId, appleRefreshToken, request.getName());
 
 			// JWT 생성
 			String accessToken = jwtService.generateAccessToken(user.getId());
@@ -159,6 +161,7 @@ public class AuthService {
 			throw e;
 		} catch (Exception e) {
 			// 애플 서버 통신 오류 처리
+
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}

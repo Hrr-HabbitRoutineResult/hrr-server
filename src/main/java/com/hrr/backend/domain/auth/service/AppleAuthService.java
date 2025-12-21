@@ -18,6 +18,8 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 
@@ -38,20 +40,33 @@ public class AppleAuthService {
 	 */
 	public String getAppleAccountId(String identityToken) {
 		try {
+			// JWT: [header].[payload].[signature] 구조
 			String[] chunks = identityToken.split("\\.");
+			if (chunks.length < 2) {
+				throw new IllegalArgumentException("Invalid JWT token");
+			}
+
+			// Payload 디코딩; URL Safe Base64 디코더를 사용
 			Base64.Decoder decoder = Base64.getUrlDecoder();
 			String payload = new String(decoder.decode(chunks[1]));
 
-			return payload.substring(payload.indexOf("\"sub\":\"") + 7, payload.indexOf("\",\"auid\""));
+			// ObjectMapper를 사용하여 JSON에서 sub 필드만 추출
+			ObjectMapper objectMapper = new ObjectMapper();
+			JsonNode jsonNode = objectMapper.readTree(payload);
+
+			String sub = jsonNode.get("sub").asText();
+
+			return sub;
 		} catch (Exception e) {
+			log.error("애플 토큰으로부터 sub 획득 실패");
 			throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 		}
 	}
 
 	/**
-	 * Authorization Code로 애플 Refresh Token 받아오기
+	 * Authorization Code로 애플 id_token과 Refresh Token 받아오기
 	 */
-	public String getAppleRefreshToken(String code) {
+	public Map<String, String> getAppleTokens(String code) {
 		String clientSecret = createClientSecret();
 		String tokenUrl = "https://appleid.apple.com/auth/token";
 
@@ -68,7 +83,13 @@ public class AppleAuthService {
 
 		try {
 			ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, entity, Map.class);
-			return (String) response.getBody().get("refresh_token");
+			Map<String, Object> body = response.getBody();
+
+			// id_token과 refresh_token을 모두 맵에 담아 반환합니다.
+			return Map.of(
+				"id_token", (String) body.get("id_token"),
+				"refresh_token", (String) body.get("refresh_token")
+			);
 		} catch (Exception e) {
 			log.error("애플 RT 발급 실패");
 			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);

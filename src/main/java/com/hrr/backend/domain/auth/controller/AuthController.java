@@ -9,17 +9,21 @@ import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Tag(name = "Auth", description = "인증 관련 API")
 @RestController
@@ -119,6 +123,8 @@ public class AuthController {
 	}
 
 	@PostMapping("/login/apple")
+	@Operation(summary = "애플 로그인",
+		description = "authorizationCode와 이름 정보를 받아 애플 로그인을 구현합니다. 이름은 애플 응답 그대로 first name과 last name을 넣어주시면 됩니다.")
 	public ApiResponse<AuthResponseDto.LoginResponse> appleLogin(
 		@RequestBody @Valid AuthRequestDto.AppleLoginRequest request) {
 
@@ -133,6 +139,31 @@ public class AuthController {
 		authService.logout(authorizationHeader);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, "로그아웃에 성공했습니다.");
+	}
+
+	/**
+	 * 애플 로그인 테스트용 임시 리다이렉트 url
+	 */
+	@PostMapping("/login/apple/test")
+	@Operation(summary = "애플 로그인 테스트용 url")
+	public void appleTestCallback(jakarta.servlet.http.HttpServletRequest request) {
+		log.info("======= [DEBUG] APPLE CALLBACK START =======");
+
+		// 헤더 전체 출력
+		java.util.Enumeration<String> headerNames = request.getHeaderNames();
+		while (headerNames.hasMoreElements()) {
+			String name = headerNames.nextElement();
+			log.info("Header -> {}: {}", name, request.getHeader(name));
+		}
+
+		// 파라미터(Body) 전체 출력
+		java.util.Enumeration<String> params = request.getParameterNames();
+		while (params.hasMoreElements()) {
+			String name = params.nextElement();
+			log.info("Param -> {}: {}", name, request.getParameter(name));
+		}
+
+		log.info("======= [DEBUG] APPLE CALLBACK END =======");
 	}
 }
 
