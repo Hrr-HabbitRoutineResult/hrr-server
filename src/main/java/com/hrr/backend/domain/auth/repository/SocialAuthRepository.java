@@ -10,5 +10,5 @@ import com.hrr.backend.domain.auth.entity.enums.SocialType;
 public interface SocialAuthRepository extends JpaRepository<SocialAuth, Long> {
 
 	// Social ID와 SocialType으로 검색(겹칠 일 거의 없겠지만 혹시 모르니 같이 검색)
-	Optional<SocialAuth> findBySocialIdAndSocialType(String socialId, SocialType kakao);
+	Optional<SocialAuth> findBySocialIdAndSocialType(String socialId, SocialType socialType);
 }
