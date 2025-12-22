@@ -135,6 +135,13 @@ public class AuthService {
 
 		try {
 			Map<String, String> appleTokens = appleAuthService.getAppleTokens(request.getAuthorizationCode());
+
+			// id_token 자체가 오지 않은 경우 처리
+			if (appleTokens == null || appleTokens.get("id_token") == null) {
+				log.error("애플 id_token이 유효하지 않습니다.");
+				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			}
+
 			String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
 			String appleRefreshToken = appleTokens.get("refresh_token");
 

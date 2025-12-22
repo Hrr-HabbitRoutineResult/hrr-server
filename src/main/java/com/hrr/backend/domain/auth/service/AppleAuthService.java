@@ -54,6 +54,12 @@ public class AppleAuthService {
 			ObjectMapper objectMapper = new ObjectMapper();
 			JsonNode jsonNode = objectMapper.readTree(payload);
 
+			// "sub" 필드가 null 체크
+			if (jsonNode.get("sub") == null || jsonNode.get("sub").isNull() || jsonNode.get("sub").asText().isBlank()) {
+				log.error("애플 토큰 내 sub 필드가 누락되었거나 비어있습니다. Payload: {}", payload);
+				throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
+			}
+
 			String sub = jsonNode.get("sub").asText();
 
 			return sub;
