@@ -33,7 +33,11 @@ public class AuthRequestDto {
 		@JsonIgnore
 		@Schema(hidden = true)
 		public String getName() {
-			return lastName + firstName;
+			if (lastName == null && firstName == null) {
+				return null;
+			}
+
+			return (lastName != null ? lastName : "") + (firstName != null ? firstName : "");
 		}
 	}
 }
