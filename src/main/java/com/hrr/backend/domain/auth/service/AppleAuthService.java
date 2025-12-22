@@ -37,6 +37,7 @@ public class AppleAuthService {
 	@Value("${apple.p8-key}") private String P8_KEY; // .p8 파일의 텍스트 내용 전체
 
 	private final RestTemplate restTemplate;
+	private static final ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * Identity Token에서 유저 식별자(sub) 추출 (단순 파싱 버전; 추후 검증 로직 추가 예정)
@@ -54,7 +55,6 @@ public class AppleAuthService {
 			String payload = new String(decoder.decode(chunks[1]));
 
 			// ObjectMapper를 사용하여 JSON에서 sub 필드만 추출
-			ObjectMapper objectMapper = new ObjectMapper();
 			JsonNode jsonNode = objectMapper.readTree(payload);
 
 			// "sub" 필드가 null 체크
