@@ -80,8 +80,10 @@ public class SocialUserService {
 			.orElseGet(() -> {
 				// [신규 유저] User 생성 후 SocialAuth 와 연결하여 저장
 
-				// User 생성 (애플은 프로필 이미지가 없으므로 null 전달 )
-				User newUser = User.signUp(name, null);
+				// User 생성 (애플은 프로필 이미지가 없으므로 null 전달)
+				String userName = (name != null) ? name : "애플 유저";	// 혹시 모를 이름 누락 대비
+				User newUser = User.signUp(userName, null);
+
 				userRepository.save(newUser);
 
 				// SocialAuth 생성 및 애플 전용 RT 저장
