@@ -51,9 +51,8 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/swagger-resources/**",
-                        "/webjars/**",
-						"/api/v1/auth/login/apple/test"
-                    ).permitAll()
+                        "/webjars/**"
+					).permitAll()
                     // 그 외 요청은 JWT 인증 필요
                     .anyRequest().authenticated()
             )
@@ -61,7 +60,7 @@ public class SecurityConfig {
                     .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                     //.authenticationEntryPoint((req, res, ex1) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
                     //.accessDeniedHandler((req, res, ex1) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
-            );;
+            );
             //필터 등록 -> Spring Security 로그인 필터 전에 JwtAuthenticationFilter 실행하도록 등록함
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -80,7 +79,8 @@ public class SecurityConfig {
 			"https://*.hrr-umc7.store",  // 운영 환경 (www 포함 모든 서브도메인)
 			"http://localhost:*",         // 로컬 개발 환경
 			"https://appleid.apple.com",
-			"https://semicapitalistic-shanell-irretraceable.ngrok-free.dev"));
+			"https://semicapitalistic-shanell-irretraceable.ngrok-free.dev"	// 로컬 테스트용 임시
+		));
         config.setAllowedOrigins(List.of(
                         "http://localhost:8080",
                         "http://localhost:5173",

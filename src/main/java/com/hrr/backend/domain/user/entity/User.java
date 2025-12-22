@@ -1,7 +1,6 @@
 package com.hrr.backend.domain.user.entity;
 
 import com.hrr.backend.domain.auth.entity.SocialAuth;
-import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import com.hrr.backend.domain.user.entity.enums.UserRole;
