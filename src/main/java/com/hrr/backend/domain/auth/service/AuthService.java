@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.auth.service;
 
 import java.time.Duration;
+import java.util.Map;
 
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
+	private final AppleAuthService appleAuthService;
     private final SocialUserService socialUserService;
     private final JwtService jwtService;
 
@@ -122,6 +124,55 @@ public class AuthService {
 			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
 		}
 	}
+
+	/**
+	 * 애플 로그인 구현
+	 *
+	 * @param request 요청 Dto
+	 * @return 토큰, userId 등 필요 정보
+	 */
+	public AuthResponseDto.LoginResponse appleLogin(AuthRequestDto.AppleLoginRequest request) {
+
+		try {
+			Map<String, String> appleTokens = appleAuthService.getAppleTokens(request.getAuthorizationCode());
+
+			// id_token 자체가 오지 않은 경우 처리
+			if (appleTokens == null || appleTokens.get("id_token") == null) {
+				log.error("애플 id_token이 유효하지 않습니다.");
+				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			}
+
+			String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
+			String appleRefreshToken = appleTokens.get("refresh_token");
+
+			// DB 저장 (애플은 RT 함께 저장)
+			User user = socialUserService.upsertAppleUser(socialId, appleRefreshToken, request.getName());
+
+			// JWT 생성
+			String accessToken = jwtService.generateAccessToken(user.getId());
+			String refreshToken = jwtService.generateRefreshToken(user.getId());
+
+			// 다음단계 게산
+			String nextStep = user.determineNextStep();
+
+			return new AuthResponseDto.LoginResponse(
+				user.getId(),
+				accessToken,
+				refreshToken,
+				user.getName(),
+				user.getNickname(),
+				user.getLoginStatus(),
+				nextStep
+			);
+		} catch (GlobalException e) {
+			throw e;
+		} catch (Exception e) {
+			// 애플 서버 통신 오류 처리
+
+			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+		}
+	}
+
 
 	public void logout(String tokenHeader) {
 

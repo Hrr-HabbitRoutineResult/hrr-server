@@ -11,8 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // ID로 유저 조회 (soft delete 미적용)
     Optional<User> findById(Long id);
-    // Kakao ID
-    Optional<User> findByKakaoId(Long kakaoId);
 
     boolean existsByNickname(String nickname);
 
@@ -23,4 +21,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	 * @return Slice<User> - 데이터 목록과 다음 페이지 존재 여부(hasNext)를 포함
 	 */
 	Slice<User> findByNicknameContaining(String keyword, Pageable pageable);
+
+
 }
