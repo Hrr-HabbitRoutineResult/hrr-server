@@ -7,7 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
@@ -88,16 +91,46 @@ public class AppleAuthService {
 		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(params, headers);
 
 		try {
-			ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, entity, Map.class);
+			ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+				tokenUrl,
+				HttpMethod.POST,
+				entity,
+				new ParameterizedTypeReference<Map<String, Object>>() {}
+			);
+
 			Map<String, Object> body = response.getBody();
 
-			// id_token과 refresh_token을 모두 맵에 담아 반환합니다.
-			return Map.of(
-				"id_token", (String) body.get("id_token"),
-				"refresh_token", (String) body.get("refresh_token")
-			);
+			// 응답 바디 전체가 null 인지 확인
+			if (body == null) {
+				log.error("애플 토큰 응답 바디가 비어있습니다.");
+				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			}
+
+			// 애플 측에서 보낸 에러 메시지가 있는지 확인 (디버깅용)
+			if (body.containsKey("error")) {
+				log.error("애플 서버 인증 에러: {}, 상세: {}", body.get("error"), body.get("error_description"));
+				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			}
+
+			String idToken = (String) body.get("id_token");
+			String refreshToken = (String) body.get("refresh_token");
+
+			// StringUtils 를 활용하여 null 및 빈 문자열 (""), 공백 (" ") 체크
+			if (!StringUtils.hasText(idToken) ||
+				!StringUtils.hasText(refreshToken)) {
+				log.error("애플 토큰 응답에 필수 필드 누락 또는 빈 값: id_token={}, refresh_token={}",
+					idToken != null, refreshToken != null);
+				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			}
+
+			return Map.of("id_token", idToken, "refresh_token", refreshToken);
+
+		} catch (HttpClientErrorException e) {
+			// HTTP 에러 발생 시 애플이 보낸 상세 에러 바디를 로그로 남김
+			log.error("애플 토큰 요청 실패: ", e);
+			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 		} catch (Exception e) {
-			log.error("애플 RT 발급 실패");
+			log.error("애플 토큰 처리 중 알 수 없는 오류 발생: {}", e.getMessage());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 		}
 	}
