@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -144,6 +145,7 @@ public class AuthController {
 	/**
 	 * 애플 로그인 테스트용 임시 리다이렉트 url
 	 */
+	@Profile("local")	// 로켈 테스트 환경에서만 작동 제한
 	@PostMapping("/login/apple/test")
 	@Operation(summary = "애플 로그인 테스트용 url")
 	public void appleTestCallback(jakarta.servlet.http.HttpServletRequest request) {
