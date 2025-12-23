@@ -41,6 +41,11 @@ public class ReportServiceImpl implements ReportService {
 			throw new GlobalException(ErrorCode.CANNOT_REPORT_OWN_POST);
 		}
 
+		// 중복 신고 방지
+		if (verificationPostReportRepository.existsByReporterAndVerification(reporter, verification)) {
+			throw new GlobalException(ErrorCode.ALREADY_REPORTED);
+		}
+
 		// 신고 내역 저장
 		VerificationPostReport report = VerificationPostReport.builder()
 			.reporter(reporter)

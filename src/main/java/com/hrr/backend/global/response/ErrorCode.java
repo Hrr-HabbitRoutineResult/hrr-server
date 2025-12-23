@@ -105,6 +105,7 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_ALREADY_RESOLVED(HttpStatus.CONFLICT, "VERIFICATION40916", "이미 해결된 인증글입니다."),
 	ACCESS_DENIED_REPORTED_POST(HttpStatus.CONFLICT, "VERIFICATION40917", "신고 5회 누적으로 제한된 게시글입니다."),
 	CANNOT_REPORT_OWN_POST(HttpStatus.CONFLICT, "VERIFICATION40918", "자기 자신의 인증 게시글은 신고할 수 없습니다."),
+	ALREADY_REPORTED(HttpStatus.CONFLICT, "VERIFICATION40919", "이미 신고한 게시글입니다."),
 
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
