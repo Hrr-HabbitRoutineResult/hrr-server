@@ -371,6 +371,11 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+		// 차단된 게시글 접근 시 예외 발생
+		if (verification.getStatus() == VerificationStatus.BLOCKED) {
+			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+		}
+
         // 작성자 본인인지 권한 체크
         User author = verification.getRoundRecord()
                 .getUserChallenge()
@@ -423,6 +428,12 @@ public class VerificationServiceImpl implements VerificationService {
 
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+		// 차단된 게시글 접근 시 예외 발생
+		if (verification.getStatus() == VerificationStatus.BLOCKED) {
+			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+		}
+
     // 작성자 본인인지 권한 체크
         User author = verification.getRoundRecord()
                 .getUserChallenge()
