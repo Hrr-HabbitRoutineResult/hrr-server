@@ -36,6 +36,11 @@ public class ReportServiceImpl implements ReportService {
 		Verification verification = verificationRepository.findById(request.getTargetId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+		// 자기 신고 방지
+		if (verification.getUserChallenge().getUser().getId().equals(reporter.getId())) {
+			throw new GlobalException(ErrorCode.CANNOT_REPORT_OWN_POST);
+		}
+
 		// 신고 내역 저장
 		VerificationPostReport report = VerificationPostReport.builder()
 			.reporter(reporter)
