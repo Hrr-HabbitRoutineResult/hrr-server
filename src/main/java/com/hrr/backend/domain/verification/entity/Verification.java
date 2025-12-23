@@ -65,6 +65,16 @@ public class Verification extends BaseEntity {
     @Builder.Default
     private Boolean isResolved = false;
 
+	@ColumnDefault("0")
+	private Integer reportCount = 0; // 신고 누적 횟수
+
+	public void addReport() {
+		this.reportCount++;
+		if (this.reportCount >= 5) {
+			this.status = VerificationStatus.BLOCKED;
+		}
+	}
+
     /** TEXT 인증 생성 */
     public static Verification createTextVerification(
             UserChallenge userChallenge,
