@@ -41,4 +41,17 @@ public class ReportController {
 
 		return ApiResponse.onSuccess(SuccessCode.OK, null);
 	}
+
+	@PostMapping("/user")
+	@Operation(summary = "사용자 신고", description = "사용자를 신고합니다.")
+	public ApiResponse<Void> reportUser(
+		@Valid @RequestBody ReportRequestDto request,
+
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails
+	){
+		reportService.reportUser(userDetails.getUser().getId(), request);
+
+		return ApiResponse.onSuccess(SuccessCode.OK, null);
+	}
 }

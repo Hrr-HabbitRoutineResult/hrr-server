@@ -4,8 +4,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.report.dto.ReportRequestDto;
+import com.hrr.backend.domain.report.entity.UserReport;
 import com.hrr.backend.domain.report.entity.VerificationPostReport;
+import com.hrr.backend.domain.report.repository.UserReportRepository;
 import com.hrr.backend.domain.report.repository.VerificationPostReportRepository;
+import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
@@ -21,6 +25,9 @@ public class ReportServiceImpl implements ReportService {
 
 	private final VerificationRepository verificationRepository;
 	private final VerificationPostReportRepository verificationPostReportRepository;
+
+	private final UserRepository userRepository;
+	private final UserReportRepository userReportRepository;
 
 	@Override
 	@Transactional
@@ -42,5 +49,22 @@ public class ReportServiceImpl implements ReportService {
 		verification.addReport(); // 엔티티 내부에서 count++ 및 상태 변경 로직 수행
 
 		verificationRepository.save(verification);
+	}
+
+	@Override
+	@Transactional
+	public void reportUser(Long reporterId, ReportRequestDto request) {
+		// 유저 신고는 기록만 남김
+		User targetUser = userRepository.findById(request.getTargetId())
+			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+		UserReport report = UserReport.builder()
+			.reporterId(reporterId)
+			.targetUser(targetUser)
+			.reason(request.getReason())
+			.description(request.getDescription())
+			.build();
+
+		userReportRepository.save(report);
 	}
 }

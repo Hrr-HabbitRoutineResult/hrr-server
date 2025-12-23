@@ -1,48 +1,39 @@
 package com.hrr.backend.domain.report.entity;
 
 import com.hrr.backend.domain.user.entity.User;
-import com.hrr.backend.global.common.enums.ReportStatus;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.global.common.enums.ReportReason;
-import com.hrr.backend.global.common.BaseEntity;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Builder
 @NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "user_report")
-public class UserReport extends BaseEntity {
+@Table(
+	name = "user_report",
+	indexes = {
+		@Index(name = "idx_user_report_reporter_id", columnList = "reporter_id"),
+		@Index(name = "idx_user_report_target_user_id", columnList = "target_user_id")
+	}
+)
+public class UserReport extends BaseReport {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reporter_id", nullable = false)
-    private User reporter;
+    @JoinColumn(name = "target_user_id", nullable = false)
+    private User targetUser;	// 신고 당하는 유저
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reported_id", nullable = false)
-    private User reported;
-
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(name = "reason", nullable = false)
-    private ReportReason reason;
-
-    @Lob
-    @Column(name = "reason_text", columnDefinition = "TEXT")
-    private String reasonText;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private ReportStatus status = ReportStatus.PENDING;
-
+	@Builder
+	public UserReport(Long reporterId, ReportReason reason, String description, User targetUser) {
+		// BaseReport의 생성자를 호출하여 부모 필드 채움
+		super(reporterId, reason, description);
+		this.targetUser = targetUser;
+	}
 }
