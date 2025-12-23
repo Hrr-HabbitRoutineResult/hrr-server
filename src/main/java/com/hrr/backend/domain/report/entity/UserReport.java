@@ -31,9 +31,9 @@ public class UserReport extends BaseReport {
     private User targetUser;	// 신고 당하는 유저
 
 	@Builder
-	public UserReport(Long reporterId, ReportReason reason, String description, User targetUser) {
+	public UserReport(User reporter, ReportReason reason, String description, User targetUser) {
 		// BaseReport의 생성자를 호출하여 부모 필드 채움
-		super(reporterId, reason, description);
+		super(reporter, reason, description);
 		this.targetUser = targetUser;
 	}
 }

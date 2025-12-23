@@ -31,14 +31,14 @@ public class ReportServiceImpl implements ReportService {
 
 	@Override
 	@Transactional
-	public void reportVerificationPost(Long reporterId, ReportRequestDto request) {
+	public void reportVerificationPost(User reporter, ReportRequestDto request) {
 		// 신고 대상 조회
 		Verification verification = verificationRepository.findById(request.getTargetId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
 		// 신고 내역 저장
 		VerificationPostReport report = VerificationPostReport.builder()
-			.reporterId(reporterId)
+			.reporter(reporter)
 			.verification(verification)
 			.reason(request.getReason())
 			.description(request.getDescription())
@@ -53,13 +53,13 @@ public class ReportServiceImpl implements ReportService {
 
 	@Override
 	@Transactional
-	public void reportUser(Long reporterId, ReportRequestDto request) {
+	public void reportUser(User reporter, ReportRequestDto request) {
 		// 유저 신고는 기록만 남김
 		User targetUser = userRepository.findById(request.getTargetId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
 		UserReport report = UserReport.builder()
-			.reporterId(reporterId)
+			.reporter(reporter)
 			.targetUser(targetUser)
 			.reason(request.getReason())
 			.description(request.getDescription())

@@ -37,7 +37,7 @@ public class ReportController {
 		@Parameter(hidden = true)
 		@AuthenticationPrincipal CustomUserDetails userDetails
 	){
-		reportService.reportVerificationPost(userDetails.getUser().getId(), request);
+		reportService.reportVerificationPost(userDetails.getUser(), request);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, null);
 	}
@@ -50,7 +50,7 @@ public class ReportController {
 		@Parameter(hidden = true)
 		@AuthenticationPrincipal CustomUserDetails userDetails
 	){
-		reportService.reportUser(userDetails.getUser().getId(), request);
+		reportService.reportUser(userDetails.getUser(), request);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, null);
 	}
