@@ -1,5 +1,6 @@
-package com.hrr.backend.domain.user.entity;
+package com.hrr.backend.domain.report.entity;
 
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.enums.ReportStatus;
 import com.hrr.backend.global.common.enums.ReportReason;
 import com.hrr.backend.global.common.BaseEntity;
