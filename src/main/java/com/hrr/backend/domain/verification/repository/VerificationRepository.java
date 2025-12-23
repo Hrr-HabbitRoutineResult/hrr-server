@@ -132,7 +132,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     @Query("SELECT v FROM Verification v " +
             "JOIN FETCH v.userChallenge uc " +
             "WHERE uc.user.id = :userId " +
-			"AND v.status != 'BLOCKED'" +
+			"AND v.status != 'BLOCKED' " +
             "AND uc.challenge.id = :challengeId " +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByUserIdAndChallengeId(

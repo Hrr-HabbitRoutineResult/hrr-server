@@ -27,7 +27,7 @@ public abstract class BaseReport extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	private ReportReason reason; // 선택 사유
 
-	private String description;	// 기타(직접 입력) 사요
+	private String description;	// 기타(직접 입력) 사유
 
 	@Enumerated(EnumType.STRING)
 	private ReportStatus status = ReportStatus.PENDING; // 신고 처리 상태
