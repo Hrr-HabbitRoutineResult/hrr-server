@@ -284,6 +284,11 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+		// 차단된 게시글 접근 시 예외 발생
+		if (verification.getStatus() == VerificationStatus.BLOCKED) {
+			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+		}
+
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
         User author = userChallenge.getUser();

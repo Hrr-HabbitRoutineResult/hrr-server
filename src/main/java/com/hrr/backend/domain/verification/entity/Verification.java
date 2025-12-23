@@ -58,7 +58,7 @@ public class Verification extends BaseEntity {
     private Boolean isQuestion;
 
     @Enumerated(EnumType.STRING)
-    private VerificationStatus status; // TEMPORARY, COMPLETED
+    private VerificationStatus status; // TEMPORARY, COMPLETED, BLOCKED
 
     @Column(nullable = false)
     @ColumnDefault("false")
@@ -66,6 +66,8 @@ public class Verification extends BaseEntity {
     private Boolean isResolved = false;
 
 	@ColumnDefault("0")
+	@Column(nullable = false)
+	@Builder.Default
 	private Integer reportCount = 0; // 신고 누적 횟수
 
 	public void addReport() {

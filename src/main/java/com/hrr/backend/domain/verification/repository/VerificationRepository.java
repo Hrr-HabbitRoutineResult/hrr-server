@@ -22,6 +22,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
         AND v.status = :status 
         AND v.createdAt >= :startOfDay 
         AND v.createdAt <= :endOfDay
+        AND v.status != 'BLOCKED'
     """)
     boolean existsTodayVerification(
             @Param("userChallengeId") Long userChallengeId,
@@ -40,6 +41,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "WHERE r.round.id = :roundId " +
             "AND v.type = :type " +
             "AND v.status = :status " +
+		    "AND v.status != 'BLOCKED'" +
             "ORDER BY " +
             "  CASE WHEN (v.isQuestion = true AND v.isResolved = false) THEN 0 ELSE 1 END ASC, " +
             "  v.createdAt DESC")
@@ -97,6 +99,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH uc.user " +
             "WHERE v.roundId = :roundId " +
             "AND v.userChallenge.id = :userChallengeId " +
+			"AND v.status != 'BLOCKED'"	+
             "ORDER BY v.createdAt DESC")
     List<Verification> findByRoundIdAndUserChallengeId(
             @Param("roundId") Long roundId,
@@ -110,6 +113,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH v.userChallenge uc " +
             "JOIN FETCH uc.user " +
             "WHERE v.roundId = :roundId " +
+			"AND v.status != 'BLOCKED'" +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByRoundId(@Param("roundId") Long roundId, Pageable pageable);
 
@@ -119,6 +123,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     @Query("SELECT v FROM Verification v " +
             "JOIN FETCH v.userChallenge uc " +
             "WHERE uc.user.id = :userId " +
+			"AND v.status != 'BLOCKED'" +
             "AND uc.challenge.id = :challengeId " +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByUserIdAndChallengeId(

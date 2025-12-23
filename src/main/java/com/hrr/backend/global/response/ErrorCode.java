@@ -103,6 +103,7 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "VERIFICATION40314", "인증에 대한 접근 권한이 없습니다."),
     VERIFICATION_NOT_QUESTION(HttpStatus.BAD_REQUEST, "VERIFICATION40015", "질문 인증글이 아니어서 댓글을 채택할 수 없습니다."),
     VERIFICATION_ALREADY_RESOLVED(HttpStatus.CONFLICT, "VERIFICATION40916", "이미 해결된 인증글입니다."),
+	ACCESS_DENIED_REPORTED_POST(HttpStatus.CONFLICT, "VERIFICATION40916", "신고 5회 누적으로 제한된 게시글입니다."),
 
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
