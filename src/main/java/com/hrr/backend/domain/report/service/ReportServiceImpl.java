@@ -75,6 +75,11 @@ public class ReportServiceImpl implements ReportService {
 		User targetUser = userRepository.findById(request.getTargetId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+		// 중복 신고 방지
+		if (userReportRepository.existsByReporterAndTargetUser(reporter, targetUser)) {
+			throw new GlobalException(ErrorCode.ALREADY_REPORTED_USER);
+		}
+
 		UserReport report = UserReport.builder()
 			.reporter(reporter)
 			.targetUser(targetUser)
