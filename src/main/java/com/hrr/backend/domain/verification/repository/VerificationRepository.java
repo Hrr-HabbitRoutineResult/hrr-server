@@ -6,13 +6,22 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
+
+	// 비관적 락 걸면서 id로 조회
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT v FROM Verification v WHERE v.id = :id")
+	Optional<Verification> findByIdWithPessimisticLock(@Param("id") Long id);
 
     // 오늘 완료된 인증이 있는지 확인
     @Query("""

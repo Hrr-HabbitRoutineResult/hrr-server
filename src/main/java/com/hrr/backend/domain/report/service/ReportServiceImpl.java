@@ -34,7 +34,7 @@ public class ReportServiceImpl implements ReportService {
 	@Transactional
 	public void reportVerificationPost(User reporter, ReportRequestDto request) {
 		// 신고 대상 조회
-		Verification verification = verificationRepository.findById(request.getTargetId())
+		Verification verification = verificationRepository.findByIdWithPessimisticLock(request.getTargetId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
 		// 차단 확인 (가장 먼저!)
