@@ -19,6 +19,8 @@ public enum ErrorCode implements BaseCode{
     NICKNAME_TOO_LONG(HttpStatus.BAD_REQUEST, "USER4003", "닉네임은 최대 10자까지 입력 가능합니다."),
     NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "USER4094", "해당 닉네임은 이미 등록되어 있어요!"),
     INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
+	ALREADY_REPORTED_USER(HttpStatus.CONFLICT, "USER4095", "이미 신고한 사용자입니다."),
+	CANNOT_REPORT_SELF(HttpStatus.CONFLICT, "USER4096", "자기 자신은 신고할 수 없습니다."),
 
 
     // fcm
@@ -103,6 +105,9 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "VERIFICATION40314", "인증에 대한 접근 권한이 없습니다."),
     VERIFICATION_NOT_QUESTION(HttpStatus.BAD_REQUEST, "VERIFICATION40015", "질문 인증글이 아니어서 댓글을 채택할 수 없습니다."),
     VERIFICATION_ALREADY_RESOLVED(HttpStatus.CONFLICT, "VERIFICATION40916", "이미 해결된 인증글입니다."),
+	ACCESS_DENIED_REPORTED_POST(HttpStatus.CONFLICT, "VERIFICATION40917", "신고 5회 누적으로 제한된 게시글입니다."),
+	CANNOT_REPORT_OWN_POST(HttpStatus.CONFLICT, "VERIFICATION40918", "자기 자신의 인증 게시글은 신고할 수 없습니다."),
+	ALREADY_REPORTED(HttpStatus.CONFLICT, "VERIFICATION40919", "이미 신고한 게시글입니다."),
 
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
