@@ -16,7 +16,13 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "notification_delivery")
+@Table(
+        name = "notification_delivery",
+        indexes = {
+                @Index(name = "idx_notification_delivery_receiver_created",
+                        columnList = "receiver_id, created_at DESC")
+        }
+)
 public class NotificationDelivery extends BaseEntity {
 
     @Id
