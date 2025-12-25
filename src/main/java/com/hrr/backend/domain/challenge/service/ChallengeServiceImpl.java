@@ -375,7 +375,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 			ChallengeRequestDto.CreateChallengeDto req
 	) {
 		// 비즈니스 룰 검증
-		validateCreateRequest(req);
+		validateCreateRequest(user, req);
 
 		boolean isPublic = req.getIsPublic();
 		boolean isViewerMode = isPublic && req.getIsViewerMode();
@@ -593,7 +593,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	/**
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
 	 */
-	private void validateCreateRequest(ChallengeRequestDto.CreateChallengeDto req) {
+	private void validateCreateRequest(User owner, ChallengeRequestDto.CreateChallengeDto req) {
+		// 참가 중인 챌린지가 5개일 경우 요청 거절
+		if (challengeRepository.countByUserId(owner.getId()) >= 5) {
+			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
+		}
+
 		if (!req.getStartDate().isAfter(LocalDate.now())) {
 			// ErrorCode에 CHALLENGE_INVALID_START_DATE가 없다면 추가 필요,
 			// 혹은 BAD_REQUEST 등을 임시로 사용
@@ -628,6 +633,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
+
+		// 참가 중인 챌린지가 5개일 경우 요청 거절
+		if (challengeRepository.countByUserId(user.getId()) >= 5) {
+			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
+		}
+
 		// 모집 상태 검증 (UPCOMING 이거나 RECRUITING 상태여야 함)
 		if (challenge.getStatus() != ChallengeStatus.UPCOMING &&
 				challenge.getStatus() != ChallengeStatus.RECRUITING) {

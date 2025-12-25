@@ -55,4 +55,8 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 			@Param("referenceTime") LocalDateTime referenceTime
 	);
 
+	// 사용자가 참가 중인 챌린지의 총 개수를 조회
+	@Query("SELECT COUNT(uc) FROM UserChallenge uc WHERE uc.user.id = :userId")
+	Long countByUserId(@Param("userId") Long userId);
+
 }
