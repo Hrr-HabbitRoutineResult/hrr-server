@@ -10,6 +10,7 @@ import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,7 +32,7 @@ public class NotificationController {
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(name = "category", required = false) NotificationCategory category, //
             @Min(1) @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "size", defaultValue = "10") int size
+            @Min(1) @Max(50) @RequestParam(name = "size", defaultValue = "10") int size
     ) {
         // 1-based index를 0-based로 변환하여 서비스 호출
         SliceResponseDto<NotificationResponseDto.InfoDto> response = notificationService.getNotificationList(
