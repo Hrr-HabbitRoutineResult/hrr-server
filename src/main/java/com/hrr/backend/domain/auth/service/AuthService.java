@@ -7,6 +7,7 @@ import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
 import com.hrr.backend.domain.auth.dto.KakaoTokenResponse;
 import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
+import com.hrr.backend.domain.auth.dto.NaverUserResponse;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.exception.GlobalException;
@@ -24,6 +25,7 @@ public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
 	private final AppleAuthService appleAuthService;
+	private final NaverAuthService naverAuthService;
     private final SocialUserService socialUserService;
     private final JwtService jwtService;
 
@@ -173,6 +175,45 @@ public class AuthService {
 		}
 	}
 
+	/**
+	 * 네이버 엑세스 토큰을 통해 로그인 (SDK 방식)
+	 * * @param naverAccessToken 네이버 sdk를 통해 프론트에서 받아온 엑세스 토큰
+	 * @return 토큰, userId 등 필요 정보
+	 */
+	public AuthResponseDto.LoginResponse naverLogin(String naverAccessToken) {
+
+		try {
+			// 네이버 유저 정보 조회
+			NaverUserResponse naverUser = naverAuthService.fetchUser(naverAccessToken);
+
+			// DB에 유저 upsert
+			User user = socialUserService.upsertNaverUser(naverUser);
+
+			// JWT 생성
+			String accessToken = jwtService.generateAccessToken(user.getId());
+			String refreshToken = jwtService.generateRefreshToken(user.getId());
+
+			// 다음 단계 계산
+			String nextStep = user.determineNextStep();
+
+			return new AuthResponseDto.LoginResponse(
+				user.getId(),
+				accessToken,
+				refreshToken,
+				user.getName(),
+				user.getNickname(),
+				user.getLoginStatus(),
+				nextStep
+			);
+		} catch (GlobalException e) {
+			// 이미 NaverAuthService에서 던진 전용 에러를 그대로 위로 던짐
+			throw e;
+		} catch (Exception e) {
+			// 그 외 서버 내부 로직 오류 시 공통 외부 에러 처리
+			log.error("네이버 로그인 중 오류 발생: ", e);
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		}
+	}
 
 	public void logout(String tokenHeader) {
 

@@ -40,4 +40,13 @@ public class AuthRequestDto {
 			return (lastName != null ? lastName : "") + (firstName != null ? firstName : "");
 		}
 	}
+
+	@Getter
+	@NoArgsConstructor
+	public static class NaverAccessTokenDto {
+
+		@Schema(description = "네이버에서 발급받은 Access Token", example = "AAAAOnYvYmVlYm...")
+		@NotBlank(message = "Access Token은 필수 입력 항목입니다.")
+		private String accessToken;
+	}
 }

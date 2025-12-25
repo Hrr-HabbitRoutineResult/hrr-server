@@ -72,6 +72,10 @@ public enum ErrorCode implements BaseCode{
 	AUTH_APPLE_ID_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "APPLE002", "유효하지 않은 애플 ID 토큰입니다."),
 	AUTH_APPLE_KEY_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "APPLE003", "애플 인증 키 생성 중 오류가 발생했습니다."),
 
+	// naver auth
+	AUTH_NAVER_EXTERNAL_ERROR(HttpStatus.BAD_GATEWAY, "NAVER001", "네이버 프로필 API 요청 중 오류가 발생했습니다."),
+	AUTH_NAVER_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "NAVER002", "유효하지 않은 네이버 액세스 토큰입니다."),
+
     // round
     ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4041", "라운드를 찾을 수 없습니다."), // feat/90 & develop 공통
     ROUND_NOT_MATCH_CHALLENGE(HttpStatus.BAD_REQUEST, "ROUND4002", "라운드가 해당 챌린지에 속하지 않습니다."),
