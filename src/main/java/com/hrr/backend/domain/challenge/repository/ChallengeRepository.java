@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -56,7 +57,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 	);
 
 	// 사용자가 참가 중인 챌린지의 총 개수를 조회
-	@Query("SELECT COUNT(uc) FROM UserChallenge uc WHERE uc.user.id = :userId")
-	Long countByUserId(@Param("userId") Long userId);
+	@Query("SELECT COUNT(uc) FROM UserChallenge uc WHERE uc.user.id = :userId AND uc.status = :status")
+	Long countByUserIdAndStatus(@Param("userId") Long userId, @Param("status") ChallengeJoinStatus status);
 
 }

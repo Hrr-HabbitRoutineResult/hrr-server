@@ -595,7 +595,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 */
 	private void validateCreateRequest(User owner, ChallengeRequestDto.CreateChallengeDto req) {
 		// 참가 중인 챌린지가 5개일 경우 요청 거절
-		if (challengeRepository.countByUserId(owner.getId()) >= 5) {
+		if (challengeRepository.countByUserIdAndStatus(owner.getId(), ChallengeJoinStatus.JOINED) >= 5) {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
 
@@ -635,7 +635,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
 
 		// 참가 중인 챌린지가 5개일 경우 요청 거절
-		if (challengeRepository.countByUserId(user.getId()) >= 5) {
+		if (challengeRepository.countByUserIdAndStatus(user.getId(), ChallengeJoinStatus.JOINED) >= 5) {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
 
