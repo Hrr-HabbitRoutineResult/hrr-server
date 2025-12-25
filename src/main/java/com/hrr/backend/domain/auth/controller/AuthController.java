@@ -137,11 +137,11 @@ public class AuthController {
 	 */
 	@PostMapping("/login/naver")
 	@Operation(summary = "네이버 로그인 (SDK 방식)",
-		description = "전달받은 네이버 Access Token으로 유저 정보를 조회하고 로그인/회원가입 처리")
+		description = "전달받은 네이버 Access Token으로 로그인/회원가입 처리")
 	public ApiResponse<AuthResponseDto.LoginResponse> naverLoginByToken(
 		@RequestBody @Valid AuthRequestDto.NaverAccessTokenDto request) {
 
-		return ApiResponse.onSuccess(SuccessCode.OK, authService.naverLogin(request.getAccessToken()));
+		return ApiResponse.onSuccess(SuccessCode.OK, authService.naverLogin(request.getAccessToken(), request.getRefreshToken()));
 	}
 
 	@PostMapping("/logout")

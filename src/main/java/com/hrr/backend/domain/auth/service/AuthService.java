@@ -180,14 +180,14 @@ public class AuthService {
 	 * * @param naverAccessToken 네이버 sdk를 통해 프론트에서 받아온 엑세스 토큰
 	 * @return 토큰, userId 등 필요 정보
 	 */
-	public AuthResponseDto.LoginResponse naverLogin(String naverAccessToken) {
+	public AuthResponseDto.LoginResponse naverLogin(String naverAccessToken, String naverRefreshToken) {
 
 		try {
 			// 네이버 유저 정보 조회
 			NaverUserResponse naverUser = naverAuthService.fetchUser(naverAccessToken);
 
 			// DB에 유저 upsert
-			User user = socialUserService.upsertNaverUser(naverUser);
+			User user = socialUserService.upsertNaverUser(naverUser, naverRefreshToken);
 
 			// JWT 생성
 			String accessToken = jwtService.generateAccessToken(user.getId());

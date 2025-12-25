@@ -101,7 +101,7 @@ public class SocialUserService {
 	}
 
 	@Transactional
-	public User upsertNaverUser(NaverUserResponse naverUserResponse) {
+	public User upsertNaverUser(NaverUserResponse naverUserResponse, String refreshToken) {
 		// 네이버 응답에서 실제 유저 정보 추출
 		NaverUserResponse.Response response = naverUserResponse.getResponse();
 		String naverSocialId = response.getId();
@@ -128,6 +128,8 @@ public class SocialUserService {
 					user.updateEmail(email);
 				}
 
+				// Todo: 네이버 RT 업데이트 (나중에 탈퇴 시 사용)
+
 				return user;
 			})
 			.orElseGet(() -> {
@@ -144,6 +146,7 @@ public class SocialUserService {
 					.user(newUser)
 					.socialId(naverSocialId)
 					.socialType(SocialType.NAVER)
+					.socialRefreshToken(refreshToken)
 					.build();
 				socialAuthRepository.save(auth);
 
