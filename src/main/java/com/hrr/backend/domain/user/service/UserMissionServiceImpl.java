@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -139,8 +140,16 @@ public class UserMissionServiceImpl implements UserMissionService {
 			categoryList = userFavorRepository.findCategoriesByUserId(user.getId());
 		}
 
-		// 카테고리 리스트에 해당하는 미션 전체 조회
-		List<RandomMission> missionList = randomMissionRepository.findByCategoryIn(categoryList);
+		List<RandomMission> missionList;
+
+		if(categoryList.isEmpty()) {
+			// 선호 카테고리 정보가 없을 경우(온보딩 건너뜀 등) - 전체 미션 조회
+			missionList = randomMissionRepository.findAll();
+
+		} else {
+			// 카테고리 리스트에 해당하는 미션 전체 조회
+			missionList = randomMissionRepository.findByCategoryIn(categoryList);
+		}
 
 		if (missionList.isEmpty()) {
 			throw new GlobalException(ErrorCode.RANDOM_MISSION_NOT_FOUND);
