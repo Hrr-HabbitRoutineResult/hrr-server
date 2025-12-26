@@ -6,6 +6,7 @@ import com.hrr.backend.domain.round.entity.QRoundRecord;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.QUserChallenge;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -49,7 +50,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 )
                 .where(
                         qUserChallenge.user.eq(user),
-                        qChallenge.status.eq(ChallengeStatus.ONGOING)
+                        qUserChallenge.status.eq(ChallengeJoinStatus.JOINED)
                 )
                 .orderBy(qChallenge.startDate.desc())
                 .offset(pageable.getOffset())
