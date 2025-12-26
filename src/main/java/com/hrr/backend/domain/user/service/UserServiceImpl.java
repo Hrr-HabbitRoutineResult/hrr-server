@@ -91,37 +91,6 @@ public class UserServiceImpl implements UserService {
                 dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
         );
 
-/*		// 인증 완료 여부 추가 - 오늘 포함 가장 최근 인증 요일에 완료 여부
-		slice.getContent().forEach(dto -> {
-			Long challengeId = dto.getChallengeId();
-			// 챌린지 요일/인증 시간 로딩
-			Challenge challenge = challengeRepository.findByIdWithDays(challengeId)
-					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
-
-			// 유저-챌린지 매핑 (userChallengeId 필요)
-			Long userChallengeId = userChallengeRepository
-					.findByUserIdAndChallengeId(userId, challengeId)
-					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
-					.getId();
-
-			// 오늘 포함 가장 최근 인증 요일 계산
-			LocalDate targetDate = findLastestDateIncludingToday(challenge);
-			boolean verified = false;
-			if (targetDate != null) {
-				LocalDateTime start = LocalDateTime.of(targetDate, challenge.getVerifyStartTime());
-				LocalDateTime end = LocalDateTime.of(targetDate, challenge.getVerifyEndTime());
-				verified = verificationRepository.existsTodayVerification(	// 오늘 완료 여부를 확인하기 위한 메소드지만 파라미터 조정으로 활용
-						userChallengeId,
-						VerificationStatus.COMPLETED,
-						start,
-						end
-				);
-			}
-
-			// DTO 반영
-			dto.setVerified(verified);
-		});*/
-
 		// 인증 완료 여부 추가
 		slice.getContent().forEach(dto -> {
 			Long challengeId = dto.getChallengeId();
