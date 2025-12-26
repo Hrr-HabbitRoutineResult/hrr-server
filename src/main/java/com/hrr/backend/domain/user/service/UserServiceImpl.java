@@ -1,5 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +91,7 @@ public class UserServiceImpl implements UserService {
                 dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
         );
 
-		// 인증 완료 여부 추가 - 오늘 포함 가장 최근 인증 요일에 완료 여부
+/*		// 인증 완료 여부 추가 - 오늘 포함 가장 최근 인증 요일에 완료 여부
 		slice.getContent().forEach(dto -> {
 			Long challengeId = dto.getChallengeId();
 			// 챌린지 요일/인증 시간 로딩
@@ -117,6 +119,49 @@ public class UserServiceImpl implements UserService {
 			}
 
 			// DTO 반영
+			dto.setVerified(verified);
+		});*/
+
+		// 인증 완료 여부 추가
+		slice.getContent().forEach(dto -> {
+			Long challengeId = dto.getChallengeId();
+
+			// 챌린지 요일/인증 시간 로딩
+			Challenge challenge = challengeRepository.findByIdWithDays(challengeId)
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+			// java의 DayOfWeek를 ChallengeDays로 변환
+			DayOfWeek todayDayOfWeek = LocalDate.now().getDayOfWeek();
+			ChallengeDays todayChallengeDay = ChallengeDays.from(todayDayOfWeek);
+
+			// 오늘이 인증하는 날인지 체크
+			boolean isRegistrationDay = challenge.getChallengeDays().stream()
+				.anyMatch(day -> day.getDayOfWeek() == todayChallengeDay);
+
+			boolean verified = false;
+
+			if (isRegistrationDay) {
+				// 유저-챌린지 매핑 (userChallengeId 필요)
+				Long userChallengeId = userChallengeRepository
+					.findByUserIdAndChallengeId(userId, challengeId)
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
+					.getId();
+
+				// 오늘 포함 가장 최근 인증 요일 계산
+				LocalDateTime today = LocalDateTime.now();
+				LocalDateTime startOfDay = LocalDate.now().atStartOfDay();	// 오늘 00:00 ~ 23:59 범위 설정
+				LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+
+
+				verified = verificationRepository.existsTodayVerification(	// 오늘이 인증날이고, 인증을 완료했을 떄에만 true
+					userChallengeId,
+					VerificationStatus.COMPLETED,
+					startOfDay,
+					endOfDay
+				);
+			}
+
+			// 결과를 DTO 반영
 			dto.setVerified(verified);
 		});
 
