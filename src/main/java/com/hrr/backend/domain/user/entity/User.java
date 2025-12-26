@@ -133,6 +133,11 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+	/** 이메일 업데이트 */
+	public void updateEmail(String email) {
+		this.email = email;
+	}
+
     /** 온보딩 진행 상태로 다음 단계 반환
      * new -> terms : 약관동의 화면
      * terms_done -> signup: 가입 정보 입력 화면

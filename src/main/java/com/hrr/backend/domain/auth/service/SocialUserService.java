@@ -1,11 +1,15 @@
 package com.hrr.backend.domain.auth.service;
 
 import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
+import com.hrr.backend.domain.auth.dto.NaverUserResponse;
 import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,6 +96,69 @@ public class SocialUserService {
 					.socialId(appleSub)
 					.socialType(SocialType.APPLE)
 					.socialRefreshToken(appleRefreshToken)
+					.build();
+				socialAuthRepository.save(auth);
+
+				return newUser;
+			});
+	}
+
+	@Transactional
+	public User upsertNaverUser(NaverUserResponse naverUserResponse, String refreshToken) {
+		// 네이버 응답에서 실제 유저 정보 추출
+		NaverUserResponse.Response response = naverUserResponse.getResponse();
+
+		if (response == null) {
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		}
+
+		String naverSocialId = response.getId();
+		String email = response.getEmail();
+		String name = response.getName();
+		String profileImage = response.getProfileImage();
+
+		// 기존 유저 확인
+		return socialAuthRepository.findBySocialIdAndSocialType(naverSocialId, SocialType.NAVER)
+			.map(socialAuth -> {
+				// [기존 유저] 연관된 User 정보를 가져옴
+				User user = socialAuth.getUser();
+
+				// 유저 정보 업데이트
+				if (name != null) {
+					user.updateName(name);
+				}
+				// 프로필 이미지 업데이트
+				if (profileImage != null) {
+					user.updateProfileImage(profileImage);
+				}
+				// 이메일 업데이트
+				if (email != null) {
+					user.updateEmail(email);
+				}
+
+				// Todo: 네이버 RT 업데이트 (나중에 탈퇴 시 사용)
+
+				return user;
+			})
+			.orElseGet(() -> {
+				// [신규 유저] User 생성 후 SocialAuth 와 연결하여 저장
+
+				// User 생성
+				String userName = (name != null) ? name : "네이버 유저";
+				User newUser = User.signUp(userName, profileImage);
+
+				if (email != null) {
+					newUser.updateEmail(email);
+				}
+
+				userRepository.save(newUser);
+
+				// SocialAuth 생성
+				SocialAuth auth = SocialAuth.builder()
+					.user(newUser)
+					.socialId(naverSocialId)
+					.socialType(SocialType.NAVER)
+					.socialRefreshToken(refreshToken)
 					.build();
 				socialAuthRepository.save(auth);
 

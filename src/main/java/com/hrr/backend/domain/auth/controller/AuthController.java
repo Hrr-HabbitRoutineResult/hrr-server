@@ -132,6 +132,18 @@ public class AuthController {
 		return ApiResponse.onSuccess(SuccessCode.OK, authService.appleLogin(request));
 	}
 
+	/**
+	 * 네이버 엑세스 토큰을 통해 로그인 (SDK 방식)
+	 */
+	@PostMapping("/login/naver")
+	@Operation(summary = "네이버 로그인 (SDK 방식)",
+		description = "전달받은 네이버 Access Token으로 로그인/회원가입 처리")
+	public ApiResponse<AuthResponseDto.LoginResponse> naverLoginByToken(
+		@RequestBody @Valid AuthRequestDto.NaverAccessTokenDto request) {
+
+		return ApiResponse.onSuccess(SuccessCode.OK, authService.naverLogin(request.getAccessToken(), request.getRefreshToken()));
+	}
+
 	@PostMapping("/logout")
 	@Operation(summary = "로그아웃",
 		description = "로그아웃 시 토큰을 무효화 시킵니다.")
