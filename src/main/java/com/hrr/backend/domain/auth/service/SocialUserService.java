@@ -7,6 +7,9 @@ import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,6 +107,11 @@ public class SocialUserService {
 	public User upsertNaverUser(NaverUserResponse naverUserResponse, String refreshToken) {
 		// 네이버 응답에서 실제 유저 정보 추출
 		NaverUserResponse.Response response = naverUserResponse.getResponse();
+
+		if (response != null) {
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		}
+
 		String naverSocialId = response.getId();
 		String email = response.getEmail();
 		String name = response.getName();
