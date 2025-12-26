@@ -177,7 +177,7 @@ public class AuthService {
 
 	/**
 	 * 네이버 엑세스 토큰을 통해 로그인 (SDK 방식)
-	 * * @param naverAccessToken 네이버 sdk를 통해 프론트에서 받아온 엑세스 토큰
+	 * @param naverAccessToken 네이버 sdk를 통해 프론트에서 받아온 엑세스 토큰
 	 * @return 토큰, userId 등 필요 정보
 	 */
 	public AuthResponseDto.LoginResponse naverLogin(String naverAccessToken, String naverRefreshToken) {

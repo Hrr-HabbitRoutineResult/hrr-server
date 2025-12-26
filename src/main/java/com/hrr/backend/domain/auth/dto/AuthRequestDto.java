@@ -49,7 +49,7 @@ public class AuthRequestDto {
 		@NotBlank(message = "Access Token은 필수 입력 항목입니다.")
 		private String accessToken;
 
-		@Schema(description = "네이버에서 발급받은 Access Token", example = "AAAAOnYvYmVlYm...")
+		@Schema(description = "네이버에서 발급받은 Refresh Token", example = "AAAAOnYvYmVlYm...")
 		private String refreshToken;
 	}
 }
