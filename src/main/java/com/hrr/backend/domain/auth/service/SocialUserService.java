@@ -138,7 +138,10 @@ public class SocialUserService {
 				// User 생성
 				String userName = (name != null) ? name : "네이버 유저";
 				User newUser = User.signUp(userName, profileImage);
-				newUser.updateEmail(email);
+
+				if (email != null) {
+					newUser.updateEmail(email);
+				}
 
 				userRepository.save(newUser);
 
