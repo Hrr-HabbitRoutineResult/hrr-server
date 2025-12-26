@@ -54,4 +54,25 @@ public class NotificationResponseDto {
                     .build();
         }
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "알림 읽음 처리 결과 DTO")
+    public static class ReadResultDto {
+
+        @Schema(description = "알림 배달 ID", example = "1")
+        private Long notificationId;
+
+        @Schema(description = "읽음 여부", example = "true")
+        private Boolean isRead;
+
+        public static ReadResultDto from(NotificationDelivery delivery) {
+            return ReadResultDto.builder()
+                    .notificationId(delivery.getId())
+                    .isRead(delivery.getIsRead())
+                    .build();
+        }
+    }
 }

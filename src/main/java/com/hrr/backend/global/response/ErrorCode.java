@@ -134,6 +134,10 @@ public enum ErrorCode implements BaseCode{
     ALREADY_FOLLOWING(HttpStatus.CONFLICT, "FOLLOW4091", "이미 팔로우 중인 사용자입니다."),
     FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW4041", "팔로우 관계를 찾을 수 없습니다."),
 
+    // notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4041", "존재하지 않는 알림입니다."),
+    NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTIFICATION4032", "해당 알림에 대한 접근 권한이 없습니다."),
+
     // search
     MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),
     COUNTING_LOG_TABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5002", "집계가 실패하였습니다."),
