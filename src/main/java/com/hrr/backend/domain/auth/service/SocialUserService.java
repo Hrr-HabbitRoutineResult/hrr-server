@@ -108,7 +108,7 @@ public class SocialUserService {
 		// 네이버 응답에서 실제 유저 정보 추출
 		NaverUserResponse.Response response = naverUserResponse.getResponse();
 
-		if (response != null) {
+		if (response == null) {
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		}
 
