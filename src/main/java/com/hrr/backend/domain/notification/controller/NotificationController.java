@@ -47,7 +47,7 @@ public class NotificationController {
     @PatchMapping("/{notificationId}/read")
     @Operation(summary = "알림 읽음 처리", description = "특정 알림을 읽음 상태로 변경합니다.")
     public ApiResponse<NotificationResponseDto.ReadResultDto> markAsRead(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long notificationId
     ) {
         NotificationResponseDto.ReadResultDto response =
