@@ -147,9 +147,8 @@ public class UserServiceImpl implements UserService {
 					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
 					.getId();
 
-				// 오늘 포함 가장 최근 인증 요일 계산
-				LocalDateTime today = LocalDateTime.now();
-				LocalDateTime startOfDay = LocalDate.now().atStartOfDay();	// 오늘 00:00 ~ 23:59 범위 설정
+				// 오늘 00:00 ~ 23:59 범위 설정
+				LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
 				LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
 
