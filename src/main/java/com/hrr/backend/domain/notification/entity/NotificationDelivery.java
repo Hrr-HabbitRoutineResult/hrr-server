@@ -46,4 +46,11 @@ public class NotificationDelivery extends BaseEntity {
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
+
+    public void markAsRead() {
+        if (this.isRead == null || !this.isRead) { // 아직 읽지 않은 경우에만 업데이트
+            this.isRead = true;
+            this.readAt = LocalDateTime.now();
+        }
+    }
 }
