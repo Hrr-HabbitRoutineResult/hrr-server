@@ -163,7 +163,6 @@ public class AuthController {
 		@Parameter(hidden = true)
 		@AuthenticationPrincipal CustomUserDetails userDetails
 	) {
-
 		authService.withdraw(userDetails.getUser());
 
 		return ApiResponse.onSuccess(SuccessCode.OK, "로그아웃에 성공했습니다.");

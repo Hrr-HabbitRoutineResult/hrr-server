@@ -60,3 +60,7 @@ apple:
   key-id: ${APPLE_KEY_ID}
   p8-key: ${APPLE_P8_KEY}
 
+naver:
+  client-id: ${NAVER_CLIENT_ID}
+  client-secret: ${NAVER_CLIENT_SECRET}
+
