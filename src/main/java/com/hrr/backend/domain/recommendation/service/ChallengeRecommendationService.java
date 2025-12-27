@@ -9,6 +9,7 @@ import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeRecommendResult;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class ChallengeRecommendationService {
 
     private final RecommendationRepository challengeRepository;
     private final ModelApiClient modelApiClient;
+    private final S3UrlUtil s3UrlUtil;
 
     private static final int EMBED_DIM = 768;
 
@@ -154,6 +156,9 @@ public class ChallengeRecommendationService {
                                     .goalText(base.getGoal_text())
                                     .verifyStartTime(base.getVerifyStartTime())
                                     .verifyEndTime(base.getVerifyEndTime())
+                                    .imageKey(
+                                            s3UrlUtil.toFullUrl(base.getImageKey())
+                                    )
                                     .build();
                         })
                         .filter(Objects::nonNull)

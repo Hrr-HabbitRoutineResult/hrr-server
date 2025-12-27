@@ -1,11 +1,15 @@
 package com.hrr.backend.domain.verification.entity;
 
-import com.hrr.backend.domain.round.entity.RoundRecord; // [중요] RoundRecord Import
+import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Getter
@@ -31,8 +35,16 @@ public class Verification extends BaseEntity {
     @JoinColumn(name = "round_record_id", nullable = false)
     private RoundRecord roundRecord;
 
+    /** 유저 챌린지 (develop 추가) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_challenge_id")
+    private UserChallenge userChallenge;
+
     @Enumerated(EnumType.STRING)
     private VerificationPostType type; // CAMERA, TEXT
+
+    /** 이 인증이 속한 라운드 ID (조회 편의용) */
+    private Long roundId;
 
     private String title;
 
@@ -48,37 +60,96 @@ public class Verification extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private VerificationStatus status; // TEMPORARY, COMPLETED
 
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    private Boolean isResolved = false;
+
+    /** TEXT 인증 생성 */
     public static Verification createTextVerification(
+            UserChallenge userChallenge,
             RoundRecord roundRecord,
             String title,
             String content,
             String textUrl,
-            Boolean isQuestion
+            String photoUrl,
+            Boolean isQuestion,
+            Long roundId
     ) {
         return Verification.builder()
-                .roundRecord(roundRecord)
                 .type(VerificationPostType.TEXT)
+                .roundRecord(roundRecord)
+                .userChallenge(userChallenge) // develop 필드
+                .roundId(roundId)
                 .title(title)
                 .content(content)
                 .textUrl(textUrl)
+                .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.TEMPORARY)
+                .status(VerificationStatus.COMPLETED)
+                .isResolved(false) // feat/90 필드 초기화
                 .build();
     }
 
+    /** PHOTO 인증 생성 */
     public static Verification createPhotoVerification(
+            UserChallenge userChallenge,
             RoundRecord roundRecord,
             String title,
+            String content,
             String photoUrl,
-            Boolean isQuestion
+            Boolean isQuestion,
+            Long roundId
     ) {
         return Verification.builder()
-                .roundRecord(roundRecord)
                 .type(VerificationPostType.CAMERA)
+                .roundRecord(roundRecord)
+                .userChallenge(userChallenge) // develop 필드
+                .roundId(roundId)
                 .title(title)
+                .content(content)
                 .photoUrl(photoUrl)
                 .isQuestion(isQuestion)
-                .status(VerificationStatus.TEMPORARY)
+                .status(VerificationStatus.COMPLETED)
+                .isResolved(false) // feat/90 필드 초기화
                 .build();
     }
+
+    // === 비즈니스 로직 메서드 ===
+
+    public void resolve() {
+        this.isResolved = true;
+    }
+
+    // develop: 편의 메서드
+    public void setRoundId(Long roundId) {
+        this.roundId = roundId;
+    }
+
+    public void setUserChallenge(UserChallenge uc) {
+        this.userChallenge = uc;
+    }
+
+    public void update(String title, String content, String textUrl, String photoUrl) {
+        if (title != null) {
+            if (title.isBlank()) {
+                throw new GlobalException(ErrorCode.VERIFICATION_TITLE_REQUIRED);
+        }
+            this.title = title;
+        }
+        if (content != null) {
+            if (content.isBlank()) {
+                throw new GlobalException(ErrorCode.VERIFICATION_TEXT_REQUIRED);}
+            this.content = content;
+        }
+        if (textUrl != null) {
+            this.textUrl = textUrl;
+        }
+        if (photoUrl != null) {
+            this.photoUrl = photoUrl;
+        }
+    }
+
+
+
 }

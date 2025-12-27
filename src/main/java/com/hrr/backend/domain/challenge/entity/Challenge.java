@@ -89,8 +89,8 @@ public class Challenge extends BaseEntity {
 	@Builder.Default
 	private ChallengeStatus status = ChallengeStatus.UPCOMING;
 
-	@Column(name = "image_url")
-	private String imageUrl;
+	@Column(name = "image_key")
+	private String imageKey;
 
 	@Column(name = "like_count")
 	private Integer likeCount;	// 좋아요 수; 집계용

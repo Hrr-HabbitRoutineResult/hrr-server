@@ -31,6 +31,19 @@ public interface UserService {
      */
     UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request);
 
+<<<<<<< HEAD
     // 사용자 기본 정보 수정
     UpdateUserInfoResponseDto updateUserInfo(Long userId, UpdateUserInfoRequestDto requestDto);
 }
+=======
+	/**
+	 * 키워드가 닉네임에 포함된 사용자 조회
+	 */
+	SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
+			User user,
+			String keyword,
+			int page,
+			int size
+	);
+}
+>>>>>>> a39c863b78097107a6d0481a2bb25ce99d406b2e

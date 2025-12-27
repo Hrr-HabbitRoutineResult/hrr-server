@@ -20,6 +20,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
+import com.hrr.backend.domain.challenge.event.ChallengeCreatedEvent;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
@@ -38,7 +39,10 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -86,7 +90,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-    private final ChallengeEmbeddingAsyncService challengeEmbeddingAsyncService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
@@ -94,6 +98,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	// 오늘의 클릭수를 저장할 Redis Key
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
+	private final S3UrlUtil s3UrlUtil;
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -353,6 +358,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 					boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
 					// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
+					infoDto.setThumbnailUrl(s3UrlUtil.toFullUrl(infoDto.getThumbnailUrl()));
 					infoDto.setIsUpcoming(isUpcomingResult);
 					infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
 					infoDto.setDaysOfWeek(daysMap.getOrDefault(infoDto.getChallengeId(), List.of()));
@@ -387,7 +393,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// Round 생성
 		Round firstRound = roundConverter.toFirstRoundEntity(
 				saved,
-				req.getStartDate().toLocalDate()
+				req.getStartDate()
 		);
 		roundRepository.save(firstRound);
 
@@ -401,12 +407,12 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// RoundRecord(방장의 레코드) 생성
 		createRoundRecordOrFail(saved, userChallenge);
 
-    // 임베딩 계산은 비동기로 처리
-    String challengeText = buildChallengeText(saved);
-    challengeEmbeddingAsyncService.calculateAndSaveEmbeddingAsync(
-            saved.getId(),
-            challengeText
-    );
+        // 임베딩 계산
+        String challengeText = buildChallengeText(saved);
+        eventPublisher.publishEvent(
+                new ChallengeCreatedEvent(saved.getId(), challengeText)
+        );
+
 
         return challengeConverter.toCreateResponseDto(saved);
 	}
@@ -560,10 +566,39 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toChallengeLikeDto(updatedChallenge, false);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public List<ChallengeResponseDto.RoundDto> getChallengeRounds(Long challengeId) {
+		// 챌린지 조회
+		Challenge challenge = findChallenge(challengeId);
+
+		// 라운드 목록 조회
+		List<Round> rounds = roundRepository.findAllByChallengeIdOrderByRoundNumberAsc(challengeId);
+
+		// 현재 라운드 ID 추출 (Null Safe)
+		Long currentRoundId = (challenge.getCurrentRound() != null)
+				? challenge.getCurrentRound().getId()
+				: -1L;
+
+		// 변환
+		return rounds.stream()
+				.map(round -> {
+					boolean isCurrent = round.getId().equals(currentRoundId);
+					return challengeConverter.toRoundDto(round, isCurrent);
+				})
+				.toList();
+	}
+
 	/**
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateCreateRequest(ChallengeRequestDto.CreateChallengeDto req) {
+		if (!req.getStartDate().isAfter(LocalDate.now())) {
+			// ErrorCode에 CHALLENGE_INVALID_START_DATE가 없다면 추가 필요,
+			// 혹은 BAD_REQUEST 등을 임시로 사용
+			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
+		}
+
 		// 인증 시간 검증: 종료 시간 > 시작 시간
 		if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
 			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_VERIFY_TIME);

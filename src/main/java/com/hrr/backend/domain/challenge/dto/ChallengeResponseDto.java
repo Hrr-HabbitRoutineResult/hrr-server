@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
+import com.hrr.backend.global.common.enums.VerificationType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -120,6 +121,9 @@ public class ChallengeResponseDto {
 		@Schema(description = "챌린지 설명 (부제목)", example = "백준 실버3 매일 풀고 공유")
 		private String description;
 
+		@Schema(description = "인증 방법 (PHOTO: 사진, TEXT: 글)", example = "PHOTO")
+		private VerificationType verificationType;
+
 		@Schema(description = "챌린지 배경 이미지 URL", example = "https://example.com/image.jpg")
 		private String imageUrl;
 
@@ -137,6 +141,9 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "종료까지 남은 일수 (D-Day)", example = "15")
 		private Long remainDays;
+
+		@Schema(description = "챌린지 공개 여부", example = "true")
+		private Boolean isPublic;
 
 		// 상태 플래그
 		@Schema(description = "관찰자 모드 여부", example = "true")
@@ -199,6 +206,19 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "이번 주 인증 완료 요일 (참여 중일 때만 값 있음, 미참여시 null)", example = "[\"MONDAY\"]")
 		private List<ChallengeDays> verifiedDaysThisWeek;
+	}
+
+	@Getter
+	@Builder
+	@AllArgsConstructor
+	@Schema(description = "챌린지 라운드 목록 응답 DTO")
+	public static class RoundDto {
+
+		@Schema(description = "라운드 회차 (탭 UI 표시 및 식별용)", example = "1")
+		private Integer roundNumber;
+
+		@Schema(description = "현재 진행 중인 라운드인지 여부 (TRUE일 경우 UI 강조)", example = "true")
+		private Boolean isCurrentRound;
 	}
 
 }
