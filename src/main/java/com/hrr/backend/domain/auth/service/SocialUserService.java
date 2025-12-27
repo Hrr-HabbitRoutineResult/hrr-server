@@ -6,6 +6,7 @@ import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -41,6 +42,9 @@ public class SocialUserService {
 			.map(socialAuth -> {
 				// [기존 유저] 연관된 User 정보를 업데이트
 				User user = socialAuth.getUser();
+
+				isDeleted(user);	// 탈퇴 여부를 확인
+
 				user.updateName(name);
 				user.updateProfileImage(profileImage);
 				return user;
@@ -71,6 +75,8 @@ public class SocialUserService {
 			.map(socialAuth -> {
 				// [기존 유저] 연관된 User 정보를 가져옴
 				User user = socialAuth.getUser();
+
+				isDeleted(user);	// 탈퇴 여부를 확인
 
 				// 애플은 이름이 첫 로그인 이후 null 로 올 수 있으므로 , 값이 있을 때만 업데이트
 				if (name != null) {
@@ -123,6 +129,8 @@ public class SocialUserService {
 				// [기존 유저] 연관된 User 정보를 가져옴
 				User user = socialAuth.getUser();
 
+				isDeleted(user);	// 탈퇴 여부를 확인
+
 				// 유저 정보 업데이트
 				if (name != null) {
 					user.updateName(name);
@@ -164,5 +172,15 @@ public class SocialUserService {
 
 				return newUser;
 			});
+	}
+
+	/**
+	 * DELETED 상태, 즉 탈퇴 후 한 달 이내인 계정인지 판단
+	 * @param user
+	 */
+	private void isDeleted(User user) {
+		if (user.getUserStatus()== UserStatus.DELETED) {
+			throw new GlobalException(ErrorCode.AUTH_WITHDRAWAL_PERIOD_RESTRICTION);
+		}
 	}
 }
