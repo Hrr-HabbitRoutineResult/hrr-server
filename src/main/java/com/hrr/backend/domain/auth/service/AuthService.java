@@ -12,12 +12,14 @@ import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -31,6 +33,7 @@ public class AuthService {
     private final JwtService jwtService;
 
 	private final SocialAuthRepository socialAuthRepository;
+	private final UserRepository userRepository;
 
     public AuthResponseDto.LoginResponse socialLogin(SocialType socialType, AuthRequestDto.SocialLoginRequest request) {
         // 지원하지 않는 소셜 타입이면 GlobalException 던지기
@@ -241,9 +244,14 @@ public class AuthService {
 
 	/**
 	 * 회원 탈퇴
-	 * @param user 탈퇴할 사용자(본인)
+	 * @param userId 탈퇴할 사용자의 userId
 	 */
-	public void withdraw(User user){
+	@Transactional
+	public void withdraw(Long userId) {
+		// 1. 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
 		// 소셜 연동 해제
 		SocialAuth socialAuth = socialAuthRepository.findByUser(user)
 			.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_INFO_NOT_FOUND));
@@ -257,6 +265,8 @@ public class AuthService {
 
 		// 유저 상태 변경 (Soft Delete)
 		user.withdraw();
+
+		// SocialAuth는 재가입 여부 판단을 위해 남겨두고 hard delete 시 삭제
 
 		// TODO: 리프레시 토큰 등 세션 정보 삭제
 	}
