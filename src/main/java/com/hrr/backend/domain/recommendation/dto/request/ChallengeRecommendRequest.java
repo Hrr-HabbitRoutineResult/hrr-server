@@ -18,7 +18,7 @@ public class ChallengeRecommendRequest {
     private Gender gender;
     private AgeGroup ageGroup;
     private Job job;
-    private AvailableTime availableTime;
+    private List<AvailableTime> availableTime;
     private List<Category> category;
     private Goal goal;
 }
