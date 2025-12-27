@@ -259,7 +259,7 @@ public class AuthService {
 		switch (socialAuth.getSocialType()) {
 			case NAVER -> naverAuthService.revoke(socialAuth.getSocialRefreshToken());
 			//case APPLE -> appleAuthService.revoke();
-			//case KAKAO -> kakaoAuthService.revoke();
+			case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
 			default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
 		}
 
