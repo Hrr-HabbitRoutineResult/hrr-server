@@ -13,6 +13,7 @@ import com.hrr.backend.global.response.ErrorCode;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Optional;
 
@@ -79,7 +80,7 @@ public class SocialUserService {
 				isDeleted(user);	// 탈퇴 여부를 확인
 
 				// 애플은 이름이 첫 로그인 이후 null 로 올 수 있으므로 , 값이 있을 때만 업데이트
-				if (name != null) {
+				if (StringUtils.hasText(name)) {
 					user.updateName(name);
 				}
 
