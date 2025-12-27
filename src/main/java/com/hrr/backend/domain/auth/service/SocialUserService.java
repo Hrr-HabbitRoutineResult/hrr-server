@@ -84,7 +84,10 @@ public class SocialUserService {
 					user.updateName(name);
 				}
 
-				// Todo: 애플 RT 업데이트 (나중에 탈퇴 시 사용)
+				// 애플 RT 업데이트 (나중에 탈퇴 시 사용)
+				if (StringUtils.hasText(appleRefreshToken)) {
+					socialAuth.updateRefreshToken(appleRefreshToken);
+				}
 
 				return user;
 			})
