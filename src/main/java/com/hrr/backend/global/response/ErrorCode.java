@@ -66,6 +66,7 @@ public enum ErrorCode implements BaseCode{
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
     AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
+	AUTH_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH4041", "알림 신청 내역을 찾을 수 없습니다."),
 
 	// apple auth
 	AUTH_APPLE_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "APPLE001", "애플 토큰 요청 중 오류가 발생했습니다."),

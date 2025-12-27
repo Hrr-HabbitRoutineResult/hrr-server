@@ -46,7 +46,7 @@ public class User extends BaseEntity {
     private String password;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private LocalDateTime deletedAt;	// 탈퇴 시점 - 탈퇴 후 1개월이 지나면 hard delete, 1개월 동안은 DELETED 상태로써 재가입 불가능
 
     @Column(name = "profile_image", length = 225)
     private String profileImage;
@@ -159,4 +159,10 @@ public class User extends BaseEntity {
     public void updateLoginStatus(LoginStatus status) {
         this.loginStatus = status;
     }
+
+	// 탈퇴 처리 메서드
+	public void withdraw() {
+		this.userStatus = UserStatus.DELETED;
+		this.deletedAt = LocalDateTime.now();
+	}
 }
