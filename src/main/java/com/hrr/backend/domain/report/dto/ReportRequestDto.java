@@ -31,6 +31,5 @@ public class ReportRequestDto {
 	private ReportReason reason;
 
 	@Schema(description = "직접 입력 사유 (기타)", example = "부적절한 광고 이미지가 포함되어 있습니다.")
-	@NotBlank(message = "상세 사유를 입력해 주세요.")
 	private String description;
 }
