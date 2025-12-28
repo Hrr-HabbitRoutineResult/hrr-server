@@ -139,10 +139,14 @@ public class NaverAuthService {
 			.queryParam("refresh_token", refreshToken)
 			.toUriString();
 
-		ResponseEntity<NaverResponseDto.NaverTokenResponse> response = restTemplate.getForEntity(refreshUrl, NaverResponseDto.NaverTokenResponse.class);
+		try {
+			ResponseEntity<NaverResponseDto.NaverTokenResponse> response = restTemplate.getForEntity(refreshUrl, NaverResponseDto.NaverTokenResponse.class);
 
-		if (response.getBody() != null && response.getBody().getAccessToken() != null) {
-			return response.getBody().getAccessToken();
+			if (response.getBody() != null && response.getBody().getAccessToken() != null) {
+				return response.getBody().getAccessToken();
+			}
+		} catch (Exception e) {
+				log.error("네이버 토큰 갱신 실패: ", e);
 		}
 
 		throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
