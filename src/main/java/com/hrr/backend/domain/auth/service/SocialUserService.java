@@ -183,7 +183,7 @@ public class SocialUserService {
 	 * @param user
 	 */
 	private void isDeleted(User user) {
-		if (user.getUserStatus()== UserStatus.DELETED) {
+		if (user.getUserStatus() == UserStatus.DELETED) {
 			throw new GlobalException(ErrorCode.AUTH_WITHDRAWAL_PERIOD_RESTRICTION);
 		}
 	}

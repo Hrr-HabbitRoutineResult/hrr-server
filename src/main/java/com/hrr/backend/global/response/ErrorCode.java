@@ -21,7 +21,7 @@ public enum ErrorCode implements BaseCode{
     INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
 	ALREADY_REPORTED_USER(HttpStatus.CONFLICT, "USER4095", "이미 신고한 사용자입니다."),
 	CANNOT_REPORT_SELF(HttpStatus.CONFLICT, "USER4096", "자기 자신은 신고할 수 없습니다."),
-	AUTH_WITHDRAWAL_PERIOD_RESTRICTION(HttpStatus.CONFLICT, "USER4091", "탈퇴 후 한 달 이내에는 동일한 계정으로 재가입할 수 없습니다 ."),
+	AUTH_WITHDRAWAL_PERIOD_RESTRICTION(HttpStatus.CONFLICT, "USER4091", "탈퇴 후 한 달 이내에는 동일한 계정으로 재가입할 수 없습니다."),
 
 
     // fcm
