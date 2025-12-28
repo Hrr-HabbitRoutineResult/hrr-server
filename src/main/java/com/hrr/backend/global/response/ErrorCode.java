@@ -21,6 +21,7 @@ public enum ErrorCode implements BaseCode{
     INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
 	ALREADY_REPORTED_USER(HttpStatus.CONFLICT, "USER4095", "이미 신고한 사용자입니다."),
 	CANNOT_REPORT_SELF(HttpStatus.CONFLICT, "USER4096", "자기 자신은 신고할 수 없습니다."),
+	AUTH_WITHDRAWAL_PERIOD_RESTRICTION(HttpStatus.CONFLICT, "USER4091", "탈퇴 후 한 달 이내에는 동일한 계정으로 재가입할 수 없습니다."),
 
 
     // fcm
@@ -66,11 +67,18 @@ public enum ErrorCode implements BaseCode{
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
     AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
+	AUTH_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH4041", "소셜 로그인 정보를 찾을 수 없습니다."),
+
+	// kakao auth
+	AUTH_KAKAO_UNLINK_ERROR(HttpStatus.BAD_GATEWAY, "KAKAO5021", "카카오 연결 해제 API 요청 중 오류가 발생했습니다."),
+	AUTH_KAKAO_INVALID_ADMIN_KEY(HttpStatus.UNAUTHORIZED, "KAKAO4011", "유효하지 않은 카카오 어드민 키입니다."),
+	AUTH_KAKAO_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "KAKAO4041", "카카오에서 해당 사용자를 찾을 수 없습니다."),
 
 	// apple auth
 	AUTH_APPLE_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "APPLE001", "애플 토큰 요청 중 오류가 발생했습니다."),
 	AUTH_APPLE_ID_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "APPLE002", "유효하지 않은 애플 ID 토큰입니다."),
 	AUTH_APPLE_KEY_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "APPLE003", "애플 인증 키 생성 중 오류가 발생했습니다."),
+	AUTH_APPLE_REVOKE_ERROR(HttpStatus.BAD_REQUEST, "APPLE004", "애플 연결 해제에 실패했습니다."),
 
 	// naver auth
 	AUTH_NAVER_EXTERNAL_ERROR(HttpStatus.BAD_GATEWAY, "NAVER001", "네이버 프로필 API 요청 중 오류가 발생했습니다."),

@@ -33,12 +33,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
 
 	@Override
-	protected boolean shouldNotFilter(HttpServletRequest request) {
+	protected boolean shouldNotFilter(HttpServletRequest request) {	// 인증 로직 실행할지 말지 결정
 		String path = request.getRequestURI();
 
-		// 모든 공개 경로를 명시적으로 true 반환(인증 불필요)
+		// 모든 공개 경로를 명시적으로 true 반환(인증 불필요) -> 필터 건너뛰고 바로 spring security 권환 확인하러 감
 		return path.equals("/") ||
-			path.startsWith("/api/v1/auth") ||
+			path.startsWith("/api/v1/auth/login") ||
+			path.startsWith("/api/v1/auth/reissue") ||
 			path.startsWith("/swagger-ui") ||
 			path.startsWith("/v3/api-docs") ||
 			path.startsWith("/swagger-resources") ||

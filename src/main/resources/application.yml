@@ -48,6 +48,7 @@ kakao:
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
   app-redirect-uri: ${KAKAO_APP_REDIRECT_URI:hrrapp://oauth/kakao}
+  admin-key: ${KAKAO_ADMIN_KEY}
 
 model:
   api:
@@ -59,4 +60,8 @@ apple:
   client-id: ${APPLE_CLIENT_ID}
   key-id: ${APPLE_KEY_ID}
   p8-key: ${APPLE_P8_KEY}
+
+naver:
+  client-id: ${NAVER_CLIENT_ID}
+  client-secret: ${NAVER_CLIENT_SECRET}
 
