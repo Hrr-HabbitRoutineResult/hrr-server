@@ -94,10 +94,17 @@ public class UserDeleteService {
 			List<Long> rrIds = em.createNativeQuery("SELECT id FROM round_record WHERE user_challenge_id IN :ucIds")
 				.setParameter("ucIds", ucIds).getResultList();
 
-			List<Long> verifIds = em.createNativeQuery(
+			List<Long> verifIds;
+			if (rrIds.isEmpty()) {
+				verifIds = em.createNativeQuery(
+					"SELECT id FROM verification WHERE user_challenge_id IN :ucIds")
+					.setParameter("ucIds", ucIds).getResultList();
+			} else {
+			verifIds = em.createNativeQuery(
 					"SELECT id FROM verification WHERE round_record_id IN :rrIds OR user_challenge_id IN :ucIds")
-				.setParameter("rrIds", rrIds.isEmpty() ? List.of(-1L) : rrIds)
+				.setParameter("rrIds", rrIds)
 				.setParameter("ucIds", ucIds).getResultList();
+			}
 
 			if (!verifIds.isEmpty()) {
 				em.createNativeQuery("DELETE FROM verification_post_report WHERE reporter_id IN :ids OR verification_id IN :verifIds")
