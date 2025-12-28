@@ -45,6 +45,13 @@ export PROD_KAKAO_REDIRECT_URI=$(echo "$SECRET_JSON" | jq -r '.PROD_KAKAO_REDIRE
 export SPRING_PROFILES_ACTIVE=prod # Spring Profile 설정
 export FIREBASE_SERVICE_ACCOUNT_JSON=$(echo "$SECRET_JSON" | jq -r '.FIREBASE_SERVICE_ACCOUNT_JSON')
 export KAKAO_APP_REDIRECT_URI=$(echo "$SECRET_JSON" | jq -r '.KAKAO_APP_REDIRECT_URI')
+export KAKAO_ADMIN_KEY=$(echo "$SECRET_JSON" | jq -r '.KAKAO_ADMIN_KEY')
+export APPLE_TEAM_ID=$(echo "$SECRET_JSON" | jq -r '.APPLE_TEAM_ID')
+export APPLE_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.APPLE_CLIENT_ID')
+export APPLE_KEY_ID=$(echo "$SECRET_JSON" | jq -r '.APPLE_KEY_ID')
+export APPLE_P8_KEY=$(echo "$SECRET_JSON" | jq -r '.APPLE_P8_KEY')
+export NAVER_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_ID')
+export NAVER_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_SECRET')
 
 echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
 
