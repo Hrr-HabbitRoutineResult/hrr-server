@@ -46,6 +46,7 @@ public enum ErrorCode implements BaseCode{
     CHALLENGE_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "진행 중인 챌린지가 아닙니다."), // feat/90
     USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."), // develop
     CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."), // develop
+	STATICS_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE4041", "통계 데이터 생성에 실패했거나 존재하지 않습니다."),
 
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),

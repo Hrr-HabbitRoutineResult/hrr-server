@@ -86,6 +86,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final RoundRecordRepository roundRecordRepository;
 	private final RoundConverter roundConverter;
 
+	private final ChallengeStaticsService challengeStaticsService;
+
 	private final VerificationRepository verificationRepository;
 
 	private final RedisTemplate<String, String> redisTemplate;
@@ -406,6 +408,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// RoundRecord(방장의 레코드) 생성
 		createRoundRecordOrFail(saved, userChallenge);
+
+		// ChallengeStatics(참가자들의 선호 통계) 생성
+		challengeStaticsService.updateChallengeStatics(saved);
 
         // 임베딩 계산
         String challengeText = buildChallengeText(saved);

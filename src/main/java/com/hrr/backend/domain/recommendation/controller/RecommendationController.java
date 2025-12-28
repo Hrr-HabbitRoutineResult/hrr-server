@@ -3,6 +3,7 @@ package com.hrr.backend.domain.recommendation.controller;
 import com.hrr.backend.domain.recommendation.dto.request.ChallengeRecommendRequest;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeRecommendResult;
 import com.hrr.backend.domain.recommendation.service.ChallengeRecommendationService;
+import com.hrr.backend.domain.user.service.UserFavorService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
@@ -19,6 +20,7 @@ import jakarta.validation.Valid;
 public class RecommendationController {
 
     private final ChallengeRecommendationService recommendationService;
+	private final UserFavorService userFavorService;
 
     @PostMapping("")
     @Operation(summary = "챌린지 추천", description = "사용자 정보 기반으로 챌린지 추천을 반환합니다.")
@@ -29,6 +31,9 @@ public class RecommendationController {
     ) {
         Long userId = userDetails.getUser().getId();
         request.setUserId(userId);
+
+		// 선호 정보 저장
+		userFavorService.saveUserFavor(request);
 
         ChallengeRecommendResult result = recommendationService.recommendChallenges(request);
         return ApiResponse.onSuccess(SuccessCode.OK, result);

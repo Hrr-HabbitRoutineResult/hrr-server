@@ -64,4 +64,14 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
             "JOIN FETCH uc.user u " +
             "WHERE uc.challenge.id = :challengeId")
     List<UserChallenge> findAllByChallengeId(@Param("challengeId") Long challengeId);
+
+	/**
+	 * 챌린지에 정상적으로 참여 중인(JOINED) 모든 사용자 및 선호 정보 조회
+	 */
+	@Query("SELECT uc FROM UserChallenge uc " +
+		"JOIN FETCH uc.user u " +
+		"JOIN FETCH u.userFavors uf " +
+		"WHERE uc.challenge.id = :challengeId " +
+		"AND uc.status = com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus.JOINED")
+	List<UserChallenge> findAllJoinedWithUserFavorByChallengeId(@Param("challengeId") Long challengeId);
 }
