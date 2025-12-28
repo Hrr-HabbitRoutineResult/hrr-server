@@ -71,7 +71,7 @@ services:
       APPLE_KEY_ID: ${APPLE_KEY_ID}
       APPLE_P8_KEY: ${APPLE_P8_KEY}
 
-      NAVER_CLIENT_ID: ${APPLE_CLIENT_ID}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
 
     restart: always
