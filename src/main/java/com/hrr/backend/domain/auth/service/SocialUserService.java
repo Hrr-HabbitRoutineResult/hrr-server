@@ -18,9 +18,11 @@ import org.springframework.util.StringUtils;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class SocialUserService {
     private final UserRepository userRepository;
 	private final SocialAuthRepository socialAuthRepository;
@@ -44,7 +46,7 @@ public class SocialUserService {
 				// [기존 유저] 연관된 User 정보를 업데이트
 				User user = socialAuth.getUser();
 
-				isDeleted(user);	// 탈퇴 여부를 확인
+				checkWithdrawalPeriod(user);	// 탈퇴 여부를 확인
 
 				user.updateName(name);
 				user.updateProfileImage(profileImage);
@@ -77,7 +79,7 @@ public class SocialUserService {
 				// [기존 유저] 연관된 User 정보를 가져옴
 				User user = socialAuth.getUser();
 
-				isDeleted(user);	// 탈퇴 여부를 확인
+				checkWithdrawalPeriod(user);	// 탈퇴 여부를 확인
 
 				// 애플은 이름이 첫 로그인 이후 null 로 올 수 있으므로 , 값이 있을 때만 업데이트
 				if (StringUtils.hasText(name)) {
@@ -133,7 +135,7 @@ public class SocialUserService {
 				// [기존 유저] 연관된 User 정보를 가져옴
 				User user = socialAuth.getUser();
 
-				isDeleted(user);	// 탈퇴 여부를 확인
+				checkWithdrawalPeriod(user);	// 탈퇴 여부를 확인
 
 				// 유저 정보 업데이트
 				if (name != null) {
@@ -184,8 +186,14 @@ public class SocialUserService {
 	/**
 	 * DELETED 상태, 즉 탈퇴 후 한 달 이내인 계정인지 판단
 	 * @param user
+	 * @throws GlobalException 탈퇴 후 1개월 이내인 경우 AUTH_WITHDRAWAL_PERIOD_RESTRICTION 에러
 	 */
-	private void isDeleted(User user) {
+	private void checkWithdrawalPeriod(User user) {
+		if (user == null) {
+			log.error("유저가 null 상태입니다.");
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		}
+
 		if (user.getUserStatus() == UserStatus.DELETED) {
 			throw new GlobalException(ErrorCode.AUTH_WITHDRAWAL_PERIOD_RESTRICTION);
 		}
