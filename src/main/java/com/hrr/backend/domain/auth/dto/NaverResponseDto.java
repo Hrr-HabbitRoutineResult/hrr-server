@@ -32,6 +32,6 @@ public class NaverResponseDto {
 		private String tokenType;
 
 		@JsonProperty("expires_in")
-		private String expiresIn;
+		private Long expiresIn;
 	}
 }
