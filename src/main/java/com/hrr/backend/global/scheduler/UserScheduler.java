@@ -17,7 +17,7 @@ public class UserScheduler {
 	private final UserDeleteService userDeleteService;
 
 	// 매일 새벽 4시에 실행
-	@Scheduled(cron = "0 5 1 * * *")
+	@Scheduled(cron = "0 0 4 * * *")
 	public void cleanupOldDeletedUsers() {
 		// 현재 시간으로부터 한 달 전 시점 계산
 		LocalDateTime threshold = LocalDateTime.now().minusMonths(1);
