@@ -148,7 +148,10 @@ public class SocialUserService {
 					user.updateEmail(email);
 				}
 
-				// Todo: 네이버 RT 업데이트 (나중에 탈퇴 시 사용)
+				// 네이버 RT 업데이트 (나중에 탈퇴 시 사용)
+				if (StringUtils.hasText(refreshToken)) {
+					socialAuth.updateRefreshToken(refreshToken);
+				}
 
 				return user;
 			})
