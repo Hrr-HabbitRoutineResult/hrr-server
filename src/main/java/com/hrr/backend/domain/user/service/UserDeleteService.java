@@ -135,7 +135,9 @@ public class UserDeleteService {
 			{"notification_setting", "user_id"}, {"user_mission", "user_id"},
 			{"user_term", "user_id"}, {"user_favor", "user_id"},
 			{"user_favor_available_time", "user_favor_id"}, // 컬렉션 테이블
-			{"user_favor_category", "user_favor_id"}         // 컬렉션 테이블
+			{"user_favor_category", "user_favor_id"},         // 컬렉션 테이블
+			{"user_report", "reporter_id"},
+			{"user_report", "target_user_id"}
 		};
 
 		for (String[] table : simpleTables) {
