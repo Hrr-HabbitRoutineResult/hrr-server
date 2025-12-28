@@ -200,7 +200,7 @@ public class AppleAuthService {
 				throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
 			}
 		} catch (Exception e) {
-			log.error("애플 Revoke 통신 중 오류 발생: {}", e.getMessage());
+			log.error("애플 Revoke 통신 중 오류 발생: ", e);
 			throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
 		}
 	}
