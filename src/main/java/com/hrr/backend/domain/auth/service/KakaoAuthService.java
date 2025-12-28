@@ -117,8 +117,6 @@ public class KakaoAuthService {
 	 * @param kakaoSocialId SocialAuth의 socialId
 	 */
 	public void unlink(String kakaoSocialId) {
-		RestTemplate restTemplate = new RestTemplate();
-
 		// 헤더 설정
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Authorization", "KakaoAK " + adminKey);
