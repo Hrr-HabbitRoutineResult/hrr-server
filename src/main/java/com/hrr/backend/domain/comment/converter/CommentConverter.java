@@ -20,11 +20,11 @@ public class CommentConverter {
                 // 작성자 ID
                 .userId(user.getId())
 
-                // 익명이면 "익명", 아니면 nickname
-                .userName(comment.isAnonymous() ? "익명" : user.getNickname())
+                // 닉네임 반환
+                .userName(user.getNickname())
 
-                // 익명이면 null, 아니면 profileImage (URL)
-                .userProfileUrl(comment.isAnonymous() ? null : user.getProfileImage())
+                // profileImage (URL)
+                .userProfileUrl(user.getProfileImage())
 
                 .isAnonymous(comment.isAnonymous())
                 .depth(comment.getDepth())
@@ -32,6 +32,7 @@ public class CommentConverter {
                 .likesCount(comment.getLikesCount())
                 .isAdopted(Boolean.TRUE.equals(comment.getIsAdopted()))
                 .createdAt(comment.getCreatedAt())
+				.updatedAt(comment.getUpdatedAt())
                 .build();
     }
 }
