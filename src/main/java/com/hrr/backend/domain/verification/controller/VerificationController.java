@@ -3,7 +3,9 @@ package com.hrr.backend.domain.verification.controller;
 import com.hrr.backend.domain.verification.dto.*;
 import com.hrr.backend.domain.verification.service.VerificationService;
 import com.hrr.backend.global.config.CustomUserDetails;
+import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ApiResponse;
+import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -129,5 +131,47 @@ public class VerificationController {
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
+
+    @PostMapping("/{verificationId}/comments/{commentId}/adopt")
+    @Operation(summary = "댓글 채택하기", description = "인증글 작성자가 댓글을 채택합니다.")
+    public ApiResponse<String> adoptComment(
+            @PathVariable Long verificationId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long currentUserId = userDetails.getUser().getId();
+
+        verificationService.adoptComment(verificationId, commentId, currentUserId);
+
+        return ApiResponse.onSuccess(SuccessCode.COMMENT_ADOPT_OK, null);
+
+    }
+
+    @PatchMapping("/{verificationId}")
+    @Operation(summary = "인증글 수정", description = "인증글을 수정합니다.")
+    public ApiResponse<VerificationDetailResponseDto> updateVerification(
+            @PathVariable Long verificationId,
+            @RequestBody @Valid VerificationUpdateRequestDto requestDto,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long currentUserId = userDetails.getUser().getId();
+        VerificationDetailResponseDto dto =
+                verificationService.updateVerification(verificationId, currentUserId, requestDto);
+
+        return ApiResponse.onSuccess(SuccessCode.VERIFICATION_UPDATE_OK, dto);
+    }
+
+    @DeleteMapping("/{verificationId}")
+    @Operation(summary = "인증글 삭제", description = "인증글을 삭제합니다.")
+    public ApiResponse<String> deleteVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        verificationService.deleteVerification(verificationId, userDetails.getUser().getId());
+
+        return ApiResponse.onSuccess(SuccessCode.VERIFICATION_DELETE_OK, null);
+    }
+
+
 
 }

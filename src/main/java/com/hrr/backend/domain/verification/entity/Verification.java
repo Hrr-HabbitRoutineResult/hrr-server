@@ -5,6 +5,8 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -56,12 +58,24 @@ public class Verification extends BaseEntity {
     private Boolean isQuestion;
 
     @Enumerated(EnumType.STRING)
-    private VerificationStatus status; // TEMPORARY, COMPLETED
+    private VerificationStatus status; // TEMPORARY, COMPLETED, BLOCKED
 
     @Column(nullable = false)
     @ColumnDefault("false")
     @Builder.Default
     private Boolean isResolved = false;
+
+	@ColumnDefault("0")
+	@Column(nullable = false)
+	@Builder.Default
+	private Integer reportCount = 0; // 신고 누적 횟수
+
+	public void addReport() {
+		this.reportCount++;
+		if (this.reportCount >= 5) {
+			this.status = VerificationStatus.BLOCKED;
+		}
+	}
 
     /** TEXT 인증 생성 */
     public static Verification createTextVerification(
@@ -127,4 +141,27 @@ public class Verification extends BaseEntity {
     public void setUserChallenge(UserChallenge uc) {
         this.userChallenge = uc;
     }
+
+    public void update(String title, String content, String textUrl, String photoUrl) {
+        if (title != null) {
+            if (title.isBlank()) {
+                throw new GlobalException(ErrorCode.VERIFICATION_TITLE_REQUIRED);
+        }
+            this.title = title;
+        }
+        if (content != null) {
+            if (content.isBlank()) {
+                throw new GlobalException(ErrorCode.VERIFICATION_TEXT_REQUIRED);}
+            this.content = content;
+        }
+        if (textUrl != null) {
+            this.textUrl = textUrl;
+        }
+        if (photoUrl != null) {
+            this.photoUrl = photoUrl;
+        }
+    }
+
+
+
 }

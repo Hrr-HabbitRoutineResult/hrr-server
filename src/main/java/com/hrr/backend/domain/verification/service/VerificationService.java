@@ -3,6 +3,7 @@ package com.hrr.backend.domain.verification.service;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 public interface VerificationService {
@@ -54,7 +55,15 @@ public interface VerificationService {
             String title,
             Boolean isQuestion
     );
+  
+    VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size);
 
+    void adoptComment(Long verificationId, Long commentId, Long currentUserId);
+
+    VerificationDetailResponseDto updateVerification(Long verificationId, Long currentUserId, VerificationUpdateRequestDto requestDto);
+
+    void deleteVerification(Long verificationId, Long currentUserId);
+  
     /**
      * 사용자 전체 챌린지 인증 기록 조회
      */
@@ -63,4 +72,5 @@ public interface VerificationService {
             int page,
             int size
     );
+  
 }

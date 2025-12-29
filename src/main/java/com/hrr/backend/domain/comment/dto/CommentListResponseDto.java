@@ -11,6 +11,9 @@ import java.util.List;
 @AllArgsConstructor
 public class CommentListResponseDto {
 
+    private CommentResponseDto adoptedParent;
+    private List<CommentResponseDto> adoptedChildren;
+
     private List<CommentResponseDto> comments; // 데이터 리스트
 
     // 페이지네이션 정보 (부모 댓글 기준)
