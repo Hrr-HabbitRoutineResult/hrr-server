@@ -175,6 +175,9 @@ public class CommentServiceImpl implements CommentService {
 
         comment.updateContent(requestDto.getContent());
 
+		// 수동으로 DB 에 반영하여 Auditing 필드(updatedAt)를 갱신
+		commentRepository.saveAndFlush(comment);
+
         return CommentConverter.toDto(comment);
     }
 
