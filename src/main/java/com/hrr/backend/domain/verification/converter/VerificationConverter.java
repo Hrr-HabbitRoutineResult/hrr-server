@@ -163,7 +163,7 @@ public class VerificationConverter {
 
 
     /**
-     * Verification 엔티티를 HistoryDto로 변환 (빌더 패턴)
+     * Verification 엔티티를 HistoryDto로 변환
      */
     public VerificationResponseDto.HistoryDto toHistoryDto(Verification verification) {
         return VerificationResponseDto.HistoryDto.builder()
@@ -173,7 +173,8 @@ public class VerificationConverter {
                 .type(verification.getType().name())
                 .title(verification.getTitle())
                 .content(verification.getContent())
-                .photoUrl(verification.getPhotoUrl())
+                .photoUrl(verification.getPhotoUrl() != null ?
+                        s3UrlUtil.toFullUrl(verification.getPhotoUrl()) : null)
                 .textUrl(verification.getTextUrl())
                 .verifiedAt(verification.getCreatedAt())
                 .build();
