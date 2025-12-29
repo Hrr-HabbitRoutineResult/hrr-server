@@ -170,7 +170,7 @@ public class VerificationResponseDto {
         private String textUrl;
 
         @Schema(description = "인증 일시", example = "2025-09-18T08:00:00Z")
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime verifiedAt;
     }
 }
