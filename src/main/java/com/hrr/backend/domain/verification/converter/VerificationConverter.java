@@ -100,4 +100,21 @@ public class VerificationConverter {
                 .build();
     }
 
+    /**
+     * Verification 엔티티를 HistoryDto로 변환 (빌더 패턴)
+     */
+    public VerificationResponseDto.HistoryDto toHistoryDto(Verification verification) {
+        return VerificationResponseDto.HistoryDto.builder()
+                .verificationId(verification.getId())
+                .challengeId(verification.getRoundRecord().getUserChallenge().getChallenge().getId())
+                .challengeTitle(verification.getRoundRecord().getUserChallenge().getChallenge().getTitle())
+                .type(verification.getType().name())
+                .title(verification.getTitle())
+                .content(verification.getContent())
+                .photoUrl(verification.getPhotoUrl())
+                .textUrl(verification.getTextUrl())
+                .verifiedAt(verification.getCreatedAt())
+                .build();
+    }
+}
 }

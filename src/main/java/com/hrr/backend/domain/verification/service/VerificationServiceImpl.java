@@ -266,4 +266,32 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
     }
+
+    /**
+     * 사용자 전체 챌린지 인증 기록 조회
+     */
+    @Override
+    public SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Repository에서 인증 엔티티 조회
+        Slice<Verification> verificationSlice =
+                verificationRepository.findVerificationHistoryByUser(user, pageable);
+
+        // 엔티티를 DTO로 변환 (빌더 패턴 사용)
+        Slice<VerificationResponseDto.HistoryDto> dtoSlice =
+                verificationSlice.map(verificationConverter::toHistoryDto);
+
+        // SliceResponseDto로 변환하여 반환
+        return new SliceResponseDto<>(dtoSlice);
+    }
 }

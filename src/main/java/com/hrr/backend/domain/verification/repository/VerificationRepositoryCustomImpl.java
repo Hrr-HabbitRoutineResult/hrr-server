@@ -1,13 +1,12 @@
-package com.hrr.backend.domain.user.repository;
+package com.hrr.backend.domain.verification.repository;
 
 import com.hrr.backend.domain.challenge.entity.QChallenge;
 import com.hrr.backend.domain.round.entity.QRoundRecord;
-import com.hrr.backend.domain.user.dto.UserVerificationResponseDto;
 import com.hrr.backend.domain.user.entity.QUserChallenge;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.entity.QVerification;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -19,33 +18,24 @@ import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
-public class UserVerificationRepositoryCustomImpl implements UserVerificationRepositoryCustom {
+public class VerificationRepositoryCustomImpl implements VerificationRepositoryCustom {
 
     private final JPAQueryFactory jpaQueryFactory;
 
     @Override
-    public Slice<UserVerificationResponseDto.VerificationItemDto> findVerificationHistoryByUser(User user, Pageable pageable) {
+    public Slice<Verification> findVerificationHistoryByUser(User user, Pageable pageable) {
         QVerification qVerification = QVerification.verification;
         QRoundRecord qRoundRecord = QRoundRecord.roundRecord;
         QUserChallenge qUserChallenge = QUserChallenge.userChallenge;
         QChallenge qChallenge = QChallenge.challenge;
 
-        // 데이터 조회 (size + 1로 hasNext 판단)
-        List<UserVerificationResponseDto.VerificationItemDto> content = jpaQueryFactory
-                .select(Projections.fields(UserVerificationResponseDto.VerificationItemDto.class,
-                        qVerification.id.as("verificationId"),
-                        qChallenge.id.as("challengeId"),
-                        qChallenge.title.as("challengeTitle"),
-                        qVerification.type.stringValue().as("type"),
-                        qVerification.title,
-                        qVerification.content,
-                        qVerification.photoUrl.as("imageUrl"),
-                        qVerification.createdAt.as("verifiedAt")
-                ))
+        // 엔티티 조회 (size + 1로 hasNext 판단)
+        List<Verification> content = jpaQueryFactory
+                .select(qVerification)
                 .from(qVerification)
-                .join(qVerification.roundRecord, qRoundRecord)
-                .join(qRoundRecord.userChallenge, qUserChallenge)
-                .join(qUserChallenge.challenge, qChallenge)
+                .join(qVerification.roundRecord, qRoundRecord).fetchJoin()
+                .join(qRoundRecord.userChallenge, qUserChallenge).fetchJoin()
+                .join(qUserChallenge.challenge, qChallenge).fetchJoin()
                 .where(
                         qUserChallenge.user.eq(user),
                         qVerification.status.eq(VerificationStatus.COMPLETED)

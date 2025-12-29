@@ -3,16 +3,14 @@ package com.hrr.backend.domain.user.controller;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
 import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
-import com.hrr.backend.domain.user.dto.UserVerificationResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserService;
-import com.hrr.backend.domain.user.service.UserVerificationService;
+import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 
-import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -191,17 +189,19 @@ public class UserController {
                                             "type": "TEXT",
                                             "title": "해피뉴이어! 올해 마지막 인증 올립니다",
                                             "content": "여기엔 상세내용이 들어가유~",
-                                            "imageUrl": null,
+                                            "photoUrl": null,
+                                            "textUrl": "https://blog.example.com/post/123",
                                             "verifiedAt": "2025-09-18T08:00:00Z"
                                           },
                                           {
                                             "verificationId": 2,
                                             "challengeId": 102,
                                             "challengeTitle": "매일 책 10페이지 읽기",
-                                            "type": "PHOTO",
+                                            "type": "CAMERA",
                                             "title": "오늘의 독서 인증",
                                             "content": null,
-                                            "imageUrl": "https://example.com/verification_image_2.jpg",
+                                            "photoUrl": "https://example.com/verification_image_2.jpg",
+                                            "textUrl": null,
                                             "verifiedAt": "2025-09-13T22:30:00Z"
                                           }
                                         ],
@@ -217,8 +217,7 @@ public class UserController {
                     )
             )
     })
-
-    public ApiResponse<SliceResponseDto<UserVerificationResponseDto.VerificationItemDto>> getVerificationHistory(
+    public ApiResponse<SliceResponseDto<VerificationResponseDto.HistoryDto>> getVerificationHistory(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
 
@@ -231,9 +230,10 @@ public class UserController {
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         Long userId = customUserDetails.getUser().getId();
-        SliceResponseDto<UserVerificationResponseDto.VerificationItemDto> response =
-                userVerificationService.getVerificationHistory(userId, page-1, size);
+        SliceResponseDto<VerificationResponseDto.HistoryDto> response =
+                verificationService.getVerificationHistory(userId, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
+}
 }

@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface VerificationRepository extends JpaRepository<Verification, Long> {
+public interface VerificationRepository extends JpaRepository<Verification, Long>, VerificationRepositoryCustom {
 
     // 오늘 완료된 인증이 있는지 확인
     @Query("""

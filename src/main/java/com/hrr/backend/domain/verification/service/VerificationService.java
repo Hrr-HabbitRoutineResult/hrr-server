@@ -54,4 +54,13 @@ public interface VerificationService {
             String title,
             Boolean isQuestion
     );
+
+    /**
+     * 사용자 전체 챌린지 인증 기록 조회
+     */
+    SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    );
 }
