@@ -267,9 +267,6 @@ public class VerificationServiceImpl implements VerificationService {
         }
     }
 
-    /**
-     * 사용자 전체 챌린지 인증 기록 조회
-     */
     @Override
     public SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
             Long userId,
@@ -283,7 +280,7 @@ public class VerificationServiceImpl implements VerificationService {
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size);
 
-        // Repository에서 인증 엔티티 조회
+        // Repository에서 인증 엔티티 조회 (⭐ @Query 메서드 사용)
         Slice<Verification> verificationSlice =
                 verificationRepository.findVerificationHistoryByUser(user, pageable);
 

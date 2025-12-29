@@ -6,6 +6,7 @@ import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserService;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.service.VerificationService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SliceResponseDto;
@@ -36,7 +37,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final UserVerificationService userVerificationService;
+    private final VerificationService verificationService;
 
 
     // 닉네임 유효성 검사 API
@@ -235,5 +236,4 @@ public class UserController {
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
-}
 }
