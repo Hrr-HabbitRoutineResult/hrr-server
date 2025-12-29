@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.user.entity;
 
+import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import com.hrr.backend.domain.user.entity.enums.UserRole;
@@ -45,7 +46,7 @@ public class User extends BaseEntity {
     private String password;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private LocalDateTime deletedAt;	// 탈퇴 시점 - 탈퇴 후 1개월이 지나면 hard delete, 1개월 동안은 DELETED 상태로써 재가입 불가능
 
     @Column(name = "profile_image", length = 225)
     private String profileImage;
@@ -89,13 +90,13 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NotificationSetting> notificationSettings = new ArrayList<>();
 
-    @Column(unique = true)
-    private Long kakaoId;
-
-    @Enumerated(EnumType.STRING)
+	@Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private LoginStatus loginStatus = LoginStatus.NEW;
+
+	@OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	private SocialAuth socialAuth;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -104,16 +105,18 @@ public class User extends BaseEntity {
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<UserMission> userMissions = new ArrayList<>();
 
-    /** 카카오 로그인용 팩토리 메서드 */
-    public static User newKakao(Long kakaoId, String name, String profileImage) {
-        User user = new User();
-        user.kakaoId = kakaoId;
-        user.name = name;
-        user.profileImage = profileImage;
-        // 초기 로그인 상태 명시적으로 설정 (nullable=false 대응)
-        user.loginStatus = LoginStatus.NEW;
-        return user;
-    }
+	/**
+	 * 로그인/회원가입용 팩토리 메서드
+	 */
+	public static User signUp(String name, String profileImage) {
+		return User.builder()
+			.name(name)
+			.profileImage(profileImage)
+			.loginStatus(LoginStatus.NEW)
+			.userLevel(UserLevel.BRONZE)
+			.userRole(UserRole.USER)
+			.build();
+	}
 
     /** 닉네임 업데이트 */
     public void updateNickname(String nickname) {
@@ -129,6 +132,11 @@ public class User extends BaseEntity {
     public void updateProfileImage(String profileImage) {
         this.profileImage = profileImage;
     }
+
+	/** 이메일 업데이트 */
+	public void updateEmail(String email) {
+		this.email = email;
+	}
 
     /** 온보딩 진행 상태로 다음 단계 반환
      * new -> terms : 약관동의 화면
@@ -151,4 +159,10 @@ public class User extends BaseEntity {
     public void updateLoginStatus(LoginStatus status) {
         this.loginStatus = status;
     }
+
+	// 탈퇴 처리 메서드
+	public void withdraw() {
+		this.userStatus = UserStatus.DELETED;
+		this.deletedAt = LocalDateTime.now();
+	}
 }

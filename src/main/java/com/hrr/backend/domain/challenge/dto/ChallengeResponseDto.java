@@ -88,6 +88,9 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "참가한 챌린지 ID", example = "1")
 		private Long challengeId;
+
+		@Schema(description = "참가 후 현재 인원 수", example = "6") // 추가
+		private Integer currentParticipantCount;
 	}
 
 	@Getter

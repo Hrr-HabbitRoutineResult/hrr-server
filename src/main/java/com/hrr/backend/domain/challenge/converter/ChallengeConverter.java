@@ -141,4 +141,11 @@ public class ChallengeConverter {
                 .isCurrentRound(isCurrentRound)
                 .build();
     }
+
+    public ChallengeResponseDto.JoinChallengeDto toJoinResponseDto(Challenge challenge) {
+        return new ChallengeResponseDto.JoinChallengeDto(
+                challenge.getId(),
+                challenge.getCurrentParticipants()
+        );
+    }
 }

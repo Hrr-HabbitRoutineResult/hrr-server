@@ -19,6 +19,9 @@ public enum ErrorCode implements BaseCode{
     NICKNAME_TOO_LONG(HttpStatus.BAD_REQUEST, "USER4003", "닉네임은 최대 10자까지 입력 가능합니다."),
     NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "USER4094", "해당 닉네임은 이미 등록되어 있어요!"),
     INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
+	ALREADY_REPORTED_USER(HttpStatus.CONFLICT, "USER4095", "이미 신고한 사용자입니다."),
+	CANNOT_REPORT_SELF(HttpStatus.CONFLICT, "USER4096", "자기 자신은 신고할 수 없습니다."),
+	AUTH_WITHDRAWAL_PERIOD_RESTRICTION(HttpStatus.CONFLICT, "USER4091", "탈퇴 후 한 달 이내에는 동일한 계정으로 재가입할 수 없습니다."),
 
 
     // fcm
@@ -46,6 +49,7 @@ public enum ErrorCode implements BaseCode{
     CHALLENGE_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "진행 중인 챌린지가 아닙니다."), // feat/90
     USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."), // develop
     CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."), // develop
+	MAX_CHALLENGE_EXCEEDED(HttpStatus.BAD_REQUEST, "CHALLENGE40012", "참가할 수 있는 챌린지는 최대 5개입니다."),
 
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
@@ -63,6 +67,22 @@ public enum ErrorCode implements BaseCode{
     AUTH_KAKAO_USER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH008", "카카오 사용자 정보 조회 중 오류가 발생했습니다."),
     AUTH_TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "AUTH4019", "Authorization 헤더가 필요합니다."),
     AUTH_TOKEN_INVALIDATED(HttpStatus.UNAUTHORIZED, "AUTH4011", "로그아웃되어 만료된 토큰입니다."),
+	AUTH_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH4041", "소셜 로그인 정보를 찾을 수 없습니다."),
+
+	// kakao auth
+	AUTH_KAKAO_UNLINK_ERROR(HttpStatus.BAD_GATEWAY, "KAKAO5021", "카카오 연결 해제 API 요청 중 오류가 발생했습니다."),
+	AUTH_KAKAO_INVALID_ADMIN_KEY(HttpStatus.UNAUTHORIZED, "KAKAO4011", "유효하지 않은 카카오 어드민 키입니다."),
+	AUTH_KAKAO_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "KAKAO4041", "카카오에서 해당 사용자를 찾을 수 없습니다."),
+
+	// apple auth
+	AUTH_APPLE_TOKEN_ERROR(HttpStatus.BAD_GATEWAY, "APPLE001", "애플 토큰 요청 중 오류가 발생했습니다."),
+	AUTH_APPLE_ID_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "APPLE002", "유효하지 않은 애플 ID 토큰입니다."),
+	AUTH_APPLE_KEY_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "APPLE003", "애플 인증 키 생성 중 오류가 발생했습니다."),
+	AUTH_APPLE_REVOKE_ERROR(HttpStatus.BAD_REQUEST, "APPLE004", "애플 연결 해제에 실패했습니다."),
+
+	// naver auth
+	AUTH_NAVER_EXTERNAL_ERROR(HttpStatus.BAD_GATEWAY, "NAVER001", "네이버 프로필 API 요청 중 오류가 발생했습니다."),
+	AUTH_NAVER_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "NAVER002", "유효하지 않은 네이버 액세스 토큰입니다."),
 
     // round
     ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4041", "라운드를 찾을 수 없습니다."), // feat/90 & develop 공통
@@ -96,6 +116,11 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_FILE_EMPTY(HttpStatus.BAD_REQUEST, "VERIFICATION40012", "파일이 비어있습니다."),
     VERIFICATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "VERIFICATION40013", "이미 인증을 완료했습니다."),
     VERIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "VERIFICATION40314", "인증에 대한 접근 권한이 없습니다."),
+    VERIFICATION_NOT_QUESTION(HttpStatus.BAD_REQUEST, "VERIFICATION40015", "질문 인증글이 아니어서 댓글을 채택할 수 없습니다."),
+    VERIFICATION_ALREADY_RESOLVED(HttpStatus.CONFLICT, "VERIFICATION40916", "이미 해결된 인증글입니다."),
+	ACCESS_DENIED_REPORTED_POST(HttpStatus.CONFLICT, "VERIFICATION40917", "신고 5회 누적으로 제한된 게시글입니다."),
+	CANNOT_REPORT_OWN_POST(HttpStatus.CONFLICT, "VERIFICATION40918", "자기 자신의 인증 게시글은 신고할 수 없습니다."),
+	ALREADY_REPORTED(HttpStatus.CONFLICT, "VERIFICATION40919", "이미 신고한 게시글입니다."),
 
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
@@ -109,16 +134,22 @@ public enum ErrorCode implements BaseCode{
     COMMENT_INVALID_PARENT(HttpStatus.BAD_REQUEST, "COMMENT4004", "유효하지 않은 부모 댓글입니다."),
     COMMENT_DEPTH_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4005", "대댓글의 depth 값이 올바르지 않습니다."),
     COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다."),
+    COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "COMMENT4037", "댓글에 접근할 수 없습니다."),
+    COMMENT_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4008", "유효하지 않은 댓글입니다."),
 
     // follow
     CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),
     ALREADY_FOLLOWING(HttpStatus.CONFLICT, "FOLLOW4091", "이미 팔로우 중인 사용자입니다."),
     FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW4041", "팔로우 관계를 찾을 수 없습니다."),
 
+    // notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4041", "존재하지 않는 알림입니다."),
+    NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTIFICATION4032", "해당 알림에 대한 접근 권한이 없습니다."),
+
     // search
     MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),
     COUNTING_LOG_TABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5002", "집계가 실패하였습니다."),
-    ;
+	;
 
     private final HttpStatus status;
     private final String code;

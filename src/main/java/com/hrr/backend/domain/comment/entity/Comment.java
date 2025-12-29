@@ -107,4 +107,8 @@ public class Comment extends BaseEntity {
     public void adopt() {
         this.isAdopted = true;
     }
+
+    public void unAdopt() {
+        this.isAdopted = false;
+    }
 }

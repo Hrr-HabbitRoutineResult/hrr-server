@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 
 @Getter
 @MappedSuperclass

@@ -1,20 +1,25 @@
 package com.hrr.backend.domain.auth.service;
 
 import java.time.Duration;
+import java.util.Map;
 
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
 import com.hrr.backend.domain.auth.dto.KakaoTokenResponse;
 import com.hrr.backend.domain.auth.dto.KakaoUserResponse;
+import com.hrr.backend.domain.auth.dto.NaverUserResponse;
+import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
+import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -22,8 +27,13 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final KakaoAuthService kakaoAuthService;
+	private final AppleAuthService appleAuthService;
+	private final NaverAuthService naverAuthService;
     private final SocialUserService socialUserService;
     private final JwtService jwtService;
+
+	private final SocialAuthRepository socialAuthRepository;
+	private final UserRepository userRepository;
 
     public AuthResponseDto.LoginResponse socialLogin(SocialType socialType, AuthRequestDto.SocialLoginRequest request) {
         // 지원하지 않는 소셜 타입이면 GlobalException 던지기
@@ -123,6 +133,94 @@ public class AuthService {
 		}
 	}
 
+	/**
+	 * 애플 로그인 구현
+	 *
+	 * @param request 요청 Dto
+	 * @return 토큰, userId 등 필요 정보
+	 */
+	public AuthResponseDto.LoginResponse appleLogin(AuthRequestDto.AppleLoginRequest request) {
+
+		try {
+			Map<String, String> appleTokens = appleAuthService.getAppleTokens(request.getAuthorizationCode());
+
+			// id_token 자체가 오지 않은 경우 처리
+			if (appleTokens == null || appleTokens.get("id_token") == null) {
+				log.error("애플 id_token이 유효하지 않습니다.");
+				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			}
+
+			String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
+			String appleRefreshToken = appleTokens.get("refresh_token");
+
+			// DB 저장 (애플은 RT 함께 저장)
+			User user = socialUserService.upsertAppleUser(socialId, appleRefreshToken, request.getName());
+
+			// JWT 생성
+			String accessToken = jwtService.generateAccessToken(user.getId());
+			String refreshToken = jwtService.generateRefreshToken(user.getId());
+
+			// 다음단계 게산
+			String nextStep = user.determineNextStep();
+
+			return new AuthResponseDto.LoginResponse(
+				user.getId(),
+				accessToken,
+				refreshToken,
+				user.getName(),
+				user.getNickname(),
+				user.getLoginStatus(),
+				nextStep
+			);
+		} catch (GlobalException e) {
+			throw e;
+		} catch (Exception e) {
+			// 애플 서버 통신 오류 처리
+
+			throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+		}
+	}
+
+	/**
+	 * 네이버 엑세스 토큰을 통해 로그인 (SDK 방식)
+	 * @param naverAccessToken 네이버 sdk를 통해 프론트에서 받아온 엑세스 토큰
+	 * @return 토큰, userId 등 필요 정보
+	 */
+	public AuthResponseDto.LoginResponse naverLogin(String naverAccessToken, String naverRefreshToken) {
+
+		try {
+			// 네이버 유저 정보 조회
+			NaverUserResponse naverUser = naverAuthService.fetchUser(naverAccessToken);
+
+			// DB에 유저 upsert
+			User user = socialUserService.upsertNaverUser(naverUser, naverRefreshToken);
+
+			// JWT 생성
+			String accessToken = jwtService.generateAccessToken(user.getId());
+			String refreshToken = jwtService.generateRefreshToken(user.getId());
+
+			// 다음 단계 계산
+			String nextStep = user.determineNextStep();
+
+			return new AuthResponseDto.LoginResponse(
+				user.getId(),
+				accessToken,
+				refreshToken,
+				user.getName(),
+				user.getNickname(),
+				user.getLoginStatus(),
+				nextStep
+			);
+		} catch (GlobalException e) {
+			// 이미 NaverAuthService에서 던진 전용 에러를 그대로 위로 던짐
+			throw e;
+		} catch (Exception e) {
+			// 그 외 서버 내부 로직 오류 시 공통 외부 에러 처리
+			log.error("네이버 로그인 중 오류 발생: ", e);
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		}
+	}
+
 	public void logout(String tokenHeader) {
 
 		// "Bearer " 접두사 제거
@@ -144,5 +242,33 @@ public class AuthService {
 
 	}
 
+	/**
+	 * 회원 탈퇴
+	 * @param userId 탈퇴할 사용자의 userId
+	 */
+	@Transactional
+	public void withdraw(Long userId) {
+		// 1. 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+		// 소셜 연동 해제
+		SocialAuth socialAuth = socialAuthRepository.findByUser(user)
+			.orElseThrow(() -> new GlobalException(ErrorCode.AUTH_INFO_NOT_FOUND));
+
+		switch (socialAuth.getSocialType()) {
+			case NAVER -> naverAuthService.revoke(socialAuth.getSocialRefreshToken());
+			case APPLE -> appleAuthService.revoke(socialAuth.getSocialRefreshToken());
+			case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
+			default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
+		}
+
+		// 유저 상태 변경 (Soft Delete)
+		user.withdraw();
+
+		// SocialAuth는 재가입 여부 판단을 위해 남겨두고 hard delete 시 삭제
+
+		// TODO: 리프레시 토큰 등 세션 정보 삭제
+	}
 
 }
