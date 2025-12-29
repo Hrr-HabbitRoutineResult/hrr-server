@@ -165,7 +165,7 @@ public class UserController {
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
-    @GetMapping("/challenges/history")
+    @GetMapping("/me/verifications/history")
     @Operation(
             summary = "내 챌린지 인증 기록 조회",
             description = "현재 로그인한 사용자가 참여한 모든 챌린지의 인증 기록을 최신순으로 조회합니다."
