@@ -20,4 +20,6 @@ public class ChallengeItemResponseDto {
     private String goalText;
     private LocalTime verifyStartTime;
     private LocalTime verifyEndTime;
+    @JsonProperty("image_key")
+    private String imageKey;
 }

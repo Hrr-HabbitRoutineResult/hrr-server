@@ -77,7 +77,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // Pageable 객체 생성 (0-based index)
+        // Pageable 객체 생성 (0-based index; 이미 controller에서 -1 처리 완료)
         Pageable pageable = PageRequest.of(page, size);
 
         // Repository에서 참가중인 챌린지 조회

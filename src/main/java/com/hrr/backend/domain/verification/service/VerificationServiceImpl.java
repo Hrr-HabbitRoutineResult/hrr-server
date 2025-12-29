@@ -96,7 +96,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         Integer totalParticipantCount = challenge.getCurrentParticipants();
         Round currentRound = challenge.getCurrentRound();
-        
+
         // 라운드 미시작 시 0명 반환
         if (currentRound == null) {
             return verificationConverter.toStatDto(0, totalParticipantCount, null);
@@ -267,6 +267,9 @@ public class VerificationServiceImpl implements VerificationService {
         }
     }
 
+    /**
+     * 사용자 전체 챌린지 인증 기록 조회
+     */
     @Override
     public SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
             Long userId,

@@ -4,8 +4,12 @@ import java.time.LocalDateTime;
 
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.domain.round.entity.RoundRecord;
 import org.springframework.stereotype.Component;
-
+import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
@@ -99,6 +103,64 @@ public class VerificationConverter {
                 .verifications(verifications)
                 .build();
     }
+    public VerificationDetailResponseDto toDetailDto(
+            Verification verification,
+            CommentListResponseDto comments,
+            boolean isMine,
+            boolean canEdit,
+            boolean canDelete,
+            boolean canSelectComment
+    ) {
+        RoundRecord roundRecord = verification.getRoundRecord();
+        Round round = roundRecord.getRound();
+        Challenge challenge = round.getChallenge();
+        UserChallenge userChallenge = roundRecord.getUserChallenge();
+        User user = userChallenge.getUser();
+
+        String photoUrl = s3UrlUtil.toFullUrl(verification.getPhotoUrl());
+
+        VerificationDetailResponseDto.UserInfo userInfo =
+                VerificationDetailResponseDto.UserInfo.builder()
+                        .userId(user.getId())
+                        .nickname(user.getNickname())
+                        .profileImageUrl(user.getProfileImage())
+                        .role(userChallenge.getRole())
+                        .build();
+
+        VerificationDetailResponseDto.RoundInfo roundInfo =
+                VerificationDetailResponseDto.RoundInfo.builder()
+                        .startDate(round.getStartDate() != null ? round.getStartDate().toString() : null)
+                        .endDate(round.getEndDate() != null ? round.getEndDate().toString() : null)
+                        .verificationCount(roundRecord.getVerificationCount())
+                        .warnCount(roundRecord.getWarnCount())
+                        .build();
+
+        return VerificationDetailResponseDto.builder()
+                .verificationId(verification.getId())
+                .roundId(round.getId())
+                .roundNumber(round.getRoundNumber())
+                .challengeId(challenge.getId())
+                .challengeName(challenge.getTitle())
+                .type(verification.getType())
+                .title(verification.getTitle())
+                .content(verification.getContent())
+                .textUrl(verification.getTextUrl())
+                .photoUrl(photoUrl)
+                .isQuestion(verification.getIsQuestion())
+                .isResolved(verification.getIsResolved())
+                .status(verification.getStatus())
+                .createdAt(verification.getCreatedAt())
+                .updatedAt(verification.getUpdatedAt())
+                .user(userInfo)
+                .roundInfo(roundInfo)
+                .isMine(isMine)
+                .canEdit(canEdit)
+                .canDelete(canDelete)
+                .canSelectComment(canSelectComment)
+                .comments(comments)
+                .build();
+    }
+
 
     /**
      * Verification 엔티티를 HistoryDto로 변환 (빌더 패턴)

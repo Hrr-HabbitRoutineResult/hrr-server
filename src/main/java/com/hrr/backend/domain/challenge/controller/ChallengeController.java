@@ -49,7 +49,8 @@ public class ChallengeController {
 		@RequestParam(name = "title", required = false) String title,
 
 		// 페이징
-		@RequestParam(name = "page", defaultValue = "0") int page, // 페이지 번호 (0부터 시작)
+		@Min(1)
+		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
 		@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
 	) {
 		// 목록 조회
@@ -59,7 +60,7 @@ public class ChallengeController {
 			sortType,
 			day,
 			title,
-			page,
+			page-1,
 			size
 		);
 
@@ -99,8 +100,6 @@ public class ChallengeController {
 	@Operation(summary = "챌린지 클릭 처리", description = "오늘의 인기 챌린지 집계를 위해 챌린지 클릭 시에 카운팅을 진행합니다.")
 	public ApiResponse<Long> clickChallenge(@PathVariable("challengeId") Long challengeId) {
 
-		// 테스트를 위해 임시로 클릭 수 반환
-
 		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.clickChallenge(challengeId));
 	}
 
@@ -114,34 +113,7 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, challengeService.getDailyTopChallenges(number));
 	}
 
-	@Operation(
-			summary = "챌린지 생성",
-			requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-					content = @Content(
-							mediaType = "application/json",
-							examples = @ExampleObject(
-									value = """
-                {
-                  "title": "매일 1만 보 걷기",
-                  "description": "하루에 만 보 이상 걷는 습관",
-                  "isPublic": false,
-                  "password": "1234",
-                  "category": "HEALTH",
-                  "verificationType": "PHOTO",
-                  "startDate": "2025-11-24",
-                  "maxParticipants": 10,
-                  "isViewerMode": false,
-                  "rule": "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.",
-                  "verifyStartTime": "06:00:00",
-                  "verifyEndTime": "23:00:00",
-                  "daysOfWeek": ["MONDAY", "WEDNESDAY", "FRIDAY"],
-                  "imageKey": "challenges/uuid-image-file.jpg"
-                }
-                """
-							)
-					)
-			)
-	)
+	@Operation(summary = "챌린지 생성", description = "챌린지를 생성합니다. 챌린지를 생성하는 동시에 방장으로 참여하게 됩니다.")
 	@PostMapping("")
 	public ApiResponse<ChallengeResponseDto.CreateChallengeDto> createChallenge(
 			@Parameter(hidden = true)
