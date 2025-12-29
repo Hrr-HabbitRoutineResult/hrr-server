@@ -169,8 +169,8 @@ public class VerificationResponseDto {
         @Schema(description = "글 URL (글 인증)", example = "https://blog.example.com/post/123")
         private String textUrl;
 
-        @Schema(description = "인증 일시", example = "2025-09-18T08:00:00Z")
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        @Schema(description = "인증 일시", example = "2025-09-18T08:00:00")
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime verifiedAt;
     }
 }

@@ -283,9 +283,12 @@ public class VerificationServiceImpl implements VerificationService {
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size);
 
-        // Repository에서 인증 엔티티 조회 (⭐ @Query 메서드 사용)
+        // Repository에서 인증 엔티티 조회
         Slice<Verification> verificationSlice =
-                verificationRepository.findVerificationHistoryByUser(user, pageable);
+                verificationRepository.findVerificationHistoryByUser(
+                        user,
+                        VerificationStatus.COMPLETED,
+                        pageable);
 
         // 엔티티를 DTO로 변환 (빌더 패턴 사용)
         Slice<VerificationResponseDto.HistoryDto> dtoSlice =

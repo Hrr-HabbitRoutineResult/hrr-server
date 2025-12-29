@@ -167,10 +167,11 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH rr.userChallenge uc " +
             "JOIN FETCH uc.challenge c " +
             "WHERE uc.user = :user " +
-            "AND v.status = 'COMPLETED' " +
+            "AND v.status = :status " +
             "ORDER BY v.createdAt DESC")
     Slice<Verification> findVerificationHistoryByUser(
             @Param("user") User user,
+            @Param("status") VerificationStatus status,
             Pageable pageable
     );
 
