@@ -74,10 +74,10 @@ public class CommentConverter {
 			userName = "익명" + comment.getAnonymousNumber();
 		} else if (isMyVerificationPost) {
 			// 인증 게시글 작성자
-			userName = commentOwner.getName() + "(글쓴이)";
+			userName = commentOwner.getNickname() + "(글쓴이)";
 		} else {
 			// 작성자 닉네임 그대로
-			userName = commentOwner.getName();
+			userName = commentOwner.getNickname();
 		}
 
 		// 내용
