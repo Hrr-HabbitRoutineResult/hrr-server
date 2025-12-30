@@ -303,7 +303,7 @@ public class VerificationServiceImpl implements VerificationService {
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
         Pageable pageable = PageRequest.of(page, size);
-        CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
+        CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, pageable);
 
         Long adoptedCommentId = comments.getComments().stream()
                 .filter(CommentResponseDto::isAdopted)
@@ -394,7 +394,7 @@ public class VerificationServiceImpl implements VerificationService {
         );
 
         // 댓글 목록 + 상세 DTO 구성
-        CommentListResponseDto comments = commentService.getComments(verificationId, PageRequest.of(0, 10));
+        CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, PageRequest.of(0, 10));
 
         boolean isMine = currentUserId.equals(author.getId());
         boolean isResolved = Boolean.TRUE.equals(verification.getIsResolved());
