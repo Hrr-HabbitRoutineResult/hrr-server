@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.comment.converter;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -78,7 +79,7 @@ public class CommentConverter {
 			// 기본 이름 설정 (익명 vs 실명)
 			if (isAnonymous) {
 				// 익명
-				userName = isCommentFromVerificationAuthor ? "익명(글쓴이)" : "익명" + comment.getAnonymousNumber();
+				userName = isCommentFromVerificationAuthor ? "익명(글쓴이)" : "익명" + Objects.toString(comment.getAnonymousNumber(), "");
 			} else {
 				// 실명
 				userName = commentOwner.getNickname();
