@@ -80,6 +80,9 @@ public class CommentConverter {
 			userName = commentOwner.getNickname();
 		}
 
+		// userId
+		Long userId = (maskingCondition)? null : commentOwner.getId();	// 마스킹 조건이면 null, 아니면 작성자의 userId
+
 		// 내용
 		String content = comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent();
 
@@ -89,7 +92,7 @@ public class CommentConverter {
                 .parentId(parentId)
                 .verificationId(verificationId)
                 // 작성자 ID
-                .userId(commentOwner.getId())
+                .userId(userId)
                 // 닉네임 반환
                 .userName(userName)
                 // 프로필 이미지 URL
