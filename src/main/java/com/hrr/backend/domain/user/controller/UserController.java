@@ -105,7 +105,6 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
-
     // 다른 사용자가 참가중인 챌린지 조회
     @GetMapping("/{userId}/challenge/ongoing")
     @Operation(
@@ -140,7 +139,27 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
     }
 
-<<<<<<< HEAD
+	@GetMapping("/search")
+	@Operation(summary = "챌린저 검색", description = "검색 키워드가 닉네임에 포함된 사용자를 조회합니다.")
+	public ApiResponse<SliceResponseDto<UserResponseDto.ProfileDto>> searchChallengers(
+		@RequestParam(name = "keyword")
+		@NotBlank(message = "검색어는 필수입니다.") String keyword,
+
+		// 페이징
+		@Min(1)
+		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (0부터 시작)
+		@Min(1)
+		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
+
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails customUserDetails
+		)
+	{
+		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page-1, size);
+
+		return ApiResponse.onSuccess(SuccessCode.OK, response);
+	}
+
     @Operation(
             summary = "내 기본 정보 수정",
             description = "사용자가 자신의 기본 정보(닉네임, 프로필 이미지, 프로필 공개여부)를 수정합니다"
@@ -165,29 +184,6 @@ public class UserController {
             @Valid @RequestBody UpdateUserInfoRequestDto requestDto
     ) {
         UpdateUserInfoResponseDto response = userService.updateUserInfo(userDetails.getUser().getId(), requestDto);
-        return ApiResponse.onSuccess(SuccessCode.OK, response);
+        return ApiResponse.onSuccess(SuccessCode.USER_UPDATE_OK, response);
     }
 }
-=======
-	@GetMapping("/search")
-	@Operation(summary = "챌린저 검색", description = "검색 키워드가 닉네임에 포함된 사용자를 조회합니다.")
-	public ApiResponse<SliceResponseDto<UserResponseDto.ProfileDto>> searchChallengers(
-		@RequestParam(name = "keyword")
-		@NotBlank(message = "검색어는 필수입니다.") String keyword,
-
-		// 페이징
-		@Min(1)
-		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (0부터 시작)
-		@Min(1)
-		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
-
-		@Parameter(hidden = true)
-		@AuthenticationPrincipal CustomUserDetails customUserDetails
-		)
-	{
-		SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page-1, size);
-
-		return ApiResponse.onSuccess(SuccessCode.OK, response);
-	}
-}
->>>>>>> a39c863b78097107a6d0481a2bb25ce99d406b2e
