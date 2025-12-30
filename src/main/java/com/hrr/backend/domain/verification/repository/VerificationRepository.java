@@ -6,13 +6,22 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
+
+	// 비관적 락 걸면서 id로 조회
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT v FROM Verification v WHERE v.id = :id")
+	Optional<Verification> findByIdWithPessimisticLock(@Param("id") Long id);
 
     // 오늘 완료된 인증이 있는지 확인
     @Query("""
@@ -97,6 +106,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH uc.user " +
             "WHERE v.roundId = :roundId " +
             "AND v.userChallenge.id = :userChallengeId " +
+			"AND v.status != 'BLOCKED' "	+
             "ORDER BY v.createdAt DESC")
     List<Verification> findByRoundIdAndUserChallengeId(
             @Param("roundId") Long roundId,
@@ -110,6 +120,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH v.userChallenge uc " +
             "JOIN FETCH uc.user " +
             "WHERE v.roundId = :roundId " +
+			"AND v.status != 'BLOCKED' " +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByRoundId(@Param("roundId") Long roundId, Pageable pageable);
 
@@ -119,6 +130,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     @Query("SELECT v FROM Verification v " +
             "JOIN FETCH v.userChallenge uc " +
             "WHERE uc.user.id = :userId " +
+			"AND v.status != 'BLOCKED' " +
             "AND uc.challenge.id = :challengeId " +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByUserIdAndChallengeId(

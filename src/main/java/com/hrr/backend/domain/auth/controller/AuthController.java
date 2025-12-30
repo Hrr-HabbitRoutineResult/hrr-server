@@ -4,22 +4,29 @@ import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.service.AuthService;
+import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Tag(name = "Auth", description = "인증 관련 API")
 @RestController
@@ -118,6 +125,27 @@ public class AuthController {
 		return ApiResponse.onSuccess(SuccessCode.OK, loginResponse);
 	}
 
+	@PostMapping("/login/apple")
+	@Operation(summary = "애플 로그인",
+		description = "authorizationCode와 이름 정보를 받아 애플 로그인을 구현합니다. 이름은 애플 응답 그대로 first name과 last name을 넣어주시면 됩니다.")
+	public ApiResponse<AuthResponseDto.LoginResponse> appleLogin(
+		@RequestBody @Valid AuthRequestDto.AppleLoginRequest request) {
+
+		return ApiResponse.onSuccess(SuccessCode.OK, authService.appleLogin(request));
+	}
+
+	/**
+	 * 네이버 엑세스 토큰을 통해 로그인 (SDK 방식)
+	 */
+	@PostMapping("/login/naver")
+	@Operation(summary = "네이버 로그인 (SDK 방식)",
+		description = "전달받은 네이버 Access Token으로 로그인/회원가입 처리")
+	public ApiResponse<AuthResponseDto.LoginResponse> naverLoginByToken(
+		@RequestBody @Valid AuthRequestDto.NaverAccessTokenDto request) {
+
+		return ApiResponse.onSuccess(SuccessCode.OK, authService.naverLogin(request.getAccessToken(), request.getRefreshToken()));
+	}
+
 	@PostMapping("/logout")
 	@Operation(summary = "로그아웃",
 		description = "로그아웃 시 토큰을 무효화 시킵니다.")
@@ -126,6 +154,44 @@ public class AuthController {
 		authService.logout(authorizationHeader);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, "로그아웃에 성공했습니다.");
+	}
+
+	@PostMapping("/withdraw")
+	@Operation(summary = "회원 탈퇴",
+		description = "탈퇴를 진행합니다. 1개월 동안 재가입이 불가하며 모든 정보가 삭제됩니다.")
+	public ApiResponse<String> withdraw(
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		authService.withdraw(userDetails.getUser().getId());
+
+		return ApiResponse.onSuccess(SuccessCode.OK, "회원 탈퇴에 성공했습니다.");
+	}
+
+	/**
+	 * 애플 로그인 테스트용 임시 리다이렉트 url
+	 */
+	@Profile("local")	// 로켈 테스트 환경에서만 작동 제한
+	@PostMapping("/login/apple/test")
+	@Operation(summary = "애플 로그인 테스트용 url")
+	public void appleTestCallback(jakarta.servlet.http.HttpServletRequest request) {
+		log.info("======= [DEBUG] APPLE CALLBACK START =======");
+
+		// 헤더 전체 출력
+		java.util.Enumeration<String> headerNames = request.getHeaderNames();
+		while (headerNames.hasMoreElements()) {
+			String name = headerNames.nextElement();
+			log.info("Header -> {}: {}", name, request.getHeader(name));
+		}
+
+		// 파라미터(Body) 전체 출력
+		java.util.Enumeration<String> params = request.getParameterNames();
+		while (params.hasMoreElements()) {
+			String name = params.nextElement();
+			log.info("Param -> {}: {}", name, request.getParameter(name));
+		}
+
+		log.info("======= [DEBUG] APPLE CALLBACK END =======");
 	}
 }
 

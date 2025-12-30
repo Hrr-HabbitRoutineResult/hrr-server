@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.user.dto.*;
+import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -88,7 +88,7 @@ public class UserServiceImpl implements UserService {
         slice.getContent().forEach(dto ->
                 dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
         );
-
+        
         // 인증 완료 여부 추가
         slice.getContent().forEach(dto -> {
             Long challengeId = dto.getChallengeId();
