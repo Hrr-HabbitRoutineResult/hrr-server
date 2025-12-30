@@ -31,18 +31,21 @@ public interface UserService {
      */
     UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request);
 
-	/**
-	 * 키워드가 닉네임에 포함된 사용자 조회
-	 */
-	SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
-			User user,
-			String keyword,
-			int page,
-			int size
-	);
+    /**
+     * 키워드가 닉네임에 포함된 사용자 조회
+     */
+    SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
+            User user,
+            String keyword,
+            int page,
+            int size
+    );
 
-    // 사용자 기본 정보 수정
+    /**
+     * 사용자 기본 정보 수정
+     */
     UpdateUserInfoResponseDto updateUserInfo(
             Long userId,
-            UpdateUserInfoRequestDto requestDto);
+            UpdateUserInfoRequestDto requestDto
+    );
 }

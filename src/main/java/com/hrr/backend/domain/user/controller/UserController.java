@@ -105,6 +105,7 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+
     // 다른 사용자가 참가중인 챌린지 조회
     @GetMapping("/{userId}/challenge/ongoing")
     @Operation(
@@ -130,7 +131,6 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
-    //내 정보 조회
     @GetMapping("/me")
     @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 기본 정보를 조회합니다.")
     public ApiResponse<UserResponseDto.MyInfoDto> getMyInfo(
@@ -140,6 +140,26 @@ public class UserController {
         return ApiResponse.onSuccess(SuccessCode.OK, myInfo);
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "챌린저 검색", description = "검색 키워드가 닉네임에 포함된 사용자를 조회합니다.")
+    public ApiResponse<SliceResponseDto<UserResponseDto.ProfileDto>> searchChallengers(
+            @RequestParam(name = "keyword")
+            @NotBlank(message = "검색어는 필수입니다.") String keyword,
+
+            // 페이징
+            @Min(1)
+            @RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (0부터 시작)
+            @Min(1)
+            @RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
+
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    )
+    {
+        SliceResponseDto<UserResponseDto.ProfileDto> response = userService.searchChallengers(customUserDetails.getUser(), keyword, page-1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
 
     @PatchMapping("/me")
     @Operation(
