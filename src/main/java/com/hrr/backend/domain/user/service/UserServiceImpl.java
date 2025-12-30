@@ -1,6 +1,15 @@
 package com.hrr.backend.domain.user.service;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.hrr.backend.domain.user.dto.*;
+import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -57,6 +66,54 @@ public class UserServiceImpl implements UserService {
         // Repository에서 참가중인 챌린지 조회
         Slice<UserResponseDto.OngoingChallengeDto> slice =
                 userChallengeRepository.findOngoingChallengesByUser(user, pageable);
+
+        // URL 변환 로직 교체
+        slice.getContent().forEach(dto ->
+                dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
+        );
+
+		// 인증 완료 여부 추가
+		slice.getContent().forEach(dto -> {
+			Long challengeId = dto.getChallengeId();
+
+			// 챌린지 요일/인증 시간 로딩
+			Challenge challenge = challengeRepository.findByIdWithDays(challengeId)
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+			// java의 DayOfWeek를 ChallengeDays로 변환
+			DayOfWeek todayDayOfWeek = LocalDate.now().getDayOfWeek();
+			ChallengeDays todayChallengeDay = ChallengeDays.from(todayDayOfWeek);
+
+			// 오늘이 인증하는 날인지 체크
+			boolean isRegistrationDay = challenge.getChallengeDays().stream()
+				.anyMatch(day -> day.getDayOfWeek() == todayChallengeDay);
+
+			boolean verified = false;
+
+			if (isRegistrationDay) {
+				// 유저-챌린지 매핑 (userChallengeId 필요)
+				Long userChallengeId = userChallengeRepository
+					.findByUserIdAndChallengeId(userId, challengeId)
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
+					.getId();
+
+				// 오늘 00:00 ~ 23:59 범위 설정
+				LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+				LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+
+
+				verified = verificationRepository.existsTodayVerification(	// 오늘이 인증날이고, 인증을 완료했을 떄에만 true
+					userChallengeId,
+					VerificationStatus.COMPLETED,
+					startOfDay,
+					endOfDay
+				);
+			}
+
+			// 결과를 DTO 반영
+			dto.setVerified(verified);
+		});
+
 
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(slice);
