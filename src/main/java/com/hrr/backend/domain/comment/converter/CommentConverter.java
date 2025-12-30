@@ -1,6 +1,8 @@
 package com.hrr.backend.domain.comment.converter;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
@@ -53,31 +55,38 @@ public class CommentConverter {
 		String userProfileUrl = !isAnonymous? s3UrlUtil.toFullUrl(commentOwner.getProfileImage()) : null ;	//util에서 자동 처리
 
 		// 닉네임 - 닉네임 or 마스킹 or (알 수 없음)
-		// 마스킹 조건 - 익명이면서, 조회하는 사람의 게시글이 아니면서, 조회하는 사람의 댓글이 아님
-		boolean isMyVerificationPost = comment.getVerification().getUserChallenge().getUser().getId().equals(currentUserId);
+		// 마스킹 조건 - 익명이면서, 조회하는 사람의 댓글이 아님
 		boolean isMyComment = commentOwner.getId().equals(currentUserId);
 
-		boolean maskingCondition =
-			isAnonymous && !isMyVerificationPost && !isMyComment;
+		boolean maskingCondition = isAnonymous && !isMyComment;
 
-		String userName = "";
+		String userName;
+
+		// 댓글 작성자가 해당 인증글(게시글)의 작성자인지 여부
+		boolean isCommentFromVerificationAuthor = Optional.ofNullable(comment.getVerification())
+			    .map(verification -> verification.getUserChallenge())
+			    .map(userChallenge -> userChallenge.getUser())
+			    .map(User::getId)
+			    .map(id -> id.equals(commentOwner.getId()))
+			    .orElse(false);
 
 		// 우선순위: 삭제>탈퇴>익명>실명
 		if (comment.isDeleted()) {
-			// 삭제된 댓글의 경우 (삭제) 처리
-			 userName = "삭제";
+			userName = "삭제";
 		} else if (commentOwner.getUserStatus() == UserStatus.DELETED) {
-			// 탈퇴 유저
 			userName = "알 수 없음";
-		} else if (maskingCondition) {
-			// 마스킹 처리
-			userName = "익명" + comment.getAnonymousNumber();
-		} else if (isMyVerificationPost) {
-			// 인증 게시글 작성자
-			userName = commentOwner.getNickname() + "(글쓴이)";
 		} else {
-			// 작성자 닉네임 그대로
-			userName = commentOwner.getNickname();
+			// 기본 이름 설정 (익명 vs 실명)
+			if (isAnonymous) {
+				// 익명
+				userName = isCommentFromVerificationAuthor ? "익명(글쓴이)" : "익명" + Objects.toString(comment.getAnonymousNumber(), "");
+			} else {
+				// 실명
+				userName = commentOwner.getNickname();
+				if (isCommentFromVerificationAuthor) {
+					userName += "(글쓴이)";
+				}
+			}
 		}
 
 		// userId
