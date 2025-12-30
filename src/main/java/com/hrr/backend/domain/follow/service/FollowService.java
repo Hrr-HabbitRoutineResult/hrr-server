@@ -1,16 +1,24 @@
 package com.hrr.backend.domain.follow.service;
 
+import com.hrr.backend.domain.follow.dto.FollowRequestDto;
 import com.hrr.backend.domain.follow.dto.FollowResponseDto;
 import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -22,7 +30,7 @@ public class FollowService {
     private final UserRepository userRepository;
 
     /**
-     * 사용자 팔로우
+     * 사용자 팔로우 (공개 계정: 즉시 승인, 비공개 계정: 요청)
      * @param currentUserId 현재 로그인한 사용자 ID
      * @param followedUserId 팔로우할 사용자 ID
      * @return FollowResponseDto
@@ -51,22 +59,32 @@ public class FollowService {
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        // 이미 팔로우 중인지 확인
+        // 이미 팔로우 중이거나 요청 중인지 확인
         if (followRepository.existsByFollowerIdAndFollowingId(currentUserId, followedUserId)) {
-            log.warn("이미 팔로우 중입니다 - followerId: {}, followingId: {}", currentUserId, followedUserId);
+            log.warn("이미 팔로우 중이거나 요청 중입니다 - followerId: {}, followingId: {}", currentUserId, followedUserId);
             throw new GlobalException(ErrorCode.ALREADY_FOLLOWING);
         }
+
+        // 공개/비공개 계정에 따라 상태 결정
+        FollowStatus status = followedUser.getIsPublic() ? FollowStatus.APPROVED : FollowStatus.PENDING;
 
         // 팔로우 관계 생성
         Follow follow = Follow.builder()
                 .follower(currentUser)
                 .following(followedUser)
+                .status(status)
                 .build();
 
         followRepository.save(follow);
-        log.info("사용자 팔로우 완료 - followerId: {}, followingId: {}", currentUserId, followedUserId);
 
-        return FollowResponseDto.of("User followed successfully", followedUserId);
+        String message = status == FollowStatus.APPROVED
+                ? "User followed successfully"
+                : "Follow request sent successfully";
+
+        log.info("사용자 팔로우 완료 - followerId: {}, followingId: {}, status: {}",
+                currentUserId, followedUserId, status);
+
+        return FollowResponseDto.of(message, followedUserId, status);
     }
 
     /**
@@ -79,14 +97,14 @@ public class FollowService {
     public FollowResponseDto unfollowUser(Long currentUserId, Long unfollowedUserId) {
         log.info("사용자 팔로우 취소 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
-        // 존재 여부 확인
+        // 대상 사용자가 존재하는지 확인
         userRepository.findById(unfollowedUserId)
                 .orElseThrow(() -> {
-                    log.warn("언팔로우할 사용자를 찾을 수 없습니다 - userId: {}", unfollowedUserId);
+                    log.warn("팔로우 취소할 사용자를 찾을 수 없습니다 - userId: {}", unfollowedUserId);
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        // 팔로우 관계 조회
+        // 팔로우 관계 조회 (상태 무관)
         Follow follow = followRepository.findByFollowerIdAndFollowingId(currentUserId, unfollowedUserId)
                 .orElseThrow(() -> {
                     log.warn("팔로우 관계를 찾을 수 없습니다 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
@@ -97,6 +115,90 @@ public class FollowService {
         followRepository.delete(follow);
         log.info("사용자 팔로우 취소 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
 
-        return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId);
+        return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId, null);
+    }
+
+    /**
+     * 팔로우 요청 승인
+     * @param currentUserId 현재 로그인한 사용자 ID (요청 받은 사람)
+     * @param requesterId 팔로우 요청한 사용자 ID
+     * @return FollowResponseDto
+     */
+    @Transactional
+    public FollowResponseDto approveFollowRequest(Long currentUserId, Long requesterId) {
+        log.info("팔로우 요청 승인 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
+
+        // 요청한 사용자 존재 여부 확인
+        userRepository.findById(requesterId)
+                .orElseThrow(() -> {
+                    log.warn("요청한 사용자를 찾을 수 없습니다 - userId: {}", requesterId);
+                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        // PENDING 상태의 팔로우 요청 조회
+        Follow follow = followRepository
+                .findByFollowerIdAndFollowingIdAndStatus(requesterId, currentUserId, FollowStatus.PENDING)
+                .orElseThrow(() -> {
+                    log.warn("팔로우 요청을 찾을 수 없습니다 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
+                    return new GlobalException(ErrorCode.FOLLOW_REQUEST_NOT_FOUND);
+                });
+
+        // 승인 처리
+        follow.approve();
+        log.info("팔로우 요청 승인 완료 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
+
+        return FollowResponseDto.of("Follow request approved successfully", requesterId, FollowStatus.APPROVED);
+    }
+
+    /**
+     * 팔로우 요청 거절/삭제
+     * @param currentUserId 현재 로그인한 사용자 ID (요청 받은 사람)
+     * @param requesterId 팔로우 요청한 사용자 ID
+     * @return FollowResponseDto
+     */
+    @Transactional
+    public FollowResponseDto rejectFollowRequest(Long currentUserId, Long requesterId) {
+        log.info("팔로우 요청 거절 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
+
+        // 요청한 사용자 존재 여부 확인
+        userRepository.findById(requesterId)
+                .orElseThrow(() -> {
+                    log.warn("요청한 사용자를 찾을 수 없습니다 - userId: {}", requesterId);
+                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        // PENDING 상태의 팔로우 요청 조회
+        Follow follow = followRepository
+                .findByFollowerIdAndFollowingIdAndStatus(requesterId, currentUserId, FollowStatus.PENDING)
+                .orElseThrow(() -> {
+                    log.warn("팔로우 요청을 찾을 수 없습니다 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
+                    return new GlobalException(ErrorCode.FOLLOW_REQUEST_NOT_FOUND);
+                });
+
+        // 요청 삭제
+        followRepository.delete(follow);
+        log.info("팔로우 요청 거절 완료 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
+
+        return FollowResponseDto.of("Follow request rejected successfully", requesterId, null);
+    }
+
+    /**
+     * 받은 팔로우 요청 목록 조회
+     * @param currentUserId 현재 로그인한 사용자 ID
+     * @return List<FollowRequestDto>
+     */
+    public SliceResponseDto<FollowRequestDto> getPendingFollowRequests(Long currentUserId, Pageable pageable) {
+        log.info("받은 팔로우 요청 목록 조회 - userId: {}, page: {}, size: {}",
+                currentUserId, pageable.getPageNumber(), pageable.getPageSize());
+
+        // Repository를 통해 Slice 형태로 PENDING 요청 조회
+        Slice<Follow> pendingFollowsSlice = followRepository.findPendingFollowRequests(
+                currentUserId, FollowStatus.PENDING, pageable
+        );
+
+        // DTO로 변환
+        Slice<FollowRequestDto> dtoSlice = pendingFollowsSlice.map(FollowRequestDto::from);
+
+        return new SliceResponseDto<>(dtoSlice);
     }
 }
