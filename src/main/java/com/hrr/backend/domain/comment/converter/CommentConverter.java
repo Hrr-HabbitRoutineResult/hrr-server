@@ -62,6 +62,9 @@ public class CommentConverter {
 
 		String userName = "";
 
+		// 댓글 작성자가 해당 인증글(게시글)의 작성자인지 여부
+		boolean isCommentFromVerificationAuthor = comment.getVerification().getUserChallenge().getUser().getId().equals(commentOwner.getId());
+
 		// 우선순위: 삭제>탈퇴>익명>실명
 		if (comment.isDeleted()) {
 			// 삭제된 댓글의 경우 (삭제) 처리
@@ -72,7 +75,7 @@ public class CommentConverter {
 		} else if (maskingCondition) {
 			// 마스킹 처리
 			userName = "익명" + comment.getAnonymousNumber();
-		} else if (isMyVerificationPost) {
+		} else if (isCommentFromVerificationAuthor) {
 			// 인증 게시글 작성자
 			userName = commentOwner.getNickname() + "(글쓴이)";
 		} else {
