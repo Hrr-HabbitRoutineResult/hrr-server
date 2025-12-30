@@ -291,11 +291,15 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         // 닉네임이 제공된 경우 중복 검사 및 업데이트
-        if (requestDto.getNickname() != null && !requestDto.getNickname().equals(user.getNickname())) {
-            if (userRepository.existsByNickname(requestDto.getNickname())) {
-                throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
+        if (requestDto.getNickname() != null) {
+            String nickname = normalize(requestDto.getNickname()); // 정규화 추가
+
+            if (!nickname.equals(user.getNickname())) {
+                if (userRepository.existsByNickname(nickname)) {
+                    throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
+                }
+                user.updateNickname(nickname);
             }
-            user.updateNickname(requestDto.getNickname());
         }
 
         // 프로필 이미지 Key가 제공된 경우 업데이트
