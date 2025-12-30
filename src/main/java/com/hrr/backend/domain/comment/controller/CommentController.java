@@ -11,6 +11,7 @@ import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -36,9 +37,11 @@ public class CommentController {
     @Operation(summary = "댓글 작성", description = "인증글에 댓글 또는 대댓글을 작성합니다.")
     @PostMapping("/{verificationId}")
     public ApiResponse<CommentResponseDto> createComment(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long verificationId,
-            @Valid @RequestBody CommentCreateRequestDto requestDto
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
+
+		@PathVariable Long verificationId,
+		@Valid @RequestBody CommentCreateRequestDto requestDto
     ) {
         Long userId = userDetails.getUser().getId();
 
@@ -51,17 +54,21 @@ public class CommentController {
     @Operation(summary = "댓글/대댓글 조회", description = "특정 인증글의 모든 댓글 및 대댓글을 조회합니다.")
     @GetMapping("/{verificationId}")
     public ApiResponse<CommentListResponseDto> getComments(
-            @PathVariable Long verificationId,
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
 
-			// 페이징
-			@Min(1)
-			@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
-			@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
+		@PathVariable Long verificationId,
+
+		// 페이징
+		@Min(1)
+		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
+		@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
     ) {
+		Long userId = userDetails.getUser().getId();
 
 		Pageable pageable = PageRequest.of(page-1, size);
 
-        CommentListResponseDto response = commentService.getComments(verificationId, pageable);
+        CommentListResponseDto response = commentService.getComments(verificationId, userId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
@@ -69,9 +76,11 @@ public class CommentController {
     @Operation(summary = "댓글 수정", description = "본인이 작성한 댓글만 수정할 수 있습니다.")
     @PatchMapping("/{commentId}")
     public ApiResponse<CommentResponseDto> updateComment(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long commentId,
-            @RequestBody CommentUpdateRequestDto requestDto
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
+
+		@PathVariable Long commentId,
+		@RequestBody CommentUpdateRequestDto requestDto
     ) {
         Long userId = userDetails.getUser().getId();
 

@@ -30,6 +30,7 @@ public class CommentServiceImpl implements CommentService {
     private final VerificationRepository verificationRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+	private final CommentConverter commentConverter;
 
     /** 댓글 작성 */
     @Override
@@ -60,23 +61,41 @@ public class CommentServiceImpl implements CommentService {
             }
         }
 
+		Integer anonymousNumber = null;
+
+		if (requestDto.isAnonymous()) {
+			// 해당 인증글에서 이 유저가 이미 쓴 익명 댓글이 있는지 확인
+			Optional<Comment> existingComment = commentRepository
+				.findFirstByVerificationAndUserAndIsAnonymousTrue(verification, user);
+
+			if (existingComment.isPresent()) {
+				// 있다면 해당 익명 번호 그대로 사용
+				anonymousNumber = existingComment.get().getAnonymousNumber();
+			} else {
+				// 없다면 해당 인증글의 최대 익명 번호 조회 후 +1
+				Integer maxNumber = commentRepository.findMaxAnonymousNumberByVerification(verification);
+				anonymousNumber = (maxNumber == null) ? 1 : maxNumber + 1;
+			}
+		}
+
         Comment comment = Comment.create(
                 verification,
                 user,
                 parent,
                 requestDto.getContent(),
                 requestDto.isAnonymous(),
+				anonymousNumber,
                 parent == null ? 0 : parent.getDepth() + 1
         );
 
         commentRepository.save(comment);
 
-        return CommentConverter.toDto(comment);
+        return commentConverter.toDto(comment, userId);
     }
 
     /** 댓글/대댓글 조회 */
     @Override
-    public CommentListResponseDto getComments(Long verificationId, Pageable pageable) {
+    public CommentListResponseDto getComments(Long verificationId, Long userId, Pageable pageable) {
 
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
@@ -105,7 +124,7 @@ public class CommentServiceImpl implements CommentService {
                 adoptedChildren = commentRepository
                         .findByParentAndIsDeletedFalseOrderByCreatedAtAsc(adoptedParent)
                         .stream()
-                        .map(CommentConverter::toDto)
+                        .map(child -> commentConverter.toDto(child, userId))
                         .toList();
 
 
@@ -133,18 +152,18 @@ public class CommentServiceImpl implements CommentService {
 
             for (Comment parent : parents) {
                 // 부모 댓글 추가
-                result.add(CommentConverter.toDto(parent));
+                result.add(commentConverter.toDto(parent, userId));
 
                 // 부모에 해당하는 자식(대댓글)들 추가
                 List<Comment> childList = childrenMap.getOrDefault(parent.getId(), Collections.emptyList());
                 for (Comment child : childList) {
-                    result.add(CommentConverter.toDto(child));
+                    result.add(commentConverter.toDto(child, userId));
                 }
             }
         }
 
         return CommentListResponseDto.builder()
-                .adoptedParent(adoptedParent != null ? CommentConverter.toDto(adoptedParent) : null)
+                .adoptedParent(adoptedParent != null ? commentConverter.toDto(adoptedParent, userId) : null)
                 .adoptedChildren(adoptedChildren)
                 .comments(result)
                 .currentPage(parentPage.getNumber() + 1)
@@ -175,7 +194,10 @@ public class CommentServiceImpl implements CommentService {
 
         comment.updateContent(requestDto.getContent());
 
-        return CommentConverter.toDto(comment);
+		// 수동으로 DB 에 반영하여 Auditing 필드(updatedAt)를 갱신
+		commentRepository.saveAndFlush(comment);
+
+        return commentConverter.toDto(comment, userId);
     }
 
 
