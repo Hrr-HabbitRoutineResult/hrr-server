@@ -3,6 +3,7 @@ package com.hrr.backend.domain.verification.service;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
 import com.hrr.backend.global.response.SliceResponseDto;
 
@@ -72,5 +73,4 @@ public interface VerificationService {
             int page,
             int size
     );
-  
 }
