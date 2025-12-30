@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.comment.converter;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
@@ -61,7 +62,12 @@ public class CommentConverter {
 		String userName;
 
 		// 댓글 작성자가 해당 인증글(게시글)의 작성자인지 여부
-		boolean isCommentFromVerificationAuthor = comment.getVerification().getUserChallenge().getUser().getId().equals(commentOwner.getId());
+		boolean isCommentFromVerificationAuthor = Optional.ofNullable(comment.getVerification())
+			    .map(verification -> verification.getUserChallenge())
+			    .map(userChallenge -> userChallenge.getUser())
+			    .map(User::getId)
+			    .map(id -> id.equals(commentOwner.getId()))
+			    .orElse(false);
 
 		// 우선순위: 삭제>탈퇴>익명>실명
 		if (comment.isDeleted()) {
