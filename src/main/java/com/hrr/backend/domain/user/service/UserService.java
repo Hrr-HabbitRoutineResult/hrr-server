@@ -20,6 +20,7 @@ public interface UserService {
             int page,
             int size
     );
+
     // 내 정보 조회
     UserResponseDto.MyInfoDto getMyInfo(Long userId);
 
@@ -42,4 +43,22 @@ public interface UserService {
 			int page,
 			int size
 	);
+
+    /**
+     * 찜한 챌린지 목록 조회 (페이징)
+     */
+    SliceResponseDto<UserResponseDto.MarkedChallengeDto> getMarkedChallenges(
+            Long userId,
+            int page,
+            int size
+    );
+
+    /**
+     * 종료한 챌린지 목록 조회 (페이징)
+     */
+    SliceResponseDto<UserResponseDto.CompletedChallengeDto> getCompletedChallenges(
+            Long userId,
+            int page,
+            int size
+    );
 }
