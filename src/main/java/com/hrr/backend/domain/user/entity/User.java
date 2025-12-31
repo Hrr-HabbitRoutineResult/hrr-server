@@ -165,4 +165,28 @@ public class User extends BaseEntity {
 		this.userStatus = UserStatus.DELETED;
 		this.deletedAt = LocalDateTime.now();
 	}
+
+    //팔로워 카운트 증가
+    public void incrementFollowerCount() {
+        this.followerCount++;
+    }
+
+    //팔로워 카운트 감소
+    public void decrementFollowerCount() {
+        if (this.followerCount > 0) {
+            this.followerCount--;
+        }
+    }
+
+    // 팔로잉 카운트 증가
+    public void incrementFollowingCount() {
+        this.followingCount++;
+    }
+
+    // 팔로잉 카운트 감소
+    public void decrementFollowingCount() {
+        if (this.followingCount > 0) {
+            this.followingCount--;
+        }
+    }
 }
