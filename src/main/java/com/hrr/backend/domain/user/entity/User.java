@@ -30,6 +30,9 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
 	@Column(name = "name")	// 로그인 시 제공받는 이름. 중복이 가능하기에 unique 설정 x. 소셜 타입에 따라 이름 제공이 되지 않을 수 있어 nullable.
 	private String name;
 
