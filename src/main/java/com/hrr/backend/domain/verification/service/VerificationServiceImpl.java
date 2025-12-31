@@ -106,7 +106,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         Integer totalParticipantCount = challenge.getCurrentParticipants();
         Round currentRound = challenge.getCurrentRound();
-        
+
         // 라운드 미시작 시 0명 반환
         if (currentRound == null) {
             return verificationConverter.toStatDto(0, totalParticipantCount, null);
@@ -278,16 +278,21 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size) {
-
+    public VerificationDetailResponseDto getVerificationDetail(
+            Long verificationId,
+            Long currentUserId,
+            int page,
+            int size
+    ) {
+        // 인증글 조회
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-		// 차단된 게시글 접근 시 예외 발생
-		if (verification.getStatus() == VerificationStatus.BLOCKED) {
-			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-		}
+
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
 
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
@@ -421,7 +426,6 @@ public class VerificationServiceImpl implements VerificationService {
         );
     }
 
-
     @Override
     @Transactional
     public void deleteVerification(Long verificationId, Long currentUserId) {
@@ -445,5 +449,34 @@ public class VerificationServiceImpl implements VerificationService {
         verificationRepository.delete(verification);
     }
 
+    /**
+     * 사용자 전체 챌린지 인증 기록 조회
+     */
+    @Override
+    public SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+        // Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Repository에서 인증 엔티티 조회
+        Slice<Verification> verificationSlice =
+                verificationRepository.findVerificationHistoryByUser(
+                        user,
+                        VerificationStatus.COMPLETED,
+                        pageable);
+
+        // 엔티티를 DTO로 변환 (빌더 패턴 사용)
+        Slice<VerificationResponseDto.HistoryDto> dtoSlice =
+                verificationSlice.map(verificationConverter::toHistoryDto);
+
+        // SliceResponseDto로 변환하여 반환
+        return new SliceResponseDto<>(dtoSlice);
+    }
 }
