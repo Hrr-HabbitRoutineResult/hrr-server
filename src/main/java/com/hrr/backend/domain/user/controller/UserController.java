@@ -231,9 +231,11 @@ public class UserController {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<VerificationResponseDto.HistoryDto> response =
                 verificationService.getVerificationHistory(userId, page - 1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
  
-  @GetMapping("/challenges/liked")
+    @GetMapping("/challenges/liked")
     @Operation(
             summary = "찜한 챌린지 목록 조회",
             description = "현재 로그인한 사용자가 찜한 챌린지 목록을 조회합니다."
@@ -277,7 +279,6 @@ public class UserController {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<UserResponseDto.CompletedChallengeDto> response =
                 userService.getCompletedChallenges(userId, page - 1, size);
-        
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
