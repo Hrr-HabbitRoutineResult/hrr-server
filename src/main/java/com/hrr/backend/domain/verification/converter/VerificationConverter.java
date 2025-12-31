@@ -125,7 +125,7 @@ public class VerificationConverter {
                         .userId(user.getId())
                         .nickname(user.getNickname())
                         .profileImageUrl(user.getProfileImage())
-                        .role(userChallenge.getRole())
+                        .level(userChallenge.getUser().getUserLevel())
                         .build();
 
         VerificationDetailResponseDto.RoundInfo roundInfo =
@@ -169,4 +169,21 @@ public class VerificationConverter {
     }
 
 
+    /**
+     * Verification 엔티티를 HistoryDto로 변환
+     */
+    public VerificationResponseDto.HistoryDto toHistoryDto(Verification verification) {
+        return VerificationResponseDto.HistoryDto.builder()
+                .verificationId(verification.getId())
+                .challengeId(verification.getRoundRecord().getUserChallenge().getChallenge().getId())
+                .challengeTitle(verification.getRoundRecord().getUserChallenge().getChallenge().getTitle())
+                .type(verification.getType().name())
+                .title(verification.getTitle())
+                .content(verification.getContent())
+                .photoUrl(verification.getPhotoUrl() != null ?
+                        s3UrlUtil.toFullUrl(verification.getPhotoUrl()) : null)
+                .textUrl(verification.getTextUrl())
+                .verifiedAt(verification.getCreatedAt())
+                .build();
+    }
 }

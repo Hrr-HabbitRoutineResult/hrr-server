@@ -1,9 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.global.response.SliceResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 
 public interface UserService {
@@ -48,7 +46,7 @@ public interface UserService {
      * 찜한 챌린지 목록 조회 (페이징)
      */
     SliceResponseDto<UserResponseDto.MarkedChallengeDto> getMarkedChallenges(
-            Long userId,
+            Long userId,      
             int page,
             int size
     );
@@ -60,5 +58,13 @@ public interface UserService {
             Long userId,
             int page,
             int size
+    );
+  
+    /**
+     * 사용자 기본 정보 수정
+     */
+    UpdateUserInfoResponseDto updateUserInfo(
+            Long userId,
+            UpdateUserInfoRequestDto requestDto
     );
 }

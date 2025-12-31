@@ -27,6 +27,8 @@ public class CommentResponseDto {
     private String content;
     private int likesCount;
 
+	private boolean isMyComment; // 조회하는 사람이 쓴 댓글인지(프론트 분기 처리용)
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

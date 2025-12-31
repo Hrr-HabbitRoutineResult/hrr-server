@@ -137,4 +137,40 @@ public class VerificationResponseDto {
         /** 현재 라운드 인증 횟수 */
         private Integer verificationCount;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "사용자 전체 인증 기록 DTO")
+    public static class HistoryDto {
+
+        @Schema(description = "인증 ID", example = "1")
+        private Long verificationId;
+
+        @Schema(description = "챌린지 ID", example = "101")
+        private Long challengeId;
+
+        @Schema(description = "챌린지 제목", example = "미라클 모닝")
+        private String challengeTitle;
+
+        @Schema(description = "인증 타입", example = "TEXT", allowableValues = {"TEXT", "CAMERA"})
+        private String type;
+
+        @Schema(description = "인증 제목", example = "해피뉴이어! 올해 마지막 인증 올립니다")
+        private String title;
+
+        @Schema(description = "인증 내용", example = "여기엔 상세내용이 들어가유~")
+        private String content;
+
+        @Schema(description = "사진 URL (사진 인증)", example = "https://example.com/verification_image_1.jpg")
+        private String photoUrl;
+
+        @Schema(description = "글 URL (글 인증)", example = "https://blog.example.com/post/123")
+        private String textUrl;
+
+        @Schema(description = "인증 일시", example = "2025-09-18T08:00:00")
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        private LocalDateTime verifiedAt;
+    }
 }

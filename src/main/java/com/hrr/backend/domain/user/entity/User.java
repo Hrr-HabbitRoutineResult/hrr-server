@@ -133,6 +133,11 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    /** 프로필 공개 여부 업데이트 */
+    public void updateIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+  
 	/** 이메일 업데이트 */
 	public void updateEmail(String email) {
 		this.email = email;
