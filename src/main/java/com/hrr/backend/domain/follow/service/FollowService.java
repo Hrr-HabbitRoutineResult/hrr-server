@@ -12,6 +12,9 @@ import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,11 @@ public class FollowService {
      * @param followedUserId 팔로우할 사용자 ID
      * @return FollowResponseDto
      */
+    @Retryable(
+            value = {OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100)
+    )
     @Transactional
     public FollowResponseDto followUser(Long currentUserId, Long followedUserId) {
         log.info("사용자 팔로우 요청 - followerId: {}, followingId: {}", currentUserId, followedUserId);
@@ -96,6 +104,11 @@ public class FollowService {
      * @param unfollowedUserId 팔로우 취소할 사용자 ID
      * @return FollowResponseDto
      */
+    @Retryable(
+            value = {OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100)
+    )
     @Transactional
     public FollowResponseDto unfollowUser(Long currentUserId, Long unfollowedUserId) {
         log.info("사용자 팔로우 취소 요청 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
@@ -137,6 +150,11 @@ public class FollowService {
      * @param requesterId 팔로우 요청한 사용자 ID
      * @return FollowResponseDto
      */
+    @Retryable(
+            value = {OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100)
+    )
     @Transactional
     public FollowResponseDto approveFollowRequest(Long currentUserId, Long requesterId) {
         log.info("팔로우 요청 승인 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
