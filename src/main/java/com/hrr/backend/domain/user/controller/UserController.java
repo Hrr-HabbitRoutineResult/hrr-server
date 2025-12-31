@@ -1,8 +1,6 @@
 package com.hrr.backend.domain.user.controller;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserService;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;

@@ -125,7 +125,7 @@ public class VerificationConverter {
                         .userId(user.getId())
                         .nickname(user.getNickname())
                         .profileImageUrl(user.getProfileImage())
-                        .role(userChallenge.getRole())
+                        .level(userChallenge.getUser().getUserLevel())
                         .build();
 
         VerificationDetailResponseDto.RoundInfo roundInfo =

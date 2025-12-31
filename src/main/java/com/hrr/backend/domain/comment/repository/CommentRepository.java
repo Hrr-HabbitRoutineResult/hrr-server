@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.comment.repository;
 
 import com.hrr.backend.domain.comment.entity.Comment;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.entity.Verification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,4 +40,15 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByParentInAndIsDeletedFalseOrderByCreatedAtAsc(List<Comment> parents);
 
     Optional<Comment> findByIdAndIsDeletedFalse(Long id);
+
+	/**
+	 * 특정 인증글에 특정 유저가 익명으로 남긴 댓글이 있는지 조회
+	 */
+	Optional<Comment> findFirstByVerificationAndUserAndIsAnonymousTrue(Verification verification, User user);
+
+	/**
+	 * 특정 인증글에 달린 익명 댓글 중 최대 익명 번호 조회 (익명1, 익명2, 익명3 있으면 3 반환)
+	 */
+	@Query("SELECT MAX(c.anonymousNumber) FROM Comment c WHERE c.verification = :verification")
+	Integer findMaxAnonymousNumberByVerification(Verification verification);
 }

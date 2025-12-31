@@ -1,9 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.global.response.SliceResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 
 public interface UserService {
@@ -33,13 +31,21 @@ public interface UserService {
      */
     UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request);
 
-	/**
-	 * 키워드가 닉네임에 포함된 사용자 조회
-	 */
-	SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
-			User user,
-			String keyword,
-			int page,
-			int size
-	);
+    /**
+     * 키워드가 닉네임에 포함된 사용자 조회
+     */
+    SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
+            User user,
+            String keyword,
+            int page,
+            int size
+    );
+
+    /**
+     * 사용자 기본 정보 수정
+     */
+    UpdateUserInfoResponseDto updateUserInfo(
+            Long userId,
+            UpdateUserInfoRequestDto requestDto
+    );
 }
