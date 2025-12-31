@@ -230,9 +230,8 @@ public class UserController {
     ) {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<VerificationResponseDto.HistoryDto> response =
-                verificationService.getVerificationHistory(userId, page-1, size);
-  
-  
+                verificationService.getVerificationHistory(userId, page - 1, size);
+    }
  
   @GetMapping("/challenges/liked")
     @Operation(

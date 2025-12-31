@@ -88,7 +88,7 @@ public class UserServiceImpl implements UserService {
         slice.getContent().forEach(dto ->
                 dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
         );
-        
+
         // 인증 완료 여부 추가
         slice.getContent().forEach(dto -> {
             Long challengeId = dto.getChallengeId();
@@ -336,7 +336,7 @@ public class UserServiceImpl implements UserService {
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(slice);
     }
-}
+
     // 내 정보 수정
     @Override
     @Transactional
