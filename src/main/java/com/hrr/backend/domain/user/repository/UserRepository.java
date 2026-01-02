@@ -2,28 +2,18 @@ package com.hrr.backend.domain.user.repository;
 
 import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long>, UserRepositoryCustom {
 
     // ID로 유저 조회 (soft delete 미적용)
     Optional<User> findById(Long id);
 
     boolean existsByNickname(String nickname);
-
-	/**
-	 * 닉네임에 키워드가 포함된 사용자 목록을 Slice 형태로 조회
-	 * * @param keyword 검색할 닉네임 키워드
-	 * @param pageable 페이징 요청 정보 (page, size)
-	 * @return Slice<User> - 데이터 목록과 다음 페이지 존재 여부(hasNext)를 포함
-	 */
-	Slice<User> findByNicknameContaining(String keyword, Pageable pageable);
 
 	// 탈퇴 후 30일이 경과된, 즉 정보 정리 대상 사용자 조회
 	@Query("SELECT u FROM User u WHERE u.deletedAt <= :deleteThreshold AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.DELETED")

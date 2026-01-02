@@ -210,7 +210,7 @@ public class UserServiceImpl implements UserService {
         Pageable pageable = PageRequest.of(page, size);
 
         // DB 조회
-        Slice<User> usersSlice = userRepository.findByNicknameContaining(normalize(keyword), pageable);
+        Slice<User> usersSlice = userRepository.findByNicknameContaining(normalize(keyword), user, pageable);
 
         // DTO 변환을 위한 필터링된 사용자 리스트
         List<User> targetUsers = usersSlice.getContent().stream()
