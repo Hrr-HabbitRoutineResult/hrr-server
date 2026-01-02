@@ -30,7 +30,7 @@ public class UpdateUserInfoResponseDto {
 
     public static UpdateUserInfoResponseDto from(User user, String profileImageUrl) {
         return UpdateUserInfoResponseDto.builder()
-                .nickname(user.getNickname())
+                .nickname(user.getDisplayNickname())
                 .profileImageUrl(profileImageUrl)
                 .isPublic(user.getIsPublic())
                 .updatedAt(user.getUpdatedAt())

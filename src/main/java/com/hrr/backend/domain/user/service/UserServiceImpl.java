@@ -237,7 +237,7 @@ public class UserServiceImpl implements UserService {
                     return UserResponseDto.ProfileDto.builder()
                             .userId(target.getId())
                             .profileImage(target.getProfileImage())
-                            .nickname(target.getNickname())
+                            .nickname(target.getDisplayNickname())
                             .followerCount(null)
                             .followingCount(null)
                             .level(target.getUserLevel())
@@ -294,7 +294,7 @@ public class UserServiceImpl implements UserService {
         if (requestDto.getNickname() != null) {
             String nickname = normalize(requestDto.getNickname()); // 정규화 추가
 
-            if (!nickname.equals(user.getNickname())) {
+            if (!nickname.equals(user.getDisplayNickname())) {
                 if (userRepository.existsByNickname(nickname)) {
                     throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
                 }

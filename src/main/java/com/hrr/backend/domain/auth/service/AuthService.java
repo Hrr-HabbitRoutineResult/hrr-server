@@ -62,8 +62,8 @@ public class AuthService {
                     user.getId(),
                     accessToken,
                     refreshToken,
-					user.getName(),
-					user.getNickname(),
+					user.getDisplayName(),
+					user.getDisplayNickname(),
                     user.getLoginStatus(),
                     nextStep
             );
@@ -119,8 +119,8 @@ public class AuthService {
 				user.getId(),
 				accessToken,
 				refreshToken,
-				user.getName(),
-				user.getNickname(),
+				user.getDisplayName(),
+				user.getDisplayNickname(),
 				user.getLoginStatus(),
 				nextStep
 			);
@@ -167,8 +167,8 @@ public class AuthService {
 				user.getId(),
 				accessToken,
 				refreshToken,
-				user.getName(),
-				user.getNickname(),
+				user.getDisplayName(),
+				user.getDisplayNickname(),
 				user.getLoginStatus(),
 				nextStep
 			);
@@ -206,8 +206,8 @@ public class AuthService {
 				user.getId(),
 				accessToken,
 				refreshToken,
-				user.getName(),
-				user.getNickname(),
+				user.getDisplayName(),
+				user.getDisplayNickname(),
 				user.getLoginStatus(),
 				nextStep
 			);

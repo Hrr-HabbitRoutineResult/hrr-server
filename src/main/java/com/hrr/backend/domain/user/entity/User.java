@@ -229,4 +229,20 @@ public class User extends BaseEntity {
 	public boolean isNotActive() {
 		return this.userStatus == UserStatus.DELETED || this.userStatus == UserStatus.WITHDRAWN_COMPLETED;
 	}
+
+	// status에 따른 nickname 표시 차이
+	public String getDisplayNickname() {
+		if (this.userStatus == UserStatus.DELETED || this.userStatus == UserStatus.WITHDRAWN_COMPLETED) {
+			return "(알 수 없음)";
+		}
+		return this.nickname;
+	}
+
+	// status에 따른 name 표시 차이
+	public String getDisplayName() {
+		if (this.userStatus == UserStatus.DELETED || this.userStatus == UserStatus.WITHDRAWN_COMPLETED) {
+			return "탈퇴한 사용자";
+		}
+		return this.name;
+	}
 }

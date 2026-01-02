@@ -35,7 +35,7 @@ public class FollowRequestDto {
         return FollowRequestDto.builder()
                 .followId(follow.getId())
                 .requesterId(follow.getFollower().getId())
-                .requesterNickname(follow.getFollower().getNickname())
+                .requesterNickname(follow.getFollower().getDisplayNickname())
                 .requesterProfileImage(follow.getFollower().getProfileImage())
                 .requestedAt(follow.getCreatedAt())
                 .build();

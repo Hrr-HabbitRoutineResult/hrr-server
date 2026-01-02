@@ -82,7 +82,7 @@ public class CommentConverter {
 				userName = isCommentFromVerificationAuthor ? "익명(글쓴이)" : "익명" + Objects.toString(comment.getAnonymousNumber(), "");
 			} else {
 				// 실명
-				userName = commentOwner.getNickname();
+				userName = commentOwner.getDisplayNickname();
 				if (isCommentFromVerificationAuthor) {
 					userName += "(글쓴이)";
 				}
