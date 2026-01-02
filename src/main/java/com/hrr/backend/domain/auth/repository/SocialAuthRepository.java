@@ -15,4 +15,7 @@ public interface SocialAuthRepository extends JpaRepository<SocialAuth, Long> {
 
 	// Social ID와 SocialType으로 검색(겹칠 일 거의 없겠지만 혹시 모르니 같이 검색)
 	Optional<SocialAuth> findBySocialIdAndSocialType(String socialId, SocialType socialType);
+
+	// 소셜 로그인 정보 삭제
+	void deleteByUser(User user);
 }

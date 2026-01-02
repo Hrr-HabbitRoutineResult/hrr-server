@@ -4,7 +4,10 @@ import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -22,7 +25,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	 */
 	Slice<User> findByNicknameContaining(String keyword, Pageable pageable);
 
-
-
-
+	// 탈퇴 후 30일이 경과된, 즉 정보 정리 대상 사용자 조회
+	@Query("SELECT u FROM User u WHERE u.deletedAt <= :deleteThreshold AND u.userStatus == com.hrr.backend.domain.user.entity.enums.UserStatus.DELETED")
+	List<User> findUserToDelete(LocalDateTime deleteThreshold);
 }

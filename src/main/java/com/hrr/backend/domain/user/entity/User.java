@@ -209,4 +209,19 @@ public class User extends BaseEntity {
             this.followingCount--;
         }
     }
+
+	public void completeWithdrawal() {
+		this.name = "탈퇴한 사용자";
+		this.nickname = null; // 중복 방지 및 마스킹
+
+		// 개인정보 삭제
+		this.email = null;
+		this.phoneNumber = null;
+		this.password = null;
+
+		// 프로필 사진 삭제
+		// Todo: S3 업로드 된 사진일 경우 스토리지 삭제 처리 먼저
+		this.profileImage = null;
+
+	}
 }

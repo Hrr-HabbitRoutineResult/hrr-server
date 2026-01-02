@@ -64,4 +64,6 @@ public class UserChallenge extends BaseEntity {
     @Builder.Default
     private Integer kickWarnings = 0;
 
+	public void updateStatus(ChallengeJoinStatus challengeJoinStatus) {
+	}
 }
