@@ -213,6 +213,7 @@ public class User extends BaseEntity {
 	public void completeWithdrawal() {
 		this.name = "탈퇴한 사용자";
 		this.nickname = null; // 중복 방지 및 마스킹
+		this.userStatus = UserStatus.WITHDRAWN_COMPLETED;
 
 		// 개인정보 삭제
 		this.email = null;
@@ -220,8 +221,6 @@ public class User extends BaseEntity {
 		this.password = null;
 
 		// 프로필 사진 삭제
-		// Todo: S3 업로드 된 사진일 경우 스토리지 삭제 처리 먼저
 		this.profileImage = null;
-
 	}
 }

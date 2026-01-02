@@ -12,6 +12,7 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.global.s3.S3Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,10 +29,15 @@ public class UserDeleteService {
 	private final ChallengeRepository challengeRepository;
 	private final SocialAuthRepository socialAuthRepository;
 
+	private final S3Service s3Service;
+
 	@Transactional
 	public void processPermanentWithdrawal(User user) {
 		// Social Auth 정보 삭제
 		socialAuthRepository.deleteByUser(user);
+
+		// S3에서 프로필 이미지 파일 삭제 - 소셜 플랫폼에서 제공된 이미지는 대상에서 제외
+		s3Service.deleteFileByKey(user.getProfileImage());
 
 		// 개인정보 마스킹 및 삭제
 		user.completeWithdrawal();

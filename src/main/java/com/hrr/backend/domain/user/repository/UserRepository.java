@@ -26,6 +26,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	Slice<User> findByNicknameContaining(String keyword, Pageable pageable);
 
 	// 탈퇴 후 30일이 경과된, 즉 정보 정리 대상 사용자 조회
-	@Query("SELECT u FROM User u WHERE u.deletedAt <= :deleteThreshold AND u.userStatus == com.hrr.backend.domain.user.entity.enums.UserStatus.DELETED")
+	@Query("SELECT u FROM User u WHERE u.deletedAt <= :deleteThreshold AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.DELETED")
 	List<User> findUserToDelete(LocalDateTime deleteThreshold);
 }
