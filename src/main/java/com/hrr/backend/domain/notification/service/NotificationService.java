@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.notification.service;
 
+import com.hrr.backend.domain.notification.dto.NotificationRequestDto;
 import com.hrr.backend.domain.notification.dto.NotificationResponseDto;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.user.entity.User;
@@ -16,4 +17,9 @@ public interface NotificationService {
 
     // 알림 수신 설정 조회
     NotificationResponseDto.SettingInfoDto getNotificationSettings(User user);
+
+    // 알림 수신 설정 수정
+    NotificationResponseDto.SettingInfoDto updateNotificationSettings(
+            User user, NotificationRequestDto.UpdateSettingDto dto
+    );
 }
