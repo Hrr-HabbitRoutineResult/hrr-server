@@ -56,5 +56,15 @@ public class NotificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    @GetMapping("/settings")
+    @Operation(summary = "알림 수신 설정 조회", description = "유저의 카테고리별 푸시 알림 수신 설정 상태를 조회합니다.")
+    public ApiResponse<NotificationResponseDto.SettingInfoDto> getNotificationSettings(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ApiResponse.onSuccess(
+                SuccessCode.OK,
+                notificationService.getNotificationSettings(userDetails.getUser())
+        );
+    }
 
 }

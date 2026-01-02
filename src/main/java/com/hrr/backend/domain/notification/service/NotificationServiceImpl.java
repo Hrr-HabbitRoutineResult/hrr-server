@@ -1,9 +1,12 @@
 package com.hrr.backend.domain.notification.service;
 
+import com.hrr.backend.domain.notification.converter.NotificationConverter;
 import com.hrr.backend.domain.notification.dto.NotificationResponseDto;
 import com.hrr.backend.domain.notification.entity.NotificationDelivery;
+import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.repository.NotificationRepository;
+import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -21,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
+    private final NotificationConverter notificationConverter;
 
     @Override
     public SliceResponseDto<NotificationResponseDto.InfoDto> getNotificationList(
@@ -53,6 +58,14 @@ public class NotificationServiceImpl implements NotificationService {
         delivery.markAsRead();
 
         return NotificationResponseDto.ReadResultDto.from(delivery);
+    }
+
+    @Override
+    public NotificationResponseDto.SettingInfoDto getNotificationSettings(User user) {
+        NotificationSetting setting = notificationSettingRepository.findByUser(user)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_SETTING_NOT_FOUND));
+
+        return notificationConverter.toSettingInfoDto(setting);
     }
 
 }

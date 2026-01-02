@@ -14,4 +14,6 @@ public interface NotificationService {
     // 단일 알림 읽음 처리
     NotificationResponseDto.ReadResultDto markAsRead(User user, Long notificationId);
 
+    // 알림 수신 설정 조회
+    NotificationResponseDto.SettingInfoDto getNotificationSettings(User user);
 }
