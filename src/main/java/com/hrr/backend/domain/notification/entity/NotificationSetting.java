@@ -51,7 +51,7 @@ public class NotificationSetting extends BaseEntity {
         this.isBadgeEnabled = false;
     }
 
-    // 전체 일시 중단 해제 (모두 켜키)
+    // 전체 일시 중단 해제 (모두 켜기)
     public void resumeAll() {
         this.isChallengeEnabled = true;
         this.isVerificationEnabled = true;
