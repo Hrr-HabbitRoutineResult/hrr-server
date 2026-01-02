@@ -5,6 +5,8 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hrr.backend.domain.comment.entity.Comment;
+import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.dto.UserBlockResponse;
 import com.hrr.backend.domain.user.entity.User;
@@ -25,6 +27,7 @@ public class UserBlockService {
 	private final UserRepository userRepository;
 	private final UserBlockRepository userBlockRepository;
 	private final FollowRepository followRepository;
+	private final CommentRepository commentRepository;
 
 	@Transactional
 	public void blockUser(Long blockerId, Long blockedId) {
@@ -81,5 +84,17 @@ public class UserBlockService {
 
 		// 공통 SliceResponseDto로 감싸서 반환
 		return SliceResponseDto.of(responseSlice);
+	}
+
+	@Transactional
+	public void blockUserByCommentId(Long blockerId, Long commentId) {
+		// 댓글 조회 및 작성자(Target) 추출
+		Comment comment = commentRepository.findById(commentId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
+
+		User blockedUser = comment.getUser();
+
+		// 본인 차단 여부 등 유효성 검사 후 기존 blockUser 로직 호출
+		blockUser(blockerId, blockedUser.getId());
 	}
 }

@@ -6,6 +6,7 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.auth.service.JwtService;
+import com.hrr.backend.domain.user.service.UserBlockService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
@@ -32,6 +33,7 @@ public class CommentController {
 
     private final CommentService commentService;
     private final JwtService jwtService;
+	private final UserBlockService userBlockService;
 
     /** 댓글 작성 */
     @Operation(summary = "댓글 작성", description = "인증글에 댓글 또는 대댓글을 작성합니다.")
@@ -103,4 +105,17 @@ public class CommentController {
 
         return ApiResponse.onSuccess(SuccessCode.COMMENT_DELETE_OK, null);
     }
+
+	/** 댓글 작성자 신고 */
+	@Operation(summary = "댓글 작성자 신고", description = "댓글 작성자를 신고합니다. 익명 댓글의 경우 작성자의 userId를 모르기 때문에 해당 API로 신고해주셔야 합니다.")
+	@PostMapping("/{commentId}/block")
+	public ApiResponse<String> blockByComment(
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
+
+		@PathVariable Long commentId
+	) {
+		userBlockService.blockUserByCommentId(userDetails.getUser().getId(), commentId);
+		return ApiResponse.onSuccess(SuccessCode.OK, "작성자를 차단했습니다.");
+	}
 }
