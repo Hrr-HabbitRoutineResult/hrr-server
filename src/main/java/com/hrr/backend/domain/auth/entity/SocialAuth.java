@@ -1,7 +1,10 @@
 package com.hrr.backend.domain.auth.entity;
 
+import java.time.LocalDateTime;
+
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -37,4 +40,10 @@ public class SocialAuth extends BaseEntity {
 	 */
 	@Column(name = "social_refresh_token", columnDefinition = "TEXT")
 	private String socialRefreshToken;
+
+	// refresh token 업데이트
+	public void updateRefreshToken(String socialRefreshToken) {
+		this.socialRefreshToken = socialRefreshToken;
+	}
 }
+

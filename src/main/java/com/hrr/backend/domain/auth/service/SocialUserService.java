@@ -6,19 +6,23 @@ import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class SocialUserService {
     private final UserRepository userRepository;
 	private final SocialAuthRepository socialAuthRepository;
@@ -41,6 +45,9 @@ public class SocialUserService {
 			.map(socialAuth -> {
 				// [기존 유저] 연관된 User 정보를 업데이트
 				User user = socialAuth.getUser();
+
+				checkWithdrawalPeriod(user);	// 탈퇴 여부를 확인
+
 				user.updateName(name);
 				user.updateProfileImage(profileImage);
 				return user;
@@ -72,12 +79,17 @@ public class SocialUserService {
 				// [기존 유저] 연관된 User 정보를 가져옴
 				User user = socialAuth.getUser();
 
+				checkWithdrawalPeriod(user);	// 탈퇴 여부를 확인
+
 				// 애플은 이름이 첫 로그인 이후 null 로 올 수 있으므로 , 값이 있을 때만 업데이트
-				if (name != null) {
+				if (StringUtils.hasText(name)) {
 					user.updateName(name);
 				}
 
-				// Todo: 애플 RT 업데이트 (나중에 탈퇴 시 사용)
+				// 애플 RT 업데이트 (나중에 탈퇴 시 사용)
+				if (StringUtils.hasText(appleRefreshToken)) {
+					socialAuth.updateRefreshToken(appleRefreshToken);
+				}
 
 				return user;
 			})
@@ -123,6 +135,8 @@ public class SocialUserService {
 				// [기존 유저] 연관된 User 정보를 가져옴
 				User user = socialAuth.getUser();
 
+				checkWithdrawalPeriod(user);	// 탈퇴 여부를 확인
+
 				// 유저 정보 업데이트
 				if (name != null) {
 					user.updateName(name);
@@ -136,7 +150,10 @@ public class SocialUserService {
 					user.updateEmail(email);
 				}
 
-				// Todo: 네이버 RT 업데이트 (나중에 탈퇴 시 사용)
+				// 네이버 RT 업데이트 (나중에 탈퇴 시 사용)
+				if (StringUtils.hasText(refreshToken)) {
+					socialAuth.updateRefreshToken(refreshToken);
+				}
 
 				return user;
 			})
@@ -164,5 +181,21 @@ public class SocialUserService {
 
 				return newUser;
 			});
+	}
+
+	/**
+	 * DELETED 상태, 즉 탈퇴 후 한 달 이내인 계정인지 판단
+	 * @param user
+	 * @throws GlobalException 탈퇴 후 1개월 이내인 경우 AUTH_WITHDRAWAL_PERIOD_RESTRICTION 에러
+	 */
+	private void checkWithdrawalPeriod(User user) {
+		if (user == null) {
+			log.error("유저가 null 상태입니다.");
+			throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+		}
+
+		if (user.getUserStatus() == UserStatus.DELETED) {
+			throw new GlobalException(ErrorCode.AUTH_WITHDRAWAL_PERIOD_RESTRICTION);
+		}
 	}
 }

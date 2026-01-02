@@ -47,7 +47,8 @@ public class SecurityConfig {
 				 	.requestMatchers(HttpMethod.GET, "/").permitAll()
                     // Swagger 및 카카오 인증 엔드포인트는 모두 허용
                     .requestMatchers(
-                        "/api/v1/auth/**",
+                        "/api/v1/auth/login/**",	// 로그인 허용
+						"/api/v1/auth/reissue/**", // 토큰 재발급 허용
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/swagger-resources/**",

@@ -171,4 +171,37 @@ public class AppleAuthService {
 			throw new GlobalException(ErrorCode.AUTH_APPLE_KEY_ERROR);
 		}
 	}
+
+	/**
+	 * 애플 연결 해제
+	 */
+	public void revoke(String appleRefreshToken) {
+		String revokeUrl = "https://appleid.apple.com/auth/revoke";
+		String clientSecret = createClientSecret();
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+		params.add("client_id", CLIENT_ID);
+		params.add("client_secret", clientSecret);
+		params.add("token", appleRefreshToken); // socialAuth에 저장해둔 리프레시 토큰
+		params.add("token_type_hint", "refresh_token");
+
+		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(params, headers);
+
+		try {
+			ResponseEntity<String> response = restTemplate.postForEntity(revokeUrl, entity, String.class);
+
+			if (response.getStatusCode().is2xxSuccessful()) {
+				log.info("애플 연결 해제 성공");
+			} else {
+				log.error("애플 연결 해제 실패: {}", response.getBody());
+				throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
+			}
+		} catch (Exception e) {
+			log.error("애플 Revoke 통신 중 오류 발생: ", e);
+			throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
+		}
+	}
 }

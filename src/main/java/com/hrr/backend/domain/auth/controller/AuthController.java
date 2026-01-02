@@ -4,6 +4,7 @@ import com.hrr.backend.domain.auth.dto.AuthRequestDto;
 import com.hrr.backend.domain.auth.dto.AuthResponseDto;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.service.AuthService;
+import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -152,6 +154,18 @@ public class AuthController {
 		authService.logout(authorizationHeader);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, "로그아웃에 성공했습니다.");
+	}
+
+	@PostMapping("/withdraw")
+	@Operation(summary = "회원 탈퇴",
+		description = "탈퇴를 진행합니다. 1개월 동안 재가입이 불가하며 모든 정보가 삭제됩니다.")
+	public ApiResponse<String> withdraw(
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		authService.withdraw(userDetails.getUser().getId());
+
+		return ApiResponse.onSuccess(SuccessCode.OK, "회원 탈퇴에 성공했습니다.");
 	}
 
 	/**

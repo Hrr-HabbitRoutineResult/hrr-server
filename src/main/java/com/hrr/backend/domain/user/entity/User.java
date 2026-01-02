@@ -30,6 +30,9 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
 	@Column(name = "name")	// 로그인 시 제공받는 이름. 중복이 가능하기에 unique 설정 x. 소셜 타입에 따라 이름 제공이 되지 않을 수 있어 nullable.
 	private String name;
 
@@ -46,7 +49,7 @@ public class User extends BaseEntity {
     private String password;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private LocalDateTime deletedAt;	// 탈퇴 시점 - 탈퇴 후 1개월이 지나면 hard delete, 1개월 동안은 DELETED 상태로써 재가입 불가능
 
     @Column(name = "profile_image", length = 225)
     private String profileImage;
@@ -132,6 +135,11 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    /** 프로필 공개 여부 업데이트 */
+    public void updateIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+  
 	/** 이메일 업데이트 */
 	public void updateEmail(String email) {
 		this.email = email;
@@ -157,5 +165,35 @@ public class User extends BaseEntity {
     /** 로그인 상태 변경 */
     public void updateLoginStatus(LoginStatus status) {
         this.loginStatus = status;
+    }
+
+	// 탈퇴 처리 메서드
+	public void withdraw() {
+		this.userStatus = UserStatus.DELETED;
+		this.deletedAt = LocalDateTime.now();
+	}
+
+    //팔로워 카운트 증가
+    public void incrementFollowerCount() {
+        this.followerCount++;
+    }
+
+    //팔로워 카운트 감소
+    public void decrementFollowerCount() {
+        if (this.followerCount > 0) {
+            this.followerCount--;
+        }
+    }
+
+    // 팔로잉 카운트 증가
+    public void incrementFollowingCount() {
+        this.followingCount++;
+    }
+
+    // 팔로잉 카운트 감소
+    public void decrementFollowingCount() {
+        if (this.followingCount > 0) {
+            this.followingCount--;
+        }
     }
 }

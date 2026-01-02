@@ -12,7 +12,7 @@ public interface CommentService {
     CommentResponseDto createComment(Long verificationId, Long userId, CommentCreateRequestDto requestDto);
 
     /** 댓글 조회 */
-    CommentListResponseDto getComments(Long verificationId, Pageable pageable);
+    CommentListResponseDto getComments(Long verificationId, Long userId, Pageable pageable);
 
     /** 댓글 수정 */
     CommentResponseDto updateComment(Long commentId, Long userId, CommentUpdateRequestDto requestDto);

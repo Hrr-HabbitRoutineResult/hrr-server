@@ -1,16 +1,15 @@
 package com.hrr.backend.domain.user.controller;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserService;
+import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.service.VerificationService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 
-import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -36,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final VerificationService verificationService;
 
 
     // 닉네임 유효성 검사 API
@@ -149,10 +149,10 @@ public class UserController {
 		@NotBlank(message = "검색어는 필수입니다.") String keyword,
 
 		// 페이징
+    @Min(1)
+    @RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1부터 시작)
 		@Min(1)
-		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (0부터 시작)
-		@Min(1)
-		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기)
+		@RequestParam(name = "size", defaultValue = "10") int size, // 페이지 크기
 
 		@Parameter(hidden = true)
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
@@ -162,4 +162,76 @@ public class UserController {
 
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
+
+    @GetMapping("/me/verifications/history")
+    @Operation(
+            summary = "내 챌린지 인증 기록 조회",
+            description = "현재 로그인한 사용자가 참여한 모든 챌린지의 인증 기록을 최신순으로 조회합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                    {
+                                      "resultType": "SUCCESS",
+                                      "error": null,
+                                      "success": {
+                                        "content": [
+                                          {
+                                            "verificationId": 1,
+                                            "challengeId": 101,
+                                            "challengeTitle": "미라클 모닝",
+                                            "type": "TEXT",
+                                            "title": "해피뉴이어! 올해 마지막 인증 올립니다",
+                                            "content": "여기엔 상세내용이 들어가유~",
+                                            "photoUrl": null,
+                                            "textUrl": "https://blog.example.com/post/123",
+                                            "verifiedAt": "2025-09-18T08:00:00Z"
+                                          },
+                                          {
+                                            "verificationId": 2,
+                                            "challengeId": 102,
+                                            "challengeTitle": "매일 책 10페이지 읽기",
+                                            "type": "CAMERA",
+                                            "title": "오늘의 독서 인증",
+                                            "content": null,
+                                            "photoUrl": "https://example.com/verification_image_2.jpg",
+                                            "textUrl": null,
+                                            "verifiedAt": "2025-09-13T22:30:00Z"
+                                          }
+                                        ],
+                                        "currentPage": 0,
+                                        "size": 10,
+                                        "first": true,
+                                        "last": false,
+                                        "hasNext": true
+                                      }
+                                    }
+                                    """
+                            )
+                    )
+            )
+    })
+    public ApiResponse<SliceResponseDto<VerificationResponseDto.HistoryDto>> getVerificationHistory(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) {
+        Long userId = customUserDetails.getUser().getId();
+        SliceResponseDto<VerificationResponseDto.HistoryDto> response =
+                verificationService.getVerificationHistory(userId, page-1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
 }

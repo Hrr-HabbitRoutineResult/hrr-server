@@ -23,4 +23,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	Slice<User> findByNicknameContaining(String keyword, Pageable pageable);
 
 
+
+
 }
