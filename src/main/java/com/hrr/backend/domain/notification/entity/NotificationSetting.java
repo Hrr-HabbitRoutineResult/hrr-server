@@ -4,26 +4,14 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Getter
 @Builder
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Table(
-        name = "notification_setting",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"user_id", "type_id"})
-        },
-        indexes = {
-                @Index(name = "idx_notification_setting_user", columnList = "user_id"),
-                @Index(name = "idx_notification_setting_type", columnList = "type_id")
-        }
-)
+@Table(name = "notification_setting")
 public class NotificationSetting extends BaseEntity {
 
     @Id
@@ -31,16 +19,49 @@ public class NotificationSetting extends BaseEntity {
     private Long id;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)
     private User user;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "type_id")
-    private NotificationType type;
+    @Builder.Default
+    private boolean isChallengeEnabled = true;
 
-    @NotNull
-    @Column(name = "settings", nullable = false)
-    private boolean settings;
+    @Builder.Default
+    private boolean isVerificationEnabled = true;
+
+    @Builder.Default
+    private boolean isFollowEnabled = true;
+
+    @Builder.Default
+    private boolean isBadgeEnabled = true;
+
+    // 개별 설정 업데이트
+    public void update(Boolean challenge, Boolean verification, Boolean follow, Boolean badge) {
+        if (challenge != null) this.isChallengeEnabled = challenge;
+        if (verification != null) this.isVerificationEnabled = verification;
+        if (follow != null) this.isFollowEnabled = follow;
+        if (badge != null) this.isBadgeEnabled = badge;
+    }
+
+    // 전체 일시 중단 처리 (모두 끄기)
+    public void pauseAll() {
+        this.isChallengeEnabled = false;
+        this.isVerificationEnabled = false;
+        this.isFollowEnabled = false;
+        this.isBadgeEnabled = false;
+    }
+
+    // 전체 일시 중단 해제 (모두 켜키)
+    public void resumeAll() {
+        this.isChallengeEnabled = true;
+        this.isVerificationEnabled = true;
+        this.isFollowEnabled = true;
+        this.isBadgeEnabled = true;
+    }
+
+    // 전체 일시 중단 판단
+    public boolean isAllPaused() {
+        return !isChallengeEnabled && !isVerificationEnabled &&
+                !isFollowEnabled && !isBadgeEnabled;
+    }
 }
