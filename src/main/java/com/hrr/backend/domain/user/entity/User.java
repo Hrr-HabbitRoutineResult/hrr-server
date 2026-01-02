@@ -174,6 +174,18 @@ public class User extends BaseEntity {
 		this.deletedAt = LocalDateTime.now();
 	}
 
+	// 재로그인
+	public void reLogin() {
+		// 이미 ACTIVE인 유저는 재로그인 로직을 탈 필요가 없음
+		if (this.userStatus == UserStatus.ACTIVE) {
+			return;
+		}
+
+		// status 변경하고 deletedAt 삭제
+		this.userStatus = UserStatus.ACTIVE;
+		this.deletedAt = null;
+	}
+
     //팔로워 카운트 증가
     public void incrementFollowerCount() {
         this.followerCount++;
