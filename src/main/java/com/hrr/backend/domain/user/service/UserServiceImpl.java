@@ -56,13 +56,13 @@ public class UserServiceImpl implements UserService {
     // 프로필 조회 관련
 
     @Override
-    public UserResponseDto.ProfileDto getUserProfile(Long userId, Long currentUserId) {
-        // 사용자 조회
-        User user = userRepository.findById(userId)
+    public UserResponseDto.ProfileDto getUserProfile(Long userId, User currentUser) {
+		// 탈퇴 & 차단 여부 조회
+        User user = userRepository.findActiveUserExcludingBlocks(userId, currentUser)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         // 팔로잉 여부 확인
-        Boolean isFollowing = checkIfFollowing(currentUserId, userId);
+        Boolean isFollowing = checkIfFollowing(currentUser.getId(), userId);
 
         return UserResponseDto.ProfileDto.from(user, isFollowing);
     }

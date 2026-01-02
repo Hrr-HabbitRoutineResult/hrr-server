@@ -1,5 +1,7 @@
 package com.hrr.backend.domain.user.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
@@ -14,4 +16,10 @@ public interface UserRepositoryCustom {
 	 * @return Slice<User> - 데이터 목록과 다음 페이지 존재 여부(hasNext)를 포함
 	 */
 	Slice<User> findByNicknameContaining(String keyword, User user, Pageable pageable);
+
+	// 탈퇴한 사용자 제외하고 ID로 유저 조회
+	Optional<User> findActiveUserById(Long id);
+
+	// 탈퇴 & 차단 모두 필터링하고 ID로 유저 조회
+	Optional<User> findActiveUserExcludingBlocks(Long id, User me);
 }

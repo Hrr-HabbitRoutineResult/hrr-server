@@ -2,6 +2,7 @@ package com.hrr.backend.domain.user.repository;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,7 @@ import com.hrr.backend.domain.user.entity.QUser;
 import com.hrr.backend.domain.user.entity.QUserBlock;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
@@ -38,31 +40,13 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
 	 */
 	@Override
 	public Slice<User> findByNicknameContaining(String keyword, User me, Pageable pageable) {
-		// 필터링 대상 ID들 수집 (내가 차단한 + 나를 차단한)
-		List<Long> blockedUserIds = queryFactory
-			.select(qUserBlock.blocked.id)
-			.from(qUserBlock)
-			.where(qUserBlock.blocker.eq(me))	// 내가 차단한
-			.fetch();
-
-		List<Long> blockerUserIds = queryFactory
-			.select(qUserBlock.blocker.id)
-			.from(qUserBlock)
-			.where(qUserBlock.blocked.eq(me))	// 나를 차단한
-			.fetch();
-
-		// 두 리스트 합치기
-		Set<Long> allRelatedBlockIds = new HashSet<>();
-		allRelatedBlockIds.addAll(blockedUserIds);
-		allRelatedBlockIds.addAll(blockerUserIds);
-
 		// 실제 검색 쿼리
 		List<User> content = queryFactory
 			.selectFrom(qUser)
 			.where(
 				qUser.nickname.contains(keyword),        // 닉네임 검색
-				qUser.userStatus.eq(UserStatus.ACTIVE),  // 탈퇴 유저 필터
-				qUser.id.notIn(allRelatedBlockIds),      // 차단 관계 유저 필터
+				isStatusActive(),						  // 탈퇴 유저 필터
+				notInBlockList(me),      // 차단 관계 유저 필터
 				qUser.id.ne(me.getId())                 // 나 자신 제외
 			)
 			.offset(pageable.getOffset())
@@ -70,6 +54,60 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
 			.fetch();
 
 		return checkLastPage(pageable, content);
+	}
+
+	@Override
+	public Optional<User> findActiveUserById(Long id) {
+		return Optional.ofNullable(queryFactory
+			.selectFrom(qUser)
+			.where(
+				qUser.id.eq(id),
+				isStatusActive()
+			)
+			.fetchOne());
+	}
+
+	@Override
+	public Optional<User> findActiveUserExcludingBlocks(Long id, User me) {
+		return Optional.ofNullable(queryFactory
+			.selectFrom(qUser)
+			.where(
+				qUser.id.eq(id),
+				isStatusActive(),
+				notInBlockList(me)
+			)
+			.fetchOne());
+	}
+
+	// 활성 상태(비활성화, 탈톼 x)인지
+	private BooleanExpression isStatusActive() {
+		return qUser.userStatus.eq(UserStatus.ACTIVE);
+	}
+
+	// 차단 관계에 있지 않은지
+	private BooleanExpression notInBlockList(User me) {
+		if (me == null) return null;
+
+		// 내가 차단한 + 나를 차단한 ID 수집 (서브쿼리보다 성능상 이점이 있도록 별도 조회 후 id.notIn 처리)
+		List<Long> blockedUserIds = queryFactory
+			.select(qUserBlock.blocked.id)
+			.from(qUserBlock)
+			.where(qUserBlock.blocker.eq(me))
+			.fetch();
+
+		List<Long> blockerUserIds = queryFactory
+			.select(qUserBlock.blocker.id)
+			.from(qUserBlock)
+			.where(qUserBlock.blocked.eq(me))
+			.fetch();
+
+		Set<Long> allBlockIds = new HashSet<>();
+		allBlockIds.addAll(blockedUserIds);
+		allBlockIds.addAll(blockerUserIds);
+
+		if (allBlockIds.isEmpty()) return null;
+
+		return qUser.id.notIn(allBlockIds);
 	}
 
 	// Slice 처리를 위한 공통 로직
