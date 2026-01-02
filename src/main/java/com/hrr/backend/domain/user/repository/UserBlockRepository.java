@@ -19,6 +19,7 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
 
 	/**
 	 * 내가 차단한 유저 목록 조회 (User 정보 fetch join) - 탈퇴 상태 사용자 제외
+	 * 나를 차단한 사람을 제외하진 않는다.
 	 */
 	@Query("SELECT b FROM UserBlock b " +
 		"JOIN FETCH b.blocked " +

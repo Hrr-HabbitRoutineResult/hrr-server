@@ -69,7 +69,7 @@ public class UserBlockController {
 	// 나의 차단 목록 조회
 	@Operation(
 		summary = "내 차단 목록 조회",
-		description = "내가 차단한 사용자들의 목록을 조회합니다."
+		description = "내가 차단한 사용자들의 목록을 조회합니다. 다른 조회들과 달리 나를 차단한 사람일지라도 내가 차단했을 경우 목록에서 조회됩니다."
 	)
 	@GetMapping("/me")
 	public ApiResponse<SliceResponseDto<UserBlockResponse>> getMyBlockList(
