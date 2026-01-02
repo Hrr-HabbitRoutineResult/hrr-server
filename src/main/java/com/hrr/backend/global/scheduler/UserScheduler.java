@@ -28,7 +28,7 @@ public class UserScheduler {
 
 		log.info("한 달 경과 탈퇴 회원 삭제 시작: 기준 시점 {}", threshold);
 
-		// 상태가 DELETED 이고, deletedAt 이 30일 이전인 사용자 조회
+		// 상태가 INACTIVE 이고, deletedAt 이 30일 이전인 사용자 조회
 		List<User> usersToClean = userRepository
 			.findUserToDelete(threshold);
 

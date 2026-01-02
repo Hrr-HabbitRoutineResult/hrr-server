@@ -23,7 +23,6 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
 	@Query("SELECT b FROM UserBlock b " +
 		"JOIN FETCH b.blocked " +
 		"WHERE b.blocker = :blocker " +
-		"AND (b.blocked.userStatus IS NULL "
-		+ "OR (b.blocked.userStatus != com.hrr.backend.domain.user.entity.enums.UserStatus.DELETED AND b.blocked.userStatus != com.hrr.backend.domain.user.entity.enums.UserStatus.WITHDRAWN_COMPLETED))")
+		"AND b.blocked.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.ACTIVE")
 	Slice<UserBlock> findByBlocker(@Param("blocker") User blocker, Pageable pageable);
 }
