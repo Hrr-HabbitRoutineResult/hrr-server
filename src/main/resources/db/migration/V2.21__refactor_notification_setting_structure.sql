@@ -1,9 +1,11 @@
--- 기존 notification_setting 테이블의 외래키 제약 조건 삭제
-ALTER TABLE `notification_setting` DROP FOREIGN KEY `FK81ru0i0vu6x5gov2qycxjgvn`; -- notification_type 참조 끊기
-ALTER TABLE `notification_setting` DROP FOREIGN KEY `FKbwsuroqorxx1boup2snb1t1u9`; -- user 참조 끊기
+-- 외래 키 제약 조건 체크를 일시적으로 해제 (안전한 테이블 삭제를 위해)
+SET FOREIGN_KEY_CHECKS = 0;
 
--- 기존 설정 테이블만 삭제 (구조가 행 단위에서 컬럼 단위로 완전히 바뀌기 때문)
+-- 2. 기존 설정 테이블 삭제 (구조가 행 단위에서 컬럼 단위로 바뀌므로 재생성)
 DROP TABLE IF EXISTS `notification_setting`;
+
+-- 외래 키 체크 다시 활성화
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- 새로운 1:1 구조의 알림 설정 테이블 생성
 CREATE TABLE `notification_setting` (
