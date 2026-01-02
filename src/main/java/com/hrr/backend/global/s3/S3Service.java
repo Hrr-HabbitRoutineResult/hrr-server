@@ -60,7 +60,7 @@ public class S3Service {
 	}
 
 	public void deleteFileByKey(String key) {
-		if (key == null || key.isBlank() || !key.startsWith("http")) return;
+		if (key == null || key.isBlank() || key.startsWith("http")) return;
 
 		try {
 			DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()

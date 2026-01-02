@@ -214,6 +214,7 @@ public class User extends BaseEntity {
 		this.name = "탈퇴한 사용자";
 		this.nickname = null; // 중복 방지 및 마스킹
 		this.userStatus = UserStatus.WITHDRAWN_COMPLETED;
+		this.socialAuth = null;
 
 		// 개인정보 삭제
 		this.email = null;
@@ -222,5 +223,10 @@ public class User extends BaseEntity {
 
 		// 프로필 사진 삭제
 		this.profileImage = null;
+	}
+
+	// 사용자 유효성 검사 - 탈퇴 or 탈퇴 처리 완료된 상태인지
+	public boolean isNotActive() {
+		return this.userStatus == UserStatus.DELETED || this.userStatus == UserStatus.WITHDRAWN_COMPLETED;
 	}
 }

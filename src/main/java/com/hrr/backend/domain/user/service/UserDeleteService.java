@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
+import com.hrr.backend.domain.auth.service.AuthService;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -30,9 +31,13 @@ public class UserDeleteService {
 	private final SocialAuthRepository socialAuthRepository;
 
 	private final S3Service s3Service;
+	private final AuthService authService;
 
 	@Transactional
 	public void processPermanentWithdrawal(User user) {
+		// 소셜 로그인 연결 해제
+		authService.revoke(user.getId());
+
 		// Social Auth 정보 삭제
 		socialAuthRepository.deleteByUser(user);
 

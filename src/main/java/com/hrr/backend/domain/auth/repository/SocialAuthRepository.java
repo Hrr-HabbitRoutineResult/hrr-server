@@ -3,6 +3,9 @@ package com.hrr.backend.domain.auth.repository;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
@@ -17,5 +20,7 @@ public interface SocialAuthRepository extends JpaRepository<SocialAuth, Long> {
 	Optional<SocialAuth> findBySocialIdAndSocialType(String socialId, SocialType socialType);
 
 	// 소셜 로그인 정보 삭제
-	void deleteByUser(User user);
+	@Modifying(clearAutomatically = true) // 삭제 후 영속성 컨텍스트를 비워줌
+	@Query("DELETE FROM SocialAuth s WHERE s.user = :user")
+	void deleteByUser(@Param("user") User user);
 }

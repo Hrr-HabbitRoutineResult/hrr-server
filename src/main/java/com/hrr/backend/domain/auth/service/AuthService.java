@@ -248,7 +248,18 @@ public class AuthService {
 	 */
 	@Transactional
 	public void withdraw(Long userId) {
-		// 1. 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
+		// 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+		// 유저 상태 변경 (Soft Delete)
+		user.withdraw();
+
+		// TODO: 리프레시 토큰 등 세션 정보 삭제
+	}
+
+	public void revoke(Long userId) {
+		// 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
@@ -262,13 +273,6 @@ public class AuthService {
 			case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
 			default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
 		}
-
-		// 유저 상태 변경 (Soft Delete)
-		user.withdraw();
-
-		// SocialAuth는 재가입 여부 판단을 위해 남겨두고 hard delete 시 삭제
-
-		// TODO: 리프레시 토큰 등 세션 정보 삭제
 	}
 
 }

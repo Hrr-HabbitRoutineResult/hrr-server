@@ -73,7 +73,7 @@ public class CommentConverter {
 		// 우선순위: 삭제>탈퇴>익명>실명
 		if (comment.isDeleted()) {
 			userName = "삭제";
-		} else if (commentOwner.getUserStatus() == UserStatus.DELETED) {
+		} else if (commentOwner.isNotActive()) {
 			userName = "알 수 없음";
 		} else {
 			// 기본 이름 설정 (익명 vs 실명)
