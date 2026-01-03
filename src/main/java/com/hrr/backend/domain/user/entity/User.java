@@ -217,7 +217,6 @@ public class User extends BaseEntity {
 		this.name = "탈퇴한 사용자";
 		this.nickname = null; // 중복 방지 및 마스킹
 		this.userStatus = UserStatus.DELETED;
-		this.socialAuth = null;
 
 		// 개인정보 삭제
 		this.email = null;
