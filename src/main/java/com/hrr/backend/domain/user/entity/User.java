@@ -89,7 +89,7 @@ public class User extends BaseEntity {
 	@Builder.Default
     @Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false)
-	private UserStatus userStatus = UserStatus.ACTIVE;;
+	private UserStatus userStatus = UserStatus.ACTIVE;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

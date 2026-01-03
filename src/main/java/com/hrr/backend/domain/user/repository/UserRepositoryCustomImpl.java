@@ -79,7 +79,7 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
 			.fetchOne());
 	}
 
-	// 활성 상태(비활성화, 탈톼 x)인지
+	// 활성 상태(비활성화, 탈퇴 x)인지
 	private BooleanExpression isStatusActive() {
 		return qUser.userStatus.eq(UserStatus.ACTIVE);
 	}
