@@ -9,14 +9,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.hrr.backend.domain.user.dto.*;
-import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.user.event.ProfileImageDeletedEvent;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.s3.S3UrlUtil;
-import com.hrr.backend.global.s3.S3Service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -53,7 +53,8 @@ public class UserServiceImpl implements UserService {
     private final VerificationRepository verificationRepository;
 
     private final S3UrlUtil s3UrlUtil;
-    private final S3Service s3Service;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     // 프로필 조회 관련
 
@@ -306,14 +307,17 @@ public class UserServiceImpl implements UserService {
 
         // 프로필 이미지 Key가 제공된 경우 업데이트
         if (requestDto.getProfileImageKey() != null) {
-            // 기존 이미지가 있으면 S3에서 삭제
             String oldImageKey = user.getProfileImage();
-            if (oldImageKey != null && !oldImageKey.isBlank()) {
-                s3Service.deleteFileByKey(oldImageKey);
-            }
 
+            // 새 이미지로 업데이트
             user.updateProfileImage(requestDto.getProfileImageKey());
+
+            // 트랜잭션 커밋 후 기존 이미지 삭제 이벤트 발행
+            if (oldImageKey != null && !oldImageKey.isBlank()) {
+                eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
+            }
         }
+
 
         // 프로필 공개 여부가 제공된 경우 업데이트
         if (requestDto.getIsPublic() != null) {
