@@ -9,7 +9,7 @@ public interface UserService {
     // 사용자 정보 조회
     UserResponseDto.ProfileDto getUserProfile(
             Long userId,
-            Long currentUserId
+            User currentUser
     );
 
     // 참가중인 챌린지 목록 조회 (페이징)

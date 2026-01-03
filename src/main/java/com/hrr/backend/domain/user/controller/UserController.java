@@ -74,10 +74,9 @@ public class UserController {
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        // 인증된 사용자 ID 추출 (비로그인 시 null)
-        Long currentUserId = (customUserDetails != null) ? customUserDetails.getUser().getId() : null;
+        User me = customUserDetails.getUser();
 
-        UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, currentUserId);
+        UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, me);
         return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
 

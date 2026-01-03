@@ -13,7 +13,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "user_block")
+@Table(name = "user_block", uniqueConstraints = {
+	@UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
+})
 public class UserBlock extends BaseEntity {
 
     @Id

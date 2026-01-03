@@ -87,7 +87,7 @@ public class ChallengeConverter {
         // 방장 정보 DTO 생성
         ChallengeResponseDto.OwnerDto ownerDto = ChallengeResponseDto.OwnerDto.builder()
                 .id(owner.getId())
-                .nickname(owner.getNickname())
+                .nickname(owner.getDisplayNickname())
                 .profileImageUrl(owner.getProfileImage())
                 .build();
 
