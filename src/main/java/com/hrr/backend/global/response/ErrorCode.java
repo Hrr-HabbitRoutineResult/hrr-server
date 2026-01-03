@@ -148,6 +148,7 @@ public enum ErrorCode implements BaseCode{
 
     // notification
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4041", "존재하지 않는 알림입니다."),
+    NOTIFICATION_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4042", "알림 설정 정보를 찾을 수 없습니다."),
     NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTIFICATION4032", "해당 알림에 대한 접근 권한이 없습니다."),
 
     // search

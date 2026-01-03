@@ -75,4 +75,26 @@ public class NotificationResponseDto {
                     .build();
         }
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "알림 설정 정보 DTO")
+    public static class SettingInfoDto {
+        @Schema(description = "전체 일시 중단 여부", example = "false")
+        private Boolean isAllPaused;
+
+        @Schema(description = "챌린지 알림 설정 여부", example = "true")
+        private Boolean isChallengeEnabled;
+
+        @Schema(description = "인증 알림 설정 여부", example = "true")
+        private Boolean isVerificationEnabled;
+
+        @Schema(description = "팔로우 알림 설정 여부", example = "true")
+        private Boolean isFollowEnabled;
+
+        @Schema(description = "배지 알림 설정 여부", example = "true")
+        private Boolean isBadgeEnabled;
+    }
 }
