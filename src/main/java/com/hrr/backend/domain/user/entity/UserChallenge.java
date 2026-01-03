@@ -65,5 +65,6 @@ public class UserChallenge extends BaseEntity {
     private Integer kickWarnings = 0;
 
 	public void updateStatus(ChallengeJoinStatus challengeJoinStatus) {
+		this.status = challengeJoinStatus;
 	}
 }
