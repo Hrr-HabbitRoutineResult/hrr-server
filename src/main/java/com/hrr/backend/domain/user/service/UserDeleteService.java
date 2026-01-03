@@ -61,7 +61,7 @@ public class UserDeleteService {
 
 			int updatedRowNumber = challengeRepository.decreaseCurrentParticipantCount(uc.getChallenge().getId()); // 인원수 -1
 			if (updatedRowNumber == 0) {
-				log.error("일부 챌린지의 현재 참가 인원에 대한 업데이트가 진행되지 않았습니다. UserChallengeId: {}", uc.getChallenge().getId());
+				log.error("일부 챌린지의 현재 참가 인원에 대한 업데이트가 진행되지 않았습니다. UserChallengeId: {}", uc.getId());
 			}
 		}
 
