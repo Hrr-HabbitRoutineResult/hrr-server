@@ -11,7 +11,8 @@ public interface UserRepositoryCustom {
 
 	/**
 	 * 닉네임에 키워드가 포함된 사용자 목록을 Slice 형태로 조회
-	 * * @param keyword 검색할 닉네임 키워드
+	 * @param keyword 검색할 닉네임 키워드
+	 * @param user 조회하는 사용자 - 검색 결과 조회된 사용자와 조회하는 사용자 간의 차단 관계를 확인할 때 사용
 	 * @param pageable 페이징 요청 정보 (page, size)
 	 * @return Slice<User> - 데이터 목록과 다음 페이지 존재 여부(hasNext)를 포함
 	 */
