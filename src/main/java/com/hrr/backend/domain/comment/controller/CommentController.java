@@ -107,7 +107,7 @@ public class CommentController {
     }
 
 	/** 댓글 작성자 신고 */
-	@Operation(summary = "댓글 작성자 신고", description = "댓글 작성자를 신고합니다. 익명 댓글의 경우 작성자의 userId를 모르기 때문에 해당 API로 신고해주셔야 합니다.")
+	@Operation(summary = "댓글 작성자 차단", description = "댓글 작성자를 차단합니다. 익명 댓글의 경우 작성자의 userId를 모르기 때문에 해당 API로 차단해주셔야 합니다.")
 	@PostMapping("/{commentId}/block")
 	public ApiResponse<String> blockByComment(
 		@Parameter(hidden = true)
