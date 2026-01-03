@@ -36,7 +36,12 @@ public class UserDeleteService {
 	@Transactional
 	public void processPermanentWithdrawal(User user) {
 		// 소셜 로그인 연결 해제
-		authService.revoke(user.getId());
+		try {
+			authService.revoke(user.getId());
+		} catch (Exception e) {
+			log.warn("소셜 연동 해제 실패. 내부 데이터 정리는 계속 진행합니다. userId: {}", user.getId(), e);
+		}
+
 
 		// Social Auth 정보 삭제
 		socialAuthRepository.deleteByUser(user);
