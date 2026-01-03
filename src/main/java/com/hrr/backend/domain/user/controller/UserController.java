@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.data.domain.Page;
 import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotBlank;
@@ -230,6 +232,31 @@ public class UserController {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<VerificationResponseDto.HistoryDto> response =
                 verificationService.getVerificationHistory(userId, page-1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @GetMapping("/{userId}/verifications/history")
+    @Operation(
+            summary = "다른 사용자 인증 기록 조회",
+            description = "특정 사용자가 참여한 모든 챌린지의 인증 기록을 최신순으로 조회합니다. " +
+                    "비공개 프로필인 경우 isPublic=false와 빈 배열을 반환합니다."
+    )
+    public ApiResponse<VerificationResponseDto.OtherUserHistoryResponse> getOtherUserVerificationHistory(
+            @PathVariable
+            @Positive
+            @Parameter(description = "조회할 사용자 ID", example = "5") Long userId,
+
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) {
+        VerificationResponseDto.OtherUserHistoryResponse response =
+                verificationService.getOtherUserVerificationHistory(userId, page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
