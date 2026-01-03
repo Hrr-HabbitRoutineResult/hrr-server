@@ -15,6 +15,7 @@ import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.s3.S3UrlUtil;
+import com.hrr.backend.global.s3.S3Service;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +53,7 @@ public class UserServiceImpl implements UserService {
     private final VerificationRepository verificationRepository;
 
     private final S3UrlUtil s3UrlUtil;
+    private final S3Service s3Service;
 
     // 프로필 조회 관련
 
@@ -304,6 +306,12 @@ public class UserServiceImpl implements UserService {
 
         // 프로필 이미지 Key가 제공된 경우 업데이트
         if (requestDto.getProfileImageKey() != null) {
+            // 기존 이미지가 있으면 S3에서 삭제
+            String oldImageKey = user.getProfileImage();
+            if (oldImageKey != null && !oldImageKey.isBlank()) {
+                s3Service.deleteFileByKey(oldImageKey);
+            }
+
             user.updateProfileImage(requestDto.getProfileImageKey());
         }
 
