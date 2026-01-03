@@ -294,7 +294,7 @@ public class UserServiceImpl implements UserService {
         if (requestDto.getNickname() != null) {
             String nickname = normalize(requestDto.getNickname()); // 정규화 추가
 
-            if (!nickname.equals(user.getDisplayNickname())) {
+            if (!nickname.equals(user.getNickname())) {
                 if (userRepository.existsByNickname(nickname)) {
                     throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
                 }

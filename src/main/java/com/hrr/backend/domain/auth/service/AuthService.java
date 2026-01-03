@@ -258,6 +258,8 @@ public class AuthService {
 		// TODO: 리프레시 토큰 등 세션 정보 삭제
 	}
 
+	@Transactional
+	// 소셜 로그인 연결 해제
 	public void revoke(Long userId) {
 		// 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
 		User user = userRepository.findById(userId)
