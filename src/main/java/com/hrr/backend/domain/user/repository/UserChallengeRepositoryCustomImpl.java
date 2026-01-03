@@ -116,7 +116,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 .where(
                         qUserChallenge.user.eq(user),
                         qChallenge.status.eq(ChallengeStatus.FINISHED),
-                        qUserChallenge.status.ne(ChallengeJoinStatus.KICKED)
+                        qUserChallenge.status.eq(ChallengeJoinStatus.JOINED)
                 )
                 .orderBy(qUserChallenge.updatedAt.desc())
                 .offset(pageable.getOffset())
