@@ -63,7 +63,7 @@ class ChallengeServiceInfoTest {
         // 조건: 상태는 UPCOMING
         setChallengeStatus(challenge, ChallengeStatus.UPCOMING, 10, 30);
         // 조건: 인증 시간대 내 (시간은 맞지만 날짜가 안 맞음)
-        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
+        setVerificationTime(challenge, LocalTime.of(9, 0), LocalTime.of(18, 0));
 
         // Mocking
         mockFetchingChallenge(challengeId, challenge);
@@ -92,7 +92,7 @@ class ChallengeServiceInfoTest {
 
         // 조건: 라운드 시작됨, 시간 맞음
         setRoundDate(challenge, LocalDate.now().minusDays(1));
-        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
+        setVerificationTime(challenge, LocalTime.of(9, 0), LocalTime.of(18, 0));
         setChallengeStatus(challenge, ChallengeStatus.ONGOING, 10, 30);
 
         // Mocking
@@ -117,8 +117,8 @@ class ChallengeServiceInfoTest {
 
         setRoundDate(challenge, LocalDate.now().minusDays(1));
 
-        // 조건: 인증 시간이 현재 시간보다 미래임 (아직 안 옴)
-        setVerificationTime(challenge, LocalTime.now().plusHours(1), LocalTime.now().plusHours(2));
+        // 현재 시간과 겹치지 않도록 이른 시간대 고정
+        setVerificationTime(challenge, LocalTime.of(0, 0), LocalTime.of(0, 1));
 
         // Mocking
         mockFetchingChallenge(challengeId, challenge);
@@ -142,7 +142,7 @@ class ChallengeServiceInfoTest {
 
         setRoundDate(challenge, LocalDate.now().minusDays(1));
         // 조건: 현재 시간이 인증 시간 내에 포함됨
-        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
+        setVerificationTime(challenge, LocalTime.MIN, LocalTime.MAX);
 
         // Mocking
         mockFetchingChallenge(challengeId, challenge);
@@ -169,7 +169,7 @@ class ChallengeServiceInfoTest {
         Challenge challenge = createChallengeBase();
 
         setRoundDate(challenge, LocalDate.now().minusDays(1));
-        setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
+        setVerificationTime(challenge, LocalTime.MIN, LocalTime.MAX);
 
         // Mocking
         mockFetchingChallenge(challengeId, challenge);
