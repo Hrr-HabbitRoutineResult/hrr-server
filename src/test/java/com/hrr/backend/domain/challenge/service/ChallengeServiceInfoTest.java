@@ -272,6 +272,31 @@ class ChallengeServiceInfoTest {
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.DISABLED);
     }
 
+    @Test
+    @DisplayName("상황 9: 미참여자 + 진행중(ONGOING) + 자리 있음 -> JOIN (중도 참여 허용 확인)")
+    void guest_ongoing_hasSpace_returns_JOIN() {
+        // Given
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = mock(Challenge.class);
+
+        // 조건: 진행 중(ONGOING), 인원 여유 있음
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 5, 10);
+        setRoundDate(challenge, LocalDate.now().minusDays(5)); // 이미 시작된지 5일 지남
+
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, false);
+
+        mockConverter(ActionButtonStatus.JOIN);
+
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
+        // Then
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.JOIN);
+    }
+
     /**
      * Helper Methods (테스트 설정을 쉽게 하기 위한 도구들)
      */
