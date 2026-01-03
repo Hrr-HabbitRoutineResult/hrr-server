@@ -68,13 +68,13 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
     }
 
     @Override
-    public Slice<UserResponseDto.MarkedChallengeDto> findMarkedChallengesByUser(User user, Pageable pageable) {
+    public Slice<UserResponseDto.LikedChallengeDto> findMarkedChallengesByUser(User user, Pageable pageable) {
         QChallengeLike qChallengeLike = QChallengeLike.challengeLike;
         QChallenge qChallenge = QChallenge.challenge;
 
         // 찜한 챌린지 정보 조회
-        List<UserResponseDto.MarkedChallengeDto> content = jpaQueryFactory
-                .select(Projections.fields(UserResponseDto.MarkedChallengeDto.class,
+        List<UserResponseDto.LikedChallengeDto> content = jpaQueryFactory
+                .select(Projections.fields(UserResponseDto.LikedChallengeDto.class,
                         qChallenge.id.as("challengeId"),
                         qChallenge.title,
                         qChallenge.description,
@@ -115,9 +115,10 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 .join(qUserChallenge.challenge, qChallenge)
                 .where(
                         qUserChallenge.user.eq(user),
-                        qChallenge.status.eq(ChallengeStatus.FINISHED)
+                        qChallenge.status.eq(ChallengeStatus.FINISHED),
+                        qUserChallenge.status.ne(ChallengeJoinStatus.KICKED)
                 )
-                .orderBy(qChallenge.updatedAt.desc()) // 종료된 순서 (최신순)
+                .orderBy(qUserChallenge.updatedAt.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)
                 .fetch();

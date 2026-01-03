@@ -166,7 +166,7 @@ public class UserResponseDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "찜한 챌린지 정보 DTO")
-    public static class MarkedChallengeDto {
+    public static class LikedChallengeDto {
 
         @Schema(description = "챌린지 아이디", example = "301")
         private Long challengeId;

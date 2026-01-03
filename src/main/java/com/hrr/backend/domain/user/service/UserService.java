@@ -45,7 +45,7 @@ public interface UserService {
     /**
      * 찜한 챌린지 목록 조회 (페이징)
      */
-    SliceResponseDto<UserResponseDto.MarkedChallengeDto> getMarkedChallenges(
+    SliceResponseDto<UserResponseDto.LikedChallengeDto> getMarkedChallenges(
             Long userId,      
             int page,
             int size

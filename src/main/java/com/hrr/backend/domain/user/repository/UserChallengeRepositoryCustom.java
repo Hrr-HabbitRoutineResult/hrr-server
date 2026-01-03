@@ -21,7 +21,7 @@ public interface UserChallengeRepositoryCustom {
      * @param pageable 페이징 정보
      * @return 찜한 챌린지 정보 Slice
      */
-    Slice<UserResponseDto.MarkedChallengeDto> findMarkedChallengesByUser(User user, Pageable pageable);
+    Slice<UserResponseDto.LikedChallengeDto> findMarkedChallengesByUser(User user, Pageable pageable);
 
     /**
      * 사용자가 종료한 챌린지 목록 조회 (페이징)

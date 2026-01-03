@@ -285,7 +285,7 @@ public class UserServiceImpl implements UserService {
 
     // 찜한 챌린지 목록 조회
     @Override
-    public SliceResponseDto<UserResponseDto.MarkedChallengeDto> getMarkedChallenges(
+    public SliceResponseDto<UserResponseDto.LikedChallengeDto> getMarkedChallenges(
             Long userId,
             int page,
             int size
@@ -298,7 +298,7 @@ public class UserServiceImpl implements UserService {
         Pageable pageable = PageRequest.of(page, size);
 
         // Repository에서 찜한 챌린지 조회
-        Slice<UserResponseDto.MarkedChallengeDto> slice =
+        Slice<UserResponseDto.LikedChallengeDto> slice =
                 userChallengeRepository.findMarkedChallengesByUser(user, pageable);
 
         // S3 URL 변환

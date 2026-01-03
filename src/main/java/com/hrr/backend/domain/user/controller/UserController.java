@@ -240,7 +240,7 @@ public class UserController {
             summary = "찜한 챌린지 목록 조회",
             description = "현재 로그인한 사용자가 찜한 챌린지 목록을 조회합니다."
     )
-    public ApiResponse<SliceResponseDto<UserResponseDto.MarkedChallengeDto>> getMarkedChallenges(
+    public ApiResponse<SliceResponseDto<UserResponseDto.LikedChallengeDto>> getMarkedChallenges(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
 
@@ -253,7 +253,7 @@ public class UserController {
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         Long userId = customUserDetails.getUser().getId();      
-        SliceResponseDto<UserResponseDto.MarkedChallengeDto> response =
+        SliceResponseDto<UserResponseDto.LikedChallengeDto> response =
                 userService.getMarkedChallenges(userId, page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
