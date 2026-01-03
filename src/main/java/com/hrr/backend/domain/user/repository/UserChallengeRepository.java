@@ -3,6 +3,7 @@ package com.hrr.backend.domain.user.repository;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -64,4 +65,7 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
             "JOIN FETCH uc.user u " +
             "WHERE uc.challenge.id = :challengeId")
     List<UserChallenge> findAllByChallengeId(@Param("challengeId") Long challengeId);
+
+	// 특정 사용자가 참가 중인 챌린지 정보를 상태에 따라 조회
+	List<UserChallenge> findByUserAndStatus(User user, ChallengeJoinStatus challengeJoinStatus);
 }

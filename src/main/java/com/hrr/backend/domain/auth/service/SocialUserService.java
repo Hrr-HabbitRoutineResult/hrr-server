@@ -184,9 +184,8 @@ public class SocialUserService {
 	}
 
 	/**
-	 * DELETED 상태, 즉 탈퇴 후 한 달 이내인 계정인지 판단
+	 * INACTIVE 상태, 즉 탈퇴 후 한 달 이내인 계정인지 판단
 	 * @param user
-	 * @throws GlobalException 탈퇴 후 1개월 이내인 경우 AUTH_WITHDRAWAL_PERIOD_RESTRICTION 에러
 	 */
 	private void checkWithdrawalPeriod(User user) {
 		if (user == null) {
@@ -194,8 +193,9 @@ public class SocialUserService {
 			throw new GlobalException(ErrorCode.USER_NOT_FOUND);
 		}
 
-		if (user.getUserStatus() == UserStatus.DELETED) {
-			throw new GlobalException(ErrorCode.AUTH_WITHDRAWAL_PERIOD_RESTRICTION);
+		// 로그인 시 status가 INACTIVE = 탈퇴 후 30일 경과되기 전 = 재로그인 가능
+		if (user.getUserStatus() == UserStatus.INACTIVE) {
+			user.reLogin();
 		}
 	}
 }

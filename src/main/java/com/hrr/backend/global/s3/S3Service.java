@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -15,8 +18,10 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class S3Service {
 
+	private final S3Client s3Client;
 	private final S3Presigner s3Presigner;
 
 	@Value("${aws.s3.bucket}")
@@ -52,5 +57,21 @@ public class S3Service {
 			.presignedUrl(url)
 			.s3Key(s3Key)
 			.build();
+	}
+
+	public void deleteFileByKey(String key) {
+		if (key == null || key.isBlank() || key.startsWith("http")) return;
+
+		try {
+			DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+				.bucket(bucketName)
+				.key(key)
+				.build();
+
+			s3Client.deleteObject(deleteObjectRequest);
+			log.info("S3 파일 삭제 완료 (Key: {})", key);
+		} catch (Exception e) {
+			log.error("S3 파일 삭제 실패 (Key: {}): {}", key, e.getMessage());
+		}
 	}
 }

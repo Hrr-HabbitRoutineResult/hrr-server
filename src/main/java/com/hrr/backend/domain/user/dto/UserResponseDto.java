@@ -45,7 +45,7 @@ public class UserResponseDto {
         public static ProfileDto from(User user, Boolean isFollowing) {
             return ProfileDto.builder()
                     .userId(user.getId())
-                    .nickname(user.getNickname())
+                    .nickname(user.getDisplayNickname())
                     .profileImage(user.getProfileImage())
                     .level(user.getUserLevel())
                     .followerCount(user.getFollowerCount())
@@ -142,7 +142,7 @@ public class UserResponseDto {
         public static MyInfoDto from(User user) {
             return MyInfoDto.builder()
                     .userId(user.getId())
-                    .nickname(user.getNickname())
+                    .nickname(user.getDisplayNickname())
                     .email(user.getEmail())
                     .phoneNumber(user.getPhoneNumber())
                     .profileImage(user.getProfileImage())
