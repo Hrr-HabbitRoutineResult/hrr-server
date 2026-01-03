@@ -13,7 +13,7 @@ BEGIN
           AND COLUMN_NAME = 'status'
           AND COLUMN_TYPE LIKE '%WITHDRAWN_COMPLETED%'
     ) THEN
-        -- 기존 ENUM 정의에 WITHDRAWN_COMPLETED 추가
+        -- 기존 ENUM 정의에 WITHDRAWN_COMPLETED 추가 --------> V2.23에서 삭제될 enum
         ALTER TABLE user
             MODIFY COLUMN status ENUM('ACTIVE', 'DELETED', 'INACTIVE', 'SUSPENDED', 'WITHDRAWN_COMPLETED') DEFAULT NULL;
     END IF;
