@@ -60,4 +60,11 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 	@Query("SELECT COUNT(uc) FROM UserChallenge uc WHERE uc.user.id = :userId AND uc.status = :status")
 	Long countByUserIdAndStatus(@Param("userId") Long userId, @Param("status") ChallengeJoinStatus status);
 
+	// 참가 인원을 atomic하게 감소
+	@Modifying
+	@Query("UPDATE Challenge c " +
+		"SET c.currentParticipants = c.currentParticipants - 1 " +
+		"WHERE c.id = :id AND c.currentParticipants > 0")
+	int decreaseCurrentParticipantCount(@Param("id") Long id);
+
 }

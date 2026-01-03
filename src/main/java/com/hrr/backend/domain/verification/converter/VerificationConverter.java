@@ -44,7 +44,7 @@ public class VerificationConverter {
                 .hasLink(hasLink)
                 .isQuestion(verification.getIsQuestion())
                 .isResolved(verification.getIsResolved())
-                .writerNickname(writer.getNickname())
+                .writerNickname(writer.getDisplayNickname())
                 .writerProfileUrl(writer.getProfileImage())
                 .writerId(writer.getId())
                 .createdDate(verification.getCreatedAt())
@@ -81,7 +81,7 @@ public class VerificationConverter {
                 .status(verification.getStatus())
                 .createdAt(verification.getCreatedAt())
                 .userId(verification.getRoundRecord().getUserChallenge().getUser().getId())
-                .userNickname(verification.getRoundRecord().getUserChallenge().getUser().getNickname())
+                .userNickname(verification.getRoundRecord().getUserChallenge().getUser().getDisplayNickname())
                 .verificationCount(verification.getRoundRecord().getVerificationCount())
                 .build();
     }
@@ -96,7 +96,7 @@ public class VerificationConverter {
             SliceResponseDto<VerificationResponseDto.FeedDto> verifications
     ) {
         return VerificationResponseDto.MyProfileDto.builder()
-                .nickname(userChallenge.getUser().getNickname())
+                .nickname(userChallenge.getUser().getDisplayNickname())
                 .totalVerificationCount(totalVerificationCount)
                 .warningCount(userChallenge.getKickWarnings())
                 .currentRoundSequence(currentRoundSequence)
@@ -123,7 +123,7 @@ public class VerificationConverter {
         VerificationDetailResponseDto.UserInfo userInfo =
                 VerificationDetailResponseDto.UserInfo.builder()
                         .userId(user.getId())
-                        .nickname(user.getNickname())
+                        .nickname(user.getDisplayNickname())
                         .profileImageUrl(user.getProfileImage())
                         .level(userChallenge.getUser().getUserLevel())
                         .build();

@@ -28,7 +28,7 @@ public class FollowListResponseDto {
     public static FollowListResponseDto of(User user, Boolean isFollowing) {
         return FollowListResponseDto.builder()
                 .id(user.getId())
-                .nickname(user.getNickname())
+                .nickname(user.getDisplayNickname())
                 .level(user.getUserLevel().name().toLowerCase())
                 .profilePhoto(user.getProfileImage())
                 .isFollowing(isFollowing)

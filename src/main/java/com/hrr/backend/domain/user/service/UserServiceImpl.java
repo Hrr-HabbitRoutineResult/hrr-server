@@ -9,13 +9,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.hrr.backend.domain.user.dto.*;
-import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.user.event.ProfileImageDeletedEvent;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.s3.S3UrlUtil;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -52,17 +53,19 @@ public class UserServiceImpl implements UserService {
     private final VerificationRepository verificationRepository;
 
     private final S3UrlUtil s3UrlUtil;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     // 프로필 조회 관련
 
     @Override
-    public UserResponseDto.ProfileDto getUserProfile(Long userId, Long currentUserId) {
-        // 사용자 조회
-        User user = userRepository.findById(userId)
+    public UserResponseDto.ProfileDto getUserProfile(Long userId, User currentUser) {
+		// 탈퇴 & 차단 여부 조회
+        User user = userRepository.findActiveUserExcludingBlocks(userId, currentUser)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         // 팔로잉 여부 확인
-        Boolean isFollowing = checkIfFollowing(currentUserId, userId);
+        Boolean isFollowing = checkIfFollowing(currentUser.getId(), userId);
 
         return UserResponseDto.ProfileDto.from(user, isFollowing);
     }
@@ -210,7 +213,7 @@ public class UserServiceImpl implements UserService {
         Pageable pageable = PageRequest.of(page, size);
 
         // DB 조회
-        Slice<User> usersSlice = userRepository.findByNicknameContaining(normalize(keyword), pageable);
+        Slice<User> usersSlice = userRepository.findByNicknameContaining(normalize(keyword), user, pageable);
 
         // DTO 변환을 위한 필터링된 사용자 리스트
         List<User> targetUsers = usersSlice.getContent().stream()
@@ -237,7 +240,7 @@ public class UserServiceImpl implements UserService {
                     return UserResponseDto.ProfileDto.builder()
                             .userId(target.getId())
                             .profileImage(target.getProfileImage())
-                            .nickname(target.getNickname())
+                            .nickname(target.getDisplayNickname())
                             .followerCount(null)
                             .followingCount(null)
                             .level(target.getUserLevel())
@@ -358,8 +361,17 @@ public class UserServiceImpl implements UserService {
 
         // 프로필 이미지 Key가 제공된 경우 업데이트
         if (requestDto.getProfileImageKey() != null) {
+            String oldImageKey = user.getProfileImage();
+
+            // 새 이미지로 업데이트
             user.updateProfileImage(requestDto.getProfileImageKey());
+
+            // 트랜잭션 커밋 후 기존 이미지 삭제 이벤트 발행
+            if (oldImageKey != null && !oldImageKey.isBlank()) {
+                eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
+            }
         }
+
 
         // 프로필 공개 여부가 제공된 경우 업데이트
         if (requestDto.getIsPublic() != null) {

@@ -21,7 +21,9 @@ public enum ErrorCode implements BaseCode{
     INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
 	ALREADY_REPORTED_USER(HttpStatus.CONFLICT, "USER4095", "이미 신고한 사용자입니다."),
 	CANNOT_REPORT_SELF(HttpStatus.CONFLICT, "USER4096", "자기 자신은 신고할 수 없습니다."),
-	AUTH_WITHDRAWAL_PERIOD_RESTRICTION(HttpStatus.CONFLICT, "USER4091", "탈퇴 후 한 달 이내에는 동일한 계정으로 재가입할 수 없습니다."),
+	ALREADY_BLOCKED(HttpStatus.CONFLICT, "USER4097", "이미 차단한 사용자입니다."),
+	NOT_BLOCKED_USER(HttpStatus.CONFLICT, "USER4098", "차단 내역이 없는 사용자입니다."),
+	CANNOT_BLOCK_SELF(HttpStatus.CONFLICT, "USER4099", "자기 자신은 차단할 수 없습니다."),
 
 
     // fcm
@@ -148,6 +150,7 @@ public enum ErrorCode implements BaseCode{
 
     // notification
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4041", "존재하지 않는 알림입니다."),
+    NOTIFICATION_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4042", "알림 설정 정보를 찾을 수 없습니다."),
     NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTIFICATION4032", "해당 알림에 대한 접근 권한이 없습니다."),
 
     // search

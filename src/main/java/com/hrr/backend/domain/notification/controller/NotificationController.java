@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.notification.controller;
 
+import com.hrr.backend.domain.notification.dto.NotificationRequestDto;
 import com.hrr.backend.domain.notification.dto.NotificationResponseDto;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.service.NotificationService;
@@ -56,5 +57,27 @@ public class NotificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    @GetMapping("/settings")
+    @Operation(summary = "알림 수신 설정 조회", description = "유저의 카테고리별 푸시 알림 수신 설정 상태를 조회합니다.")
+    public ApiResponse<NotificationResponseDto.SettingInfoDto> getNotificationSettings(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ApiResponse.onSuccess(
+                SuccessCode.OK,
+                notificationService.getNotificationSettings(userDetails.getUser())
+        );
+    }
+
+    @PatchMapping("/settings")
+    @Operation(summary = "알림 수신 설정 수정", description = "카테고리별 알림 설정을 개별 변경하거나 전체 일시 중단을 처리합니다.")
+    public ApiResponse<NotificationResponseDto.SettingInfoDto> updateNotificationSettings(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody NotificationRequestDto.UpdateSettingDto request
+    ) {
+        return ApiResponse.onSuccess(
+                SuccessCode.OK,
+                notificationService.updateNotificationSettings(userDetails.getUser(), request)
+        );
+    }
 
 }

@@ -74,10 +74,9 @@ public class UserController {
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        // 인증된 사용자 ID 추출 (비로그인 시 null)
-        Long currentUserId = (customUserDetails != null) ? customUserDetails.getUser().getId() : null;
+        User me = customUserDetails.getUser();
 
-        UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, currentUserId);
+        UserResponseDto.ProfileDto profile = userService.getUserProfile(userId, me);
         return ApiResponse.onSuccess(SuccessCode.OK, profile);
     }
 
@@ -163,6 +162,21 @@ public class UserController {
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
     
+
+    // 사용자 기본 정보 수정
+    @PatchMapping("/me")
+    @Operation(
+            summary = "내 기본 정보 수정",
+            description = "사용자가 자신의 기본 정보(닉네임, 프로필 이미지, 프로필 공개여부)를 수정합니다"
+    )
+    public ApiResponse<UpdateUserInfoResponseDto> updateUserInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateUserInfoRequestDto requestDto
+    ) {
+        UpdateUserInfoResponseDto response = userService.updateUserInfo(userDetails.getUser().getId(), requestDto);
+        return ApiResponse.onSuccess(SuccessCode.USER_UPDATE_OK, response);
+    }
+
     @GetMapping("/me/verifications/history")
     @Operation(
             summary = "내 챌린지 인증 기록 조회",
