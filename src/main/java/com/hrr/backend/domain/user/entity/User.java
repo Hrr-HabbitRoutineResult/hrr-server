@@ -91,9 +91,8 @@ public class User extends BaseEntity {
 	@Column(name = "status", nullable = false)
 	private UserStatus userStatus = UserStatus.ACTIVE;
 
-    @Builder.Default
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<NotificationSetting> notificationSettings = new ArrayList<>();
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private NotificationSetting notificationSetting;
 
 	@Enumerated(EnumType.STRING)
     @Column(nullable = false)
