@@ -31,6 +31,10 @@ public class VerificationDetailResponseDto {
     private String textUrl;
     private String photoUrl;
 
+    private String textImage1;
+    private String textImage2;
+    private String textImage3;
+
     private Boolean isQuestion;
     private Boolean isResolved;
     private VerificationStatus status;

@@ -20,7 +20,10 @@ public class VerificationRequestDto {
 
     private String textUrl;
 
-    private String photoUrl;
+    // textImage1/2/3 (null 허용, 최대 3개 필드)
+    private String textImage1;
+    private String textImage2;
+    private String textImage3;
 
     private Boolean isQuestion;
 }

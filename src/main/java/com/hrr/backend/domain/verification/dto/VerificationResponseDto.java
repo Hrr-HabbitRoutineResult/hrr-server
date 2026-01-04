@@ -118,6 +118,9 @@ public class VerificationResponseDto {
         private String content;
         private String photoUrl;
         private String textUrl;
+        private String textImage1;
+        private String textImage2;
+        private String textImage3;
         private Boolean isQuestion;
 
         @Schema(description = "상태 (TEMPORARY / COMPLETED)")
@@ -168,6 +171,10 @@ public class VerificationResponseDto {
 
         @Schema(description = "글 URL (글 인증)", example = "https://blog.example.com/post/123")
         private String textUrl;
+
+        private String textImage1;
+        private String textImage2;
+        private String textImage3;
 
         @Schema(description = "인증 일시", example = "2025-09-18T08:00:00")
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
