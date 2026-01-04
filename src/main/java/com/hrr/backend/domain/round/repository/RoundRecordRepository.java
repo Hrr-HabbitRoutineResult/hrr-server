@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.round.repository;
 
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -50,4 +51,16 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
     // 내 총 인증 횟수 합계
     @Query("SELECT COALESCE(SUM(r.verificationCount), 0) FROM RoundRecord r WHERE r.userChallenge.id = :userChallengeId")
     Long sumVerificationCountByUserChallengeId(@Param("userChallengeId") Long userChallengeId);
+
+    /**
+     * 알림 발송 대상자 및 설정 정보 일괄 조회
+     */
+    @Query("SELECT rr FROM RoundRecord rr " +
+            "JOIN FETCH rr.userChallenge uc " +
+            "JOIN FETCH uc.user u " +
+            "JOIN FETCH u.notificationSetting " +
+            "WHERE rr.round = :round " +
+            "AND uc.status = 'JOINED'")
+    List<RoundRecord> findAllByRoundWithUserAndSetting(@Param("round") Round round);
+
 }
