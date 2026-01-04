@@ -479,4 +479,43 @@ public class VerificationServiceImpl implements VerificationService {
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(dtoSlice);
     }
+
+    @Override
+    public VerificationResponseDto.OtherUserHistoryResponse getOtherUserVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 1. 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 2. 비공개 계정 체크
+        if (!user.getIsPublic()) {
+            log.info("User {} is private. Returning empty list.", userId);
+            return VerificationResponseDto.OtherUserHistoryResponse.builder()
+                    .isPublic(false)
+                    .nickname(user.getNickname())
+                    .verifications(new SliceResponseDto<>(Page.empty()))
+                    .build();
+        }
+
+        // 3. 공개 계정
+        Pageable pageable = PageRequest.of(page, size);
+
+        Slice<Verification> verificationSlice =
+                verificationRepository.findVerificationHistoryByUser(
+                        user,
+                        VerificationStatus.COMPLETED,
+                        pageable);
+
+        Slice<VerificationResponseDto.HistoryDto> dtoSlice =
+                verificationSlice.map(verificationConverter::toHistoryDto);
+
+        return VerificationResponseDto.OtherUserHistoryResponse.builder()
+                .isPublic(true)
+                .nickname(user.getNickname())
+                .verifications(new SliceResponseDto<>(dtoSlice))
+                .build();
+    }
 }
