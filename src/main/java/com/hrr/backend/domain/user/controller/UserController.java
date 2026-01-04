@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.data.domain.Page;
 import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotBlank;
@@ -162,6 +164,20 @@ public class UserController {
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
+    // 사용자 기본 정보 수정
+    @PatchMapping("/me")
+    @Operation(
+            summary = "내 기본 정보 수정",
+            description = "사용자가 자신의 기본 정보(닉네임, 프로필 이미지, 프로필 공개여부)를 수정합니다"
+    )
+    public ApiResponse<UpdateUserInfoResponseDto> updateUserInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateUserInfoRequestDto requestDto
+    ) {
+        UpdateUserInfoResponseDto response = userService.updateUserInfo(userDetails.getUser().getId(), requestDto);
+        return ApiResponse.onSuccess(SuccessCode.USER_UPDATE_OK, response);
+    }
+
     @GetMapping("/me/verifications/history")
     @Operation(
             summary = "내 챌린지 인증 기록 조회",
@@ -230,6 +246,31 @@ public class UserController {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<VerificationResponseDto.HistoryDto> response =
                 verificationService.getVerificationHistory(userId, page-1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @GetMapping("/{userId}/verifications/history")
+    @Operation(
+            summary = "다른 사용자 인증 기록 조회",
+            description = "특정 사용자가 참여한 모든 챌린지의 인증 기록을 최신순으로 조회합니다. " +
+                    "비공개 프로필인 경우 isPublic=false와 빈 배열을 반환합니다."
+    )
+    public ApiResponse<VerificationResponseDto.OtherUserHistoryResponse> getOtherUserVerificationHistory(
+            @PathVariable
+            @Positive
+            @Parameter(description = "조회할 사용자 ID", example = "5") Long userId,
+
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) {
+        VerificationResponseDto.OtherUserHistoryResponse response =
+                verificationService.getOtherUserVerificationHistory(userId, page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }

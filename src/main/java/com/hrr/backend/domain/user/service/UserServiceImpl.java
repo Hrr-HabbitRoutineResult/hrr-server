@@ -9,19 +9,21 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.hrr.backend.domain.user.dto.*;
-import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.user.event.ProfileImageDeletedEvent;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.s3.S3UrlUtil;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.entity.User;
@@ -42,6 +44,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // 기본적으로 읽기 전용 (조회 성능 최적화)
+@Validated
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -52,6 +55,8 @@ public class UserServiceImpl implements UserService {
     private final VerificationRepository verificationRepository;
 
     private final S3UrlUtil s3UrlUtil;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     // 프로필 조회 관련
 
@@ -304,8 +309,17 @@ public class UserServiceImpl implements UserService {
 
         // 프로필 이미지 Key가 제공된 경우 업데이트
         if (requestDto.getProfileImageKey() != null) {
+            String oldImageKey = user.getProfileImage();
+
+            // 새 이미지로 업데이트
             user.updateProfileImage(requestDto.getProfileImageKey());
+
+            // 트랜잭션 커밋 후 기존 이미지 삭제 이벤트 발행
+            if (oldImageKey != null && !oldImageKey.isBlank()) {
+                eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
+            }
         }
+
 
         // 프로필 공개 여부가 제공된 경우 업데이트
         if (requestDto.getIsPublic() != null) {

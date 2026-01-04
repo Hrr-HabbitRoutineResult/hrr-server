@@ -173,4 +173,21 @@ public class VerificationResponseDto {
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime verifiedAt;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "다른 사용자 인증 기록 조회 응답 DTO")
+    public static class OtherUserHistoryResponse {
+
+        @Schema(description = "프로필 공개 여부", example = "true")
+        private Boolean isPublic;
+
+        @Schema(description = "사용자 닉네임", example = "testuser")
+        private String nickname;
+
+        @Schema(description = "인증 기록 리스트 (비공개시 빈 배열)")
+        private SliceResponseDto<HistoryDto> verifications;
+    }
 }
