@@ -116,8 +116,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 .join(qUserChallenge.challenge, qChallenge)
                 .where(
                         qUserChallenge.user.eq(user),
-                        qChallenge.status.eq(ChallengeStatus.FINISHED),
-                        qUserChallenge.status.eq(ChallengeJoinStatus.JOINED)
+                        qUserChallenge.status.eq(ChallengeJoinStatus.DROPPED)
                 )
                 .groupBy(qChallenge.id)
                 .orderBy(qUserChallenge.updatedAt.max().desc())
