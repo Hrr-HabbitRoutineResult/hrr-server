@@ -14,6 +14,7 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.util.UserFilterExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -36,7 +37,7 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
 	 * @return Slice<User> - 데이터 목록과 다음 페이지 존재 여부(hasNext)를 포함
 	 */
 	@Override
-	public Slice<User> findByNicknameContaining(String keyword, User me, Pageable pageable) {
+	public Slice<User> findByNicknameContaining(String keyword, @NotNull User me, Pageable pageable) {
 		// 실제 검색 쿼리
 		List<User> content = queryFactory
 			.selectFrom(qUser)
