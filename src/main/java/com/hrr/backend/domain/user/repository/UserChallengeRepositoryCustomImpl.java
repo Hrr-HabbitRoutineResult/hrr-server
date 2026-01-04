@@ -103,7 +103,8 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
         QChallenge qChallenge = QChallenge.challenge;
 
         // 종료한 챌린지 정보 조회
-        // UserChallenge status는 상관없이, Challenge status가 FINISHED인 것만 조회
+        // UserChallenge status는 완주한(JOINED) 챌린지만 그룹화하여 조회
+        // 한 챌린지에 여러 라운드 참여해도 챌린지는 1개만 조회
         List<UserResponseDto.CompletedChallengeDto> content = jpaQueryFactory
                 .select(Projections.fields(UserResponseDto.CompletedChallengeDto.class,
                         qChallenge.id.as("challengeId"),
@@ -118,7 +119,8 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                         qChallenge.status.eq(ChallengeStatus.FINISHED),
                         qUserChallenge.status.eq(ChallengeJoinStatus.JOINED)
                 )
-                .orderBy(qUserChallenge.updatedAt.desc())
+                .groupBy(qChallenge.id)
+                .orderBy(qUserChallenge.updatedAt.max().desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)
                 .fetch();
