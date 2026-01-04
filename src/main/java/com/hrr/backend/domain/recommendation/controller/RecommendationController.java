@@ -29,7 +29,8 @@ public class RecommendationController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody ChallengeRecommendRequest request
     ) {
-        Long userId = userDetails.getUser().getId();
+        //Long userId = userDetails.getUser().getId();
+        Long userId = 1L;
         request.setUserId(userId);
 
 		// 선호 정보 저장

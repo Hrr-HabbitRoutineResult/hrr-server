@@ -2,6 +2,7 @@ package com.hrr.backend.domain.recommendation.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.challenge.service.ChallengeStaticsServiceImpl;
 import com.hrr.backend.domain.recommendation.dto.request.ChallengeRecommendRequest;
 import com.hrr.backend.domain.recommendation.dto.request.ModelApiRequest;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemDto;
@@ -35,6 +36,7 @@ public class ChallengeRecommendationService {
     private final RecommendationRepository challengeRepository; // 메타 조회용 커스텀 repo
     private final RecommendationResultRepository recommendationResultRepository;
     private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
+    private final ChallengeStaticsServiceImpl challengeStaticsService;
 
     private final UserFavorService userFavorService;
 
@@ -73,6 +75,8 @@ public class ChallengeRecommendationService {
                         ch.getVerifyEndTime()
                 ))
         );
+        // 챌린지 임베딩 외 정보 계산
+        challengeStaticsService.applyStaticsToItems(allChallenges);
 
         // 4) E5 query 생성 (요청 포맷 적용 + 카테고리 쉼표 나열)
         String query = buildUserQueryE5(favor);
@@ -86,7 +90,20 @@ public class ChallengeRecommendationService {
                             .query(query)
                             .items(allChallenges)
                             .topK(topK)
+
+                            .userGender(favor.getGender() != null ? favor.getGender().name() : null)
+                            .userAgeGroup(favor.getAgeGroup() != null ? favor.getAgeGroup().name() : null)
+                            .userJob(favor.getJob() != null ? favor.getJob().name() : null)
+                            .userAvailableTime(
+                                    favor.getAvailableTime() != null
+                                            ? favor.getAvailableTime().stream()
+                                            .map(Enum::name)
+                                            .toList()
+                                            : List.of()
+                            )
+
                             .build()
+
             );
             log.info("[Recommend] Model-api response: version={}, latencyMs={}",
                     modelApiResponse != null ? modelApiResponse.getModelVersion() : null,

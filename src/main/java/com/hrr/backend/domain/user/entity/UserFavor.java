@@ -16,15 +16,21 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "user_favor")
+@Table(
+        name = "user_favor",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_user_favor_user_id",
+                columnNames = "user_id"
+        )
+)
 @ToString(exclude = {"user", "userFavorEmbedding", "recommendationResults"})
 public class UserFavor extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
     @Enumerated(EnumType.STRING)

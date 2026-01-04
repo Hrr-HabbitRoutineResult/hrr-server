@@ -15,4 +15,6 @@ public interface ChallengeStaticsRepository extends JpaRepository<ChallengeStati
 	Optional<ChallengeStatics> findByChallengeAndFavorTypeAndFavorValue(Challenge challenge, FavorType type, String value);
 
 	List<ChallengeStatics> findByChallenge(Challenge challenge);
+
+    List<ChallengeStatics> findByChallengeIdIn(List<Long> challengeIds);
 }

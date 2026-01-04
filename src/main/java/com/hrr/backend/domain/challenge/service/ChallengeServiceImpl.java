@@ -456,7 +456,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 현재 진행 중인 라운드의 RoundRecord 생성
 		createRoundRecordOrFail(challenge, userChallenge);
 
-		// 현재 인원 포함한 응답
+        // challenge_statics 업데이트 트리거
+        challengeStaticsService.updateChallengeStatics(challenge);
+
+        // 현재 인원 포함한 응답
 		return challengeConverter.toJoinResponseDto(challenge);
 	}
 
