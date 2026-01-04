@@ -3,6 +3,7 @@ package com.hrr.backend.domain.verification.converter;
 import java.time.LocalDateTime;
 
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import org.springframework.stereotype.Component;
@@ -34,7 +35,7 @@ public class VerificationConverter {
         // 이미지 URL S3 Full Path 변환 (필요 시)
         String fullImageUrl = null;
 
-        if (verification.getType() != null && verification.getType().name().equals("CAMERA")) {
+        if (verification.getType() != null && verification.getType() == VerificationPostType.CAMERA) {
             if (verification.getPhotoUrl() != null) {
                 fullImageUrl = s3UrlUtil.toFullUrl(verification.getPhotoUrl());
             }
