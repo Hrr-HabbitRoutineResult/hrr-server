@@ -3,6 +3,7 @@ package com.hrr.backend.domain.round.repository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -60,7 +61,9 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
             "JOIN FETCH uc.user u " +
             "JOIN FETCH u.notificationSetting " +
             "WHERE rr.round = :round " +
-            "AND uc.status = 'JOINED'")
-    List<RoundRecord> findAllByRoundWithUserAndSetting(@Param("round") Round round);
-
+            "AND uc.status = :status") // 수정됨
+    List<RoundRecord> findAllByRoundWithUserAndSetting(
+            @Param("round") Round round,
+            @Param("status") ChallengeJoinStatus status
+    );
 }

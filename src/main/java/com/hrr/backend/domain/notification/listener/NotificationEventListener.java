@@ -7,6 +7,7 @@ import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.repository.*;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -66,7 +67,10 @@ public class NotificationEventListener {
         eventRepository.save(notificationEvent);
 
         // 수신자 전체에 대해 Delivery 생성 (목록에 표시를 위함)
-        List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(round);
+        List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(
+                round,
+                ChallengeJoinStatus.JOINED
+        );
 
         List<NotificationDelivery> deliveries = records.stream()
                 .map(record -> NotificationDelivery.builder()

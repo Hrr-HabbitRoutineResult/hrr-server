@@ -16,6 +16,7 @@ import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,7 +88,10 @@ class NotificationEventListenerTest {
         given(uc1.getUser()).willReturn(userEnabled);
         given(uc2.getUser()).willReturn(userDisabled);
 
-        given(roundRecordRepository.findAllByRoundWithUserAndSetting(round))
+        given(roundRecordRepository.findAllByRoundWithUserAndSetting(
+                round,
+                ChallengeJoinStatus.JOINED
+        ))
                 .willReturn(List.of(record1, record2));
 
         // when
