@@ -66,9 +66,18 @@ public interface VerificationService {
     void deleteVerification(Long verificationId, Long currentUserId);
   
     /**
-     * 사용자 전체 챌린지 인증 기록 조회
+     * 사용자 인증 기록 조회
      */
     SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    );
+
+    /**
+     * 다른 사용자 전체 챌린지 인증 기록 조회
+     */
+    VerificationResponseDto.OtherUserHistoryResponse getOtherUserVerificationHistory(
             Long userId,
             int page,
             int size

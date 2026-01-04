@@ -23,6 +23,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.entity.User;
@@ -43,6 +44,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // 기본적으로 읽기 전용 (조회 성능 최적화)
+@Validated
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
