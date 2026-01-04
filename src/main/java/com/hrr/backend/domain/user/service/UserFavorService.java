@@ -23,7 +23,7 @@ public class UserFavorService {
 	private final UserRepository userRepository;
 
 	@Transactional
-	public void saveUserFavor(ChallengeRecommendRequest request) {
+	public UserFavor saveUserFavor(ChallengeRecommendRequest request) {
 		// 해당 유저가 존재하는지 확인
 		User user = userRepository.findById(request.getUserId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
@@ -42,5 +42,6 @@ public class UserFavorService {
 
 		// 저장
 		userFavorRepository.save(userFavor);
-	}
+        return userFavor;
+    }
 }

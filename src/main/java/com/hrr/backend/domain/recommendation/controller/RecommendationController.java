@@ -33,7 +33,7 @@ public class RecommendationController {
         request.setUserId(userId);
 
 		// 선호 정보 저장
-		userFavorService.saveUserFavor(request);
+		//userFavorService.saveUserFavor(request);
 
         ChallengeRecommendResult result = recommendationService.recommendChallenges(request);
         return ApiResponse.onSuccess(SuccessCode.OK, result);

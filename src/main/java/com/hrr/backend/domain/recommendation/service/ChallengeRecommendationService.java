@@ -11,10 +11,8 @@ import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
 import com.hrr.backend.domain.recommendation.repository.RecommendationRepository;
 import com.hrr.backend.domain.recommendation.repository.RecommendationResultRepository;
 import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserFavor;
-import com.hrr.backend.domain.user.repository.UserFavorRepository;
-import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.user.service.UserFavorService;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -34,11 +32,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChallengeRecommendationService {
 
-    private final RecommendationRepository challengeRepository;
+    private final RecommendationRepository challengeRepository; // 메타 조회용 커스텀 repo
     private final RecommendationResultRepository recommendationResultRepository;
-    private final UserRepository userRepository;
-    private final UserFavorRepository userFavorRepository;
-    private final ChallengeRepository challengeJpaRepository;
+    private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
+
+    private final UserFavorService userFavorService;
 
     private final ModelApiClient modelApiClient;
     private final S3UrlUtil s3UrlUtil;
@@ -48,24 +46,10 @@ public class ChallengeRecommendationService {
     @Transactional
     public ChallengeRecommendResult recommendChallenges(ChallengeRecommendRequest request) {
 
-        // 0) 유저 검증
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+        // 0) 유저 검증 + 선호 저장
+        UserFavor favor = userFavorService.saveUserFavor(request);
 
-        // 1) UserFavor로 저장
-        UserFavor favor = UserFavor.builder()
-                .user(user)
-                .gender(request.getGender())
-                .ageGroup(request.getAgeGroup())
-                .job(request.getJob())
-                .availableTime(new LinkedHashSet<>(request.getAvailableTime()))
-                .category(new LinkedHashSet<>(request.getCategory()))
-                .goal(request.getGoal())
-                .build();
-
-        favor = userFavorRepository.save(favor);
-
-        // 2) 전체 챌린지 메타 조회
+        // 1) 전체 챌린지 메타 조회
         List<ChallengeItemDto> allChallenges = challengeRepository.findAllChallengeMeta();
         if (allChallenges.isEmpty()) {
             log.warn("[Recommend] No challenges found in DB. Returning empty result.");
@@ -75,14 +59,14 @@ public class ChallengeRecommendationService {
                     .build();
         }
 
-        // 3) 임베딩 검증
+        // 2) 임베딩 검증
         for (ChallengeItemDto ch : allChallenges) {
             if (ch.getEmbedding() == null || ch.getEmbedding().size() != EMBED_DIM) {
                 throw new GlobalException(ErrorCode.EMBEDDING_LENGTH_ERROR);
             }
         }
 
-        // 4) cert_time_slots → "EVENING;NIGHT" 형태
+        // 3) cert_time_slots 세팅
         allChallenges.forEach(ch ->
                 ch.setCert_time_slots(toAvailableTimeSlots(
                         ch.getVerifyStartTime(),
@@ -90,10 +74,10 @@ public class ChallengeRecommendationService {
                 ))
         );
 
-        // 5) E5 query 생성
+        // 4) E5 query 생성 (요청 포맷 적용 + 카테고리 쉼표 나열)
         String query = buildUserQueryE5(favor);
 
-        // 6) 모델 호출
+        // 5) 모델 호출
         int topK = 5;
         ModelApiResponse modelApiResponse;
         try {
@@ -112,37 +96,26 @@ public class ChallengeRecommendationService {
             throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
         }
 
-        // 7) 추천 결과 저장 (RecommendationResult)
+        // 6) 추천 결과 저장
         saveRecommendationResults(favor, modelApiResponse);
 
-        // 8) 응답 매핑
+        // 7) 응답 매핑
         return mapToResultDto(request.getUserId(), allChallenges, modelApiResponse);
     }
 
     /* ======================= helpers ======================= */
-
     private String buildUserQueryE5(UserFavor favor) {
-        String timeKo = favor.getAvailableTime().isEmpty()
-                ? "항상"
-                : favor.getAvailableTime().stream()
-                .map(t -> t.name() + "(" + t.getDescription() + ")")
-                .collect(Collectors.joining("/"));
+        String goalText = (favor.getGoal() == null)
+                ? "원하는"
+                : favor.getGoal().getDescription();
 
-        String catKo = favor.getCategory().isEmpty()
+        String categoryText = (favor.getCategory() == null || favor.getCategory().isEmpty())
                 ? "전체"
                 : favor.getCategory().stream()
                 .map(Category::getDescription)
-                .collect(Collectors.joining("/"));
+                .collect(Collectors.joining(", ")); // ✅ 쉼표 나열
 
-        return String.format(
-                "query: %s %s %s입니다.\n%s에 할 수 있는 %s 관련 챌린지를 찾고 있어요.\n목표는 %s입니다.",
-                favor.getAgeGroup().getDescription(),
-                favor.getGender().getDescription(),
-                favor.getJob().getDescription(),
-                timeKo,
-                catKo,
-                favor.getGoal().getDescription()
-        );
+        return String.format("query: %s 목표를 위한 %s 챌린지", goalText, categoryText);
     }
 
     private void saveRecommendationResults(UserFavor favor, ModelApiResponse modelApiResponse) {
