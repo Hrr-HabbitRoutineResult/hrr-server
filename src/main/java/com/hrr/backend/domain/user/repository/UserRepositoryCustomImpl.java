@@ -67,7 +67,7 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
 	}
 
 	@Override
-	public Optional<User> findActiveUserExcludingBlocks(Long id, User me) {
+	public Optional<User> findActiveUserExcludingBlocks(Long id, @NotNull User me) {
 		return Optional.ofNullable(queryFactory
 			.selectFrom(qUser)
 			.where(
