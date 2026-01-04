@@ -47,26 +47,31 @@ class NotificationEventListenerTest {
     void handleChallengeExtensionEvent_Success() {
         // given
         Long roundId = 1L;
+        String testImageKey = "challenges/thumbnail_01.png"; // 테스트용 키
         ChallengeExtensionEvent event = new ChallengeExtensionEvent(roundId);
 
         // 1. 멱등성 체크 통과
         given(eventRepository.existsByContextTypeAndContextIdAndCreatedAtAfter(any(), any(), any()))
                 .willReturn(false);
 
-        // 2. 라운드 및 챌린지 모킹 (이미지 제외)
+        // 2. 라운드 및 챌린지 모킹 (imageKey 포함)
         Round round = mock(Round.class);
-        Challenge challenge = Challenge.builder().id(10L).title("테스트 챌린지").build();
+        Challenge challenge = Challenge.builder()
+                .id(10L)
+                .title("테스트 챌린지")
+                .imageKey(testImageKey) // 이미지 키 설정
+                .build();
         given(roundRepository.findById(roundId)).willReturn(Optional.of(round));
         given(round.getChallenge()).willReturn(challenge);
 
-        // 3. 알림 타입 설정
+        // 3. 알림 타입 설정 (Enum 직접 사용)
         NotificationType type = NotificationType.builder()
                 .typeName(NotificationTypeName.CHALLENGE_EXTENSION)
                 .build();
         given(typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_EXTENSION))
                 .willReturn(Optional.of(type));
 
-        // 4. 참여자 설정 (설정 ON 유저와 OFF 유저 각각 1명씩)
+        // 4. 참여자 설정 (설정 ON/OFF 유저 각 1명)
         User userEnabled = User.builder().id(1L).notificationSetting(
                 NotificationSetting.builder().isChallengeEnabled(true).build()).build();
         User userDisabled = User.builder().id(2L).notificationSetting(
@@ -82,7 +87,6 @@ class NotificationEventListenerTest {
         given(uc1.getUser()).willReturn(userEnabled);
         given(uc2.getUser()).willReturn(userDisabled);
 
-        // 전원 조회 쿼리 모킹
         given(roundRecordRepository.findAllByRoundWithUserAndSetting(round))
                 .willReturn(List.of(record1, record2));
 
@@ -90,8 +94,11 @@ class NotificationEventListenerTest {
         notificationEventListener.handleChallengeExtensionEvent(event);
 
         // then
-        // 알림 이벤트는 1번 생성됨
-        verify(eventRepository, times(1)).save(any(NotificationEvent.class));
+        // 1. NotificationEvent 저장 시 imageKey가 정확히 포함되었는지 확인
+        verify(eventRepository).save(argThat(savedEvent ->
+                savedEvent.getImageKey().equals(testImageKey) &&
+                        savedEvent.getTitle().contains("테스트 챌린지")
+        ));
 
         // 중요: 설정과 관계없이 참여자 전원(2명)에게 알림 데이터가 저장되어야 함
         verify(notificationRepository).saveAll(argThat(deliveries -> ((List<?>)deliveries).size() == 2));

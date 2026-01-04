@@ -61,6 +61,7 @@ public class NotificationEventListener {
                 .contextId(roundId)
                 .title(String.format("%s 챌린지 종료 3일 전입니다.", challenge.getTitle()))
                 .message("다음 라운드에도 참여하시겠어요?\n내일까지 연장 여부를 알려주세요!")
+                .imageKey(challenge.getImageKey())
                 .build();
         eventRepository.save(notificationEvent);
 
