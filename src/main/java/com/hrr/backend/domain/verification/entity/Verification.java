@@ -170,20 +170,29 @@ public class Verification extends BaseEntity {
             }
             this.content = content;
         }
-
-        if (textUrl != null) {
-            this.textUrl = textUrl;
-        }
-
         if (textImage1 != null) {
-            this.textImage1 = textImage1;
+            this.textImage1 = normalizeOptionalImageKey(textImage1);
         }
         if (textImage2 != null) {
-            this.textImage2 = textImage2;
+            this.textImage2 = normalizeOptionalImageKey(textImage2);
         }
         if (textImage3 != null) {
-            this.textImage3 = textImage3;
+            this.textImage3 = normalizeOptionalImageKey(textImage3);
         }
+
+        if (isQuestion != null) {
+            this.isQuestion = isQuestion;
+        }
+    }
+    private String normalizeOptionalImageKey(String key) {
+        String trimmed = key.trim();
+        if (trimmed.isEmpty()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_INVALID_IMAGE_KEY);
+        }
+        if ("null".equalsIgnoreCase(trimmed)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_INVALID_IMAGE_KEY);
+        }
+        return trimmed;
     }
 
 }
