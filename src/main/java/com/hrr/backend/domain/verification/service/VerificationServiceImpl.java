@@ -1,8 +1,13 @@
 package com.hrr.backend.domain.verification.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
+
+import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentResponseDto;
@@ -376,10 +381,10 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-		// 차단된 게시글 접근 시 예외 발생
-		if (verification.getStatus() == VerificationStatus.BLOCKED) {
-			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-		}
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
 
         // 작성자 본인인지 권한 체크
         User author = verification.getRoundRecord()
@@ -389,6 +394,9 @@ public class VerificationServiceImpl implements VerificationService {
         if (!author.getId().equals(currentUserId)) {
             throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
         }
+
+        // 인증 요일 + 인증 시간대 안에서만 수정 가능
+        validateVerificationEditDeleteWindow(verification);
 
         // 엔티티 업데이트
         verification.update(
@@ -433,12 +441,12 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-		// 차단된 게시글 접근 시 예외 발생
-		if (verification.getStatus() == VerificationStatus.BLOCKED) {
-			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-		}
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
 
-    // 작성자 본인인지 권한 체크
+        // 작성자 본인인지 권한 체크
         User author = verification.getRoundRecord()
                 .getUserChallenge()
                 .getUser();
@@ -446,6 +454,10 @@ public class VerificationServiceImpl implements VerificationService {
         if (!author.getId().equals(currentUserId)) {
             throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
         }
+
+        // 인증 요일 + 인증 시간대 안에서만 삭제 가능
+        validateVerificationEditDeleteWindow(verification);
+
         verificationRepository.delete(verification);
     }
 
@@ -479,4 +491,96 @@ public class VerificationServiceImpl implements VerificationService {
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(dtoSlice);
     }
+
+    // 수정/삭제 시간 제한 로직 (최소 범위)
+
+    private void validateVerificationEditDeleteWindow(Verification verification) {
+        Challenge challenge = verification.getRoundRecord()
+                .getRound()
+                .getChallenge();
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1) 지금이 "인증 시간대"가 아니면 수정/삭제 불가
+        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+        }
+
+        // 2) 지금 인증 윈도우가 어느 "인증 요일(기준 날짜)"에 속하는지 계산
+        LocalDate currentWindowDate = getWindowAnchorDate(challenge, now);
+
+        // 3) 그 날짜가 챌린지의 인증 요일에 포함되지 않으면 불가
+        if (!isVerificationDay(challenge, currentWindowDate)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+        }
+
+        // 4) 이 인증글이 "현재 인증 윈도우"에 속하는 글이 아니면 불가
+        LocalDate postWindowDate = getWindowAnchorDate(challenge, verification.getCreatedAt());
+        if (!postWindowDate.equals(currentWindowDate)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+        }
+    }
+
+    /**
+     * 인증 시간대 포함 여부 (start <= end 일반 케이스 + start > end 자정 넘어가는 케이스 대응)
+     */
+    private boolean isWithinVerificationTime(Challenge challenge, LocalTime now) {
+        LocalTime start = challenge.getVerifyStartTime();
+        LocalTime end = challenge.getVerifyEndTime();
+
+        // 일반 케이스: 09:00 ~ 22:00
+        if (start.isBefore(end) || start.equals(end)) {
+            return !now.isBefore(start) && !now.isAfter(end);
+        }
+
+        // 자정 넘어가는 케이스: 22:00 ~ 02:00
+        return !now.isBefore(start) || !now.isAfter(end);
+    }
+
+    /**
+     * "인증 윈도우 기준 날짜(anchor date)" 계산
+     * - 일반 케이스(start<=end): anchor = 해당 시각의 날짜
+     * - 자정 넘어가는 케이스(start>end):
+     *    - 22:00~23:59 -> anchor = 오늘
+     *    - 00:00~02:00 -> anchor = 어제(시작 요일 기준)
+     */
+    private LocalDate getWindowAnchorDate(Challenge challenge, LocalDateTime dateTime) {
+        LocalTime start = challenge.getVerifyStartTime();
+        LocalTime end = challenge.getVerifyEndTime();
+
+        if (start.isBefore(end) || start.equals(end)) {
+            return dateTime.toLocalDate();
+        }
+
+        // overnight
+        LocalTime t = dateTime.toLocalTime();
+        if (!t.isBefore(start)) {
+            return dateTime.toLocalDate();
+        }
+        return dateTime.toLocalDate().minusDays(1);
+    }
+
+    /**
+     * 특정 날짜가 챌린지 인증 요일인지 확인
+     */
+    private boolean isVerificationDay(Challenge challenge, LocalDate date) {
+        ChallengeDays targetDay = mapToChallengeDays(date.getDayOfWeek());
+        List<ChallengeDayJoin> days = challenge.getChallengeDays();
+
+        return days.stream()
+                .anyMatch(join -> join.getDayOfWeek() == targetDay);
+    }
+
+    private ChallengeDays mapToChallengeDays(DayOfWeek dayOfWeek) {
+        return switch (dayOfWeek) {
+            case MONDAY -> ChallengeDays.MONDAY;
+            case TUESDAY -> ChallengeDays.TUESDAY;
+            case WEDNESDAY -> ChallengeDays.WEDNESDAY;
+            case THURSDAY -> ChallengeDays.THURSDAY;
+            case FRIDAY -> ChallengeDays.FRIDAY;
+            case SATURDAY -> ChallengeDays.SATURDAY;
+            case SUNDAY -> ChallengeDays.SUNDAY;
+        };
+    }
+
 }
