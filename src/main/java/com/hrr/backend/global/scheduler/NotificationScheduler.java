@@ -1,4 +1,4 @@
-package com.hrr.backend.domain.notification.scheduler;
+package com.hrr.backend.global.scheduler;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
