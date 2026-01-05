@@ -195,7 +195,7 @@ class NotificationEventListenerTest {
 
         NotificationEvent savedEvent = eventCaptor.getValue();
         assertThat(savedEvent.getMessage()).contains("챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요");
-        assertThat(savedEvent.getTargetId()).isEqualTo(user.getId());
+        assertThat(savedEvent.getTargetId()).isEqualTo(challenge.getId());
     }
 
     @Test
