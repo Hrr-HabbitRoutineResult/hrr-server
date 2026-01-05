@@ -30,7 +30,7 @@ public class UserFavor extends BaseEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Enumerated(EnumType.STRING)
@@ -72,7 +72,7 @@ public class UserFavor extends BaseEntity {
     private Goal goal;
 
     @Builder.Default
-    @OneToMany(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = false)
+    @OneToMany(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
 }
