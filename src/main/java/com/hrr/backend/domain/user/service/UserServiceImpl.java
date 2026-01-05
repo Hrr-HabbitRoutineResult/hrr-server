@@ -4,12 +4,12 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.event.ProfileImageDeletedEvent;
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -50,6 +50,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final UserChallengeRepository userChallengeRepository;
+    private final UserBlockRepository userBlockRepository;
 
     private final ChallengeRepository challengeRepository;
     private final VerificationRepository verificationRepository;
@@ -58,18 +59,30 @@ public class UserServiceImpl implements UserService {
     private final ApplicationEventPublisher eventPublisher;
 
 
-    // 프로필 조회 관련
-
+    // 다른 사용자 프로필 조회 관련
     @Override
     public UserResponseDto.ProfileDto getUserProfile(Long userId, User currentUser) {
-		// 탈퇴 & 차단 여부 조회
-        User user = userRepository.findActiveUserExcludingBlocks(userId, currentUser)
+        // 사용자 조회 (탈퇴자는 제외, 차단자는 허용)
+        User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 탈퇴 또는 비활성 상태 체크
+        if (targetUser.isNotActive()) {
+            throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 차단 여부 확인 (양방향)
+        boolean isBlockedByMe = userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser);
+        boolean isBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
+
+        if (isBlockedByOther) {
+            throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+        }
 
         // 팔로잉 여부 확인
         Boolean isFollowing = checkIfFollowing(currentUser.getId(), userId);
 
-        return UserResponseDto.ProfileDto.from(user, isFollowing);
+        return UserResponseDto.ProfileDto.from(targetUser, isFollowing, isBlockedByMe);
     }
 
     @Override

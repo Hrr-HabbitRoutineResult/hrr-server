@@ -3,6 +3,8 @@ package com.hrr.backend.domain.notification.dto;
 import com.hrr.backend.domain.notification.entity.NotificationDelivery;
 import com.hrr.backend.domain.notification.entity.NotificationEvent;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
+import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
+import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -16,7 +18,7 @@ public class NotificationResponseDto {
     @AllArgsConstructor
     @Schema(description = "알림 목록 정보 DTO")
     public static class InfoDto {
-        @Schema(description = "알림 배달 ID", example = "1")
+        @Schema(description = "알림 ID", example = "1")
         private Long id;
 
         @Schema(description = "알림 제목", example = "내 인증에 댓글이 달렸어요")
@@ -25,34 +27,32 @@ public class NotificationResponseDto {
         @Schema(description = "알림 메시지", example = "어 저랑 같은 문제 풀었는데...")
         private String message;
 
+        @Schema(description = "알림 썸네일 이미지 URL", example = "https://example/image.jpg")
+        private String imageUrl;
+
         @Schema(description = "알림 카테고리", example = "VERIFICATION")
         private NotificationCategory category;
 
-        @Schema(description = "이동 대상 타입", example = "COMMENT")
-        private String targetType;
+        @Schema(description = "알림 상세 타입 (프론트 분기 처리용)", example = "CHALLENGE_EXTENSION")
+        private NotificationTypeName type;
 
-        @Schema(description = "이동 대상 ID", example = "501")
+        @Schema(description = "이동 대상 타입", example = "CHALLENGE")
+        private ResourceType targetType;
+
+        @Schema(description = "이동 대상 ID", example = "2")
         private Long targetId;
+
+        @Schema(description = "추가 컨텍스트 타입", example = "ROUND")
+        private ResourceType contextType;
+
+        @Schema(description = "추가 컨텍스트 ID", example = "3")
+        private Long contextId;
 
         @Schema(description = "읽음 여부 (true: 읽음, false: 안읽음-NEW)", example = "false")
         private Boolean isRead;
 
         @Schema(description = "알림 발생 시간", example = "2025-12-25T14:30:00")
         private LocalDateTime createdAt;
-
-        public static InfoDto from(NotificationDelivery delivery) {
-            NotificationEvent event = delivery.getEvent();
-            return InfoDto.builder()
-                    .id(delivery.getId())
-                    .title(event.getTitle())
-                    .message(event.getMessage())
-                    .category(event.getCategory())
-                    .targetType(event.getTargetType().name())
-                    .targetId(event.getTargetId())
-                    .isRead(delivery.getIsRead())
-                    .createdAt(delivery.getCreatedAt())
-                    .build();
-        }
     }
 
     @Getter
@@ -62,7 +62,7 @@ public class NotificationResponseDto {
     @Schema(description = "알림 읽음 처리 결과 DTO")
     public static class ReadResultDto {
 
-        @Schema(description = "알림 배달 ID", example = "1")
+        @Schema(description = "알림 ID", example = "1")
         private Long notificationId;
 
         @Schema(description = "읽음 여부", example = "true")
