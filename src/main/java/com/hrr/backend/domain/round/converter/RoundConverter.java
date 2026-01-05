@@ -35,4 +35,16 @@ public class RoundConverter {
                 .nextRoundIntent(NextRoundIntent.UNDECIDED)
                 .build();
     }
+
+    /** next round 생성 메서드(다음 라운드를 호출할 수 있게) */
+    public Round toNextRoundEntity(Challenge challenge, Round prevRound) {
+        LocalDate nextStart = prevRound.getEndDate().plusDays(1);
+        return Round.builder()
+                .challenge(challenge)
+                .roundNumber(prevRound.getRoundNumber() + 1)
+                .startDate(nextStart)
+                .endDate(nextStart.plusWeeks(Challenge.ROUND_WEEKS).minusDays(1))
+                .build();
+    }
+
 }
