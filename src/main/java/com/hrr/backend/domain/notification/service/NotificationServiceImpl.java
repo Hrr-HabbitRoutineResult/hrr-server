@@ -12,6 +12,7 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,8 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final NotificationConverter notificationConverter;
 
+    private final S3UrlUtil s3UrlUtil;
+
     @Override
     public SliceResponseDto<NotificationResponseDto.InfoDto> getNotificationList(
             User user, NotificationCategory category, int page, int size) {
@@ -41,7 +44,10 @@ public class NotificationServiceImpl implements NotificationService {
 
         // Slice 내부의 엔티티를 DTO로 변환
         Slice<NotificationResponseDto.InfoDto> dtoSlice = deliverySlice
-                .map(NotificationResponseDto.InfoDto::from);
+                .map(delivery -> {
+                    String fullUrl = s3UrlUtil.toFullUrl(delivery.getEvent().getImageKey());
+                    return notificationConverter.toInfoDto(delivery, fullUrl);
+                });
 
         return new SliceResponseDto<>(dtoSlice);
     }
