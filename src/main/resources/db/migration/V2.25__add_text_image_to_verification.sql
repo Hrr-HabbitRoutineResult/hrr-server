@@ -12,7 +12,7 @@ BEGIN
           AND COLUMN_NAME = 'text_image1'
     ) THEN
 ALTER TABLE verification
-    ADD COLUMN text_image1 VARCHAR(255) NULL;
+    ADD COLUMN text_image1 VARCHAR(512) NULL;
 END IF;
 
     IF NOT EXISTS (
@@ -23,7 +23,7 @@ END IF;
           AND COLUMN_NAME = 'text_image2'
     ) THEN
 ALTER TABLE verification
-    ADD COLUMN text_image2 VARCHAR(255) NULL;
+    ADD COLUMN text_image2 VARCHAR(512) NULL;
 END IF;
 
     IF NOT EXISTS (
@@ -34,7 +34,7 @@ END IF;
           AND COLUMN_NAME = 'text_image3'
     ) THEN
 ALTER TABLE verification
-    ADD COLUMN text_image3 VARCHAR(255) NULL;
+    ADD COLUMN text_image3 VARCHAR(512) NULL;
 END IF;
 END $$
 
