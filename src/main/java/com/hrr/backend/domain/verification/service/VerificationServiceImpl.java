@@ -200,9 +200,7 @@ public class VerificationServiceImpl implements VerificationService {
                 request.getTitle(),
                 request.getContent(),
                 request.getTextUrl(),
-                request.getTextImage1(),
-                request.getTextImage2(),
-                request.getTextImage3(),
+                request.getTextImages(), // DTO의 List<String> 전달
                 request.getIsQuestion() != null ? request.getIsQuestion() : false,
                 roundId
         );
@@ -405,9 +403,7 @@ public class VerificationServiceImpl implements VerificationService {
                 requestDto.getTitle(),
                 requestDto.getContent(),
                 requestDto.getTextUrl(),
-                requestDto.getTextImage1(),
-                requestDto.getTextImage2(),
-                requestDto.getTextImage3(),
+                requestDto.getTextImages(),
                 requestDto.getIsQuestion()
         );
 
