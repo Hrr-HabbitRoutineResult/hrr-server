@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
-import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
@@ -28,7 +27,6 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
 
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
-    private final ChallengeRepository challengeRepository;
     private final RoundConverter roundConverter;
 
     @Override
@@ -56,29 +54,30 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
             return;
         }
 
-        //2. 진행중인 챌린지만 라운드 자동 전환
+        // 2. 진행중인 챌린지만 라운드 자동 전환
         if (challenge.getStatus() != ChallengeStatus.ONGOING) {
             return;
         }
 
         // 3. 현재 라운드의 참가자 기록 조회 (JOINED만)
+        //STOP/UNDECIDED는 S-1일 23:59 드랍 스케줄러가 먼저 DROPPED 처리해야 함
         List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(
                 endedRound,
                 ChallengeJoinStatus.JOINED
         );
 
-        // 4. CONTINUE가 1명이라도 있으면 챌린지는 계속 (방장 STOP이어도 상관없개)
+        // 4. 다음 라운드로 넘어갈 사람 = (드랍 이후 JOINED 중) CONTINUE인 사람
         List<RoundRecord> continuers = records.stream()
                 .filter(rr -> rr.getNextRoundIntent() == NextRoundIntent.CONTINUE)
                 .toList();
 
         if (continuers.isEmpty()) {
-            // 아무도 연장 안 함(UNDECIDED 포함 자동 하차) => 챌린지 종료
-            finishChallengeAndDropAll(challenge, records);
+            // 남아있는 연장자가 없으면 챌린지 종료(드랍은 별도 23:59 배치가 담당)
+            finishChallengeOnly(challenge);
             return;
         }
 
-        // 5. 다음 라운드 생성(이미 존재하면 재사용)
+        // 5. 다음 라운드 생성
         Round nextRound = roundRepository
                 .findByChallengeIdAndRoundNumber(challenge.getId(), endedRound.getRoundNumber() + 1)
                 .orElseGet(() -> roundRepository.save(roundConverter.toNextRoundEntity(challenge, endedRound)));
@@ -87,45 +86,24 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
         for (RoundRecord rr : continuers) {
             UserChallenge uc = rr.getUserChallenge();
 
-            // 멱등성- 이미 다음 라운드 기록이 있으면 스킵
+            // 멱등성: 이미 다음 라운드 기록이 있으면 스킵
             if (roundRecordRepository.existsByUserChallengeAndRound(uc, nextRound)) {
                 continue;
             }
+
             RoundRecord nextRR = roundConverter.toRoundRecordEntity(nextRound, uc);
             roundRecordRepository.save(nextRR);
         }
 
-        // 7. STOP/UNDECIDED 는 하차 처리
-        for (RoundRecord rr : records) {
-            if (rr.getNextRoundIntent() == NextRoundIntent.CONTINUE) continue;
-
-            UserChallenge uc = rr.getUserChallenge();
-            uc.updateStatus(ChallengeJoinStatus.DROPPED);
-            challengeRepository.decreaseCurrentParticipantCount(challenge.getId());
-        }
-
-        // 8. 챌린지 currentRound 교체
+        // 7. 챌린지 currentRound 교체
         challenge.changeCurrentRound(nextRound);
 
         log.info("[RoundLifecycle] 라운드 전환 완료. challengeId={}, {}R -> {}R",
                 challenge.getId(), endedRound.getRoundNumber(), nextRound.getRoundNumber());
     }
 
-    private void finishChallengeAndDropAll(Challenge challenge, List<RoundRecord> records) {
-
-        // 전원 하차 처리
-        for (RoundRecord rr : records) {
-            UserChallenge uc = rr.getUserChallenge();
-            if (uc.getStatus() == ChallengeJoinStatus.JOINED) {
-                uc.updateStatus(ChallengeJoinStatus.DROPPED);
-                challengeRepository.decreaseCurrentParticipantCount(challenge.getId());
-            }
-        }
-
-        // 챌린지 종료(상태 변경)
-        // 엔티티 메서드가 없다면 repository update 쿼리 추가해서 처리해도 됨.
+    private void finishChallengeOnly(Challenge challenge) {
         challenge.updateStatus(ChallengeStatus.FINISHED);
-
-        log.info("[RoundLifecycle] 챌린지 종료 처리. challengeId={}", challenge.getId());
+        log.info("[RoundLifecycle] 챌린지 종료 처리(FINISHED). challengeId={}", challenge.getId());
     }
 }

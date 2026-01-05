@@ -57,9 +57,15 @@ public class RoundDecisionServiceImpl implements RoundDecisionService {
             throw new GlobalException(ErrorCode.ROUND_ALREADY_ENDED);
         }
 
-        // 결정 기간 체크: 종료 3일 전(포함)부터 가능
-        LocalDate decisionOpenDate = currentRound.getEndDate().minusDays(Challenge.CHALLENGER_DECISION_DAYS);
-        if (today.isBefore(decisionOpenDate)) {
+        // 결정 기간 체크: (다음 라운드 시작 3일 전 ~ 2일 전) => 딱 하루만
+        // nextStart = endDate + 1
+        // open = nextStart - 3 = endDate - 2
+        // close = nextStart - 2 = endDate - 1
+        LocalDate decisionOpenDate = currentRound.getEndDate().minusDays(2);
+        LocalDate decisionCloseDate = currentRound.getEndDate().minusDays(1); // open + 1일
+
+// [openDate, closeDate) 만 허용 (즉, openDate 당일만 허용)
+        if (today.isBefore(decisionOpenDate) || !today.isBefore(decisionCloseDate)) {
             throw new GlobalException(ErrorCode.ROUND_DECISION_PERIOD_NOT_OPEN);
         }
 
