@@ -14,13 +14,11 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.s3.S3UrlUtil;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -50,8 +48,15 @@ class ChallengeServiceProfileTest {
 
     @Mock private S3UrlUtil s3UrlUtil;
 
-    @Spy
-    private ChallengeConverter challengeConverter = new ChallengeConverter(s3UrlUtil);
+    @BeforeEach
+    void setUp() {
+        // Mock s3UrlUtil을 주입하여 객체를 생성한 후 Mockito.spy()로 감쌈
+        ChallengeConverter instance = new ChallengeConverter(s3UrlUtil);
+        ChallengeConverter challengeConverter = Mockito.spy(instance);
+
+        // @InjectMocks로 생성된 서비스 객체에 수동으로 주입
+        ReflectionTestUtils.setField(challengeService, "challengeConverter", challengeConverter);
+    }
 
     @Test
     @DisplayName("1. [부분 인증] 인증 요일이 월/목인데 '월요일'만 인증한 경우 -> 리스트에 MONDAY 하나만 존재")
