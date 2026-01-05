@@ -45,11 +45,10 @@ public class ChallengeRecommendationService {
 
     private static final int EMBED_DIM = 768;
 
-    @Transactional
     public ChallengeRecommendResult recommendChallenges(ChallengeRecommendRequest request) {
 
-        // 0) 유저 검증 + 선호 저장
-        UserFavor favor = userFavorService.saveUserFavor(request);
+        // 0) 유저 검증 + 선호 저장 (Tx)
+        UserFavor favor = saveFavorTx(request);
 
         // 1) 전체 챌린지 메타 조회
         List<ChallengeItemDto> allChallenges = recommendationRepository.findAllChallengeMeta();
@@ -121,6 +120,11 @@ public class ChallengeRecommendationService {
     }
 
     /* ======================= helpers ======================= */
+    @Transactional
+    protected UserFavor saveFavorTx(ChallengeRecommendRequest request) {
+        return userFavorService.saveUserFavor(request);
+    }
+
     private String buildUserQueryE5(UserFavor favor) {
         String goalText = (favor.getGoal() == null)
                 ? "원하는"
