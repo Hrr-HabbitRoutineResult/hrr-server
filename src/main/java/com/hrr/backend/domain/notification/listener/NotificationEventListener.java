@@ -100,14 +100,17 @@ public class NotificationEventListener {
 
         // NextRoundIntent에 따른 알림 타입 및 메시지 결정
         NotificationTypeName typeName;
+        String title;
         String message;
 
         if (event.getIntent() == NextRoundIntent.CONTINUE) {
             typeName = NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS;
-            message = "연장 완료! 다음 라운드까지 함께 해요";
+            title = String.format("[%s] 챌린지가 연장되었어요", challenge.getTitle());
+            message = "다음 라운드에서도 루틴을 이어가요";
         } else {
             typeName = NotificationTypeName.CHALLENGE_EXTENSION_CANCEL;
-            message = "이번 라운드로 챌린지가 종료됩니다 그동안 수고하셨습니다!";
+            title = String.format("[%s] 챌린지를 마무리해요", challenge.getTitle());
+            message = "챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요";
         }
 
         NotificationType type = typeRepository.findByTypeName(typeName)
@@ -121,7 +124,7 @@ public class NotificationEventListener {
                 .targetId(event.getUser().getId())
                 .contextType(ResourceType.ROUND)
                 .contextId(round.getId())
-                .title(String.format("[%s] 연장 결과 안내", challenge.getTitle()))
+                .title(title)
                 .message(message)
                 .imageKey(challenge.getImageKey())
                 .build();
