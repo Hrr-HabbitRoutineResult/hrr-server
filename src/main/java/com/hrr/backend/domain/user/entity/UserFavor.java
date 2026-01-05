@@ -23,7 +23,7 @@ import java.util.List;
                 columnNames = "user_id"
         )
 )
-@ToString(exclude = {"user", "userFavorEmbedding", "recommendationResults"})
+@ToString(exclude = {"user", "recommendationResults"})
 public class UserFavor extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -70,9 +70,6 @@ public class UserFavor extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "goal", nullable = false)
     private Goal goal;
-
-    @OneToOne(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = true)
-    private UserFavorEmbedding userFavorEmbedding;
 
     @Builder.Default
     @OneToMany(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = false)
