@@ -123,7 +123,8 @@ public enum ErrorCode implements BaseCode{
 	ACCESS_DENIED_REPORTED_POST(HttpStatus.CONFLICT, "VERIFICATION40917", "신고 5회 누적으로 제한된 게시글입니다."),
 	CANNOT_REPORT_OWN_POST(HttpStatus.CONFLICT, "VERIFICATION40918", "자기 자신의 인증 게시글은 신고할 수 없습니다."),
 	ALREADY_REPORTED(HttpStatus.CONFLICT, "VERIFICATION40919", "이미 신고한 게시글입니다."),
-
+    VERIFICATION_EDIT_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "VERIFICATION40020", "인증 요일 및 인증 시간 내에만 수정/삭제할 수 있습니다."),
+    VERIFICATION_INVALID_IMAGE_KEY(HttpStatus.BAD_REQUEST, "VERIFICATION40021", "이미지 키는 null 또는 공백이 아닌 값이어야 합니다."),
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE4002", "파일 크기가 제한을 초과했습니다."),
