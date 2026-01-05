@@ -1,7 +1,7 @@
 package com.hrr.backend.domain.round.service;
 
 import java.time.LocalDate;
-
+import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +47,7 @@ public class RoundDecisionServiceImpl implements RoundDecisionService {
             throw new GlobalException(ErrorCode.ROUND_NOT_FOUND);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
         // 라운드 기간 체크
         if (today.isBefore(currentRound.getStartDate())) {

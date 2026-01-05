@@ -1,6 +1,7 @@
 package com.hrr.backend.global.scheduler;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,8 +21,9 @@ public class RoundDropScheduler {
     // 매일 23:59(한국시간)에 "오늘 endDate인 라운드"에서 STOP/UNDECIDED 드랍 처리
     @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Seoul")
     public void dropNonContinuers() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         log.info("[RoundDropScheduler] 드랍 처리 시작. endDate={}", today);
         roundDropService.dropNonContinuersAt(today);
     }
+
 }

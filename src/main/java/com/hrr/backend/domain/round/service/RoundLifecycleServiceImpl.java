@@ -3,6 +3,7 @@ package com.hrr.backend.domain.round.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import com.hrr.backend.global.common.enums.ChallengeStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -28,16 +30,20 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final RoundConverter roundConverter;
+    private final DataSourceTransactionManager transactionManager;
 
     @Override
-    @Transactional
     public void processRoundsEndedAt(LocalDate endDate) {
 
         List<Round> endedRounds = roundRepository.findAllByEndDate(endDate);
 
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
         for (Round endedRound : endedRounds) {
             try {
-                processSingleEndedRound(endedRound);
+                transactionTemplate.executeWithoutResult(status -> {
+                    processSingleEndedRound(endedRound);
+                });
             } catch (Exception e) {
                 log.error("[RoundLifecycle] 라운드 종료 처리 실패. roundId={}", endedRound.getId(), e);
             }
