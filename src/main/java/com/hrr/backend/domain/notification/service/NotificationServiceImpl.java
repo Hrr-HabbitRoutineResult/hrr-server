@@ -104,4 +104,13 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationConverter.toSettingInfoDto(setting);
     }
 
+    @Override
+    public NotificationResponseDto.UnreadStatusDto checkUnreadStatus(User user) {
+        boolean hasUnread = notificationRepository.existsByReceiverAndIsReadFalse(user);
+
+        return NotificationResponseDto.UnreadStatusDto.builder()
+                .hasUnread(hasUnread)
+                .build();
+    }
+
 }
