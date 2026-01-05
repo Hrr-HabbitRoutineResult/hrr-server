@@ -13,7 +13,6 @@ import java.util.List;
 
 @Slf4j
 @Converter
-@RequiredArgsConstructor
 public class StringListConverter implements AttributeConverter<List<String>, String> {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
