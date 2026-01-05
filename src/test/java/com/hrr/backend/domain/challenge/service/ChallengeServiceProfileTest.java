@@ -13,6 +13,7 @@ import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,8 +48,10 @@ class ChallengeServiceProfileTest {
     @Mock private UserChallengeRepository userChallengeRepository;
     @Mock private VerificationRepository verificationRepository;
 
-    // Converter는 로직이 있으므로 실제 객체(Spy) 사용
-    @Spy private ChallengeConverter challengeConverter;
+    @Mock private S3UrlUtil s3UrlUtil;
+
+    @Spy
+    private ChallengeConverter challengeConverter = new ChallengeConverter(s3UrlUtil);
 
     @Test
     @DisplayName("1. [부분 인증] 인증 요일이 월/목인데 '월요일'만 인증한 경우 -> 리스트에 MONDAY 하나만 존재")
