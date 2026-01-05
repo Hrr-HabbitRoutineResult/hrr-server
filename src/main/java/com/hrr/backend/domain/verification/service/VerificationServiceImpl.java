@@ -407,7 +407,8 @@ public class VerificationServiceImpl implements VerificationService {
                 requestDto.getTextUrl(),
                 requestDto.getTextImage1(),
                 requestDto.getTextImage2(),
-                requestDto.getTextImage3()
+                requestDto.getTextImage3(),
+                requestDto.getIsQuestion()
         );
 
         // 댓글 목록 + 상세 DTO 구성

@@ -19,4 +19,5 @@ public class VerificationUpdateRequestDto {
     private String textImage2;
     @Schema(description = "글 인증 첨부 이미지3(S3 Key)", nullable = true)
     private String textImage3;
+    private Boolean isQuestion;
 }

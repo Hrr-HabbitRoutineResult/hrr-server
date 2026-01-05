@@ -155,7 +155,8 @@ public class Verification extends BaseEntity {
             String textUrl,
             String textImage1,
             String textImage2,
-            String textImage3
+            String textImage3,
+            Boolean isQuestion
     ) {
         if (title != null) {
             if (title.isBlank()) {
