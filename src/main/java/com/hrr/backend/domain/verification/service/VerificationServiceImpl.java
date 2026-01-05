@@ -1,8 +1,13 @@
 package com.hrr.backend.domain.verification.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
+
+import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentResponseDto;
@@ -106,7 +111,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         Integer totalParticipantCount = challenge.getCurrentParticipants();
         Round currentRound = challenge.getCurrentRound();
-        
+
         // 라운드 미시작 시 0명 반환
         if (currentRound == null) {
             return verificationConverter.toStatDto(0, totalParticipantCount, null);
@@ -195,7 +200,9 @@ public class VerificationServiceImpl implements VerificationService {
                 request.getTitle(),
                 request.getContent(),
                 request.getTextUrl(),
-                request.getPhotoUrl(),
+                request.getTextImage1(),
+                request.getTextImage2(),
+                request.getTextImage3(),
                 request.getIsQuestion() != null ? request.getIsQuestion() : false,
                 roundId
         );
@@ -278,16 +285,21 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public VerificationDetailResponseDto getVerificationDetail(Long verificationId, Long currentUserId, int page, int size) {
-
+    public VerificationDetailResponseDto getVerificationDetail(
+            Long verificationId,
+            Long currentUserId,
+            int page,
+            int size
+    ) {
+        // 인증글 조회
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-		// 차단된 게시글 접근 시 예외 발생
-		if (verification.getStatus() == VerificationStatus.BLOCKED) {
-			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-		}
+
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
 
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
@@ -303,7 +315,7 @@ public class VerificationServiceImpl implements VerificationService {
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
         Pageable pageable = PageRequest.of(page, size);
-        CommentListResponseDto comments = commentService.getComments(verificationId, pageable);
+        CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, pageable);
 
         Long adoptedCommentId = comments.getComments().stream()
                 .filter(CommentResponseDto::isAdopted)
@@ -371,10 +383,10 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-		// 차단된 게시글 접근 시 예외 발생
-		if (verification.getStatus() == VerificationStatus.BLOCKED) {
-			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-		}
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
 
         // 작성자 본인인지 권한 체크
         User author = verification.getRoundRecord()
@@ -385,16 +397,22 @@ public class VerificationServiceImpl implements VerificationService {
             throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
         }
 
+        // 인증 요일 + 인증 시간대 안에서만 수정 가능
+        validateVerificationEditDeleteWindow(verification);
+
         // 엔티티 업데이트
         verification.update(
                 requestDto.getTitle(),
                 requestDto.getContent(),
                 requestDto.getTextUrl(),
-                requestDto.getPhotoUrl()
+                requestDto.getTextImage1(),
+                requestDto.getTextImage2(),
+                requestDto.getTextImage3(),
+                requestDto.getIsQuestion()
         );
 
         // 댓글 목록 + 상세 DTO 구성
-        CommentListResponseDto comments = commentService.getComments(verificationId, PageRequest.of(0, 10));
+        CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, PageRequest.of(0, 10));
 
         boolean isMine = currentUserId.equals(author.getId());
         boolean isResolved = Boolean.TRUE.equals(verification.getIsResolved());
@@ -421,7 +439,6 @@ public class VerificationServiceImpl implements VerificationService {
         );
     }
 
-
     @Override
     @Transactional
     public void deleteVerification(Long verificationId, Long currentUserId) {
@@ -429,12 +446,12 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-		// 차단된 게시글 접근 시 예외 발생
-		if (verification.getStatus() == VerificationStatus.BLOCKED) {
-			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-		}
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
 
-    // 작성자 본인인지 권한 체크
+        // 작성자 본인인지 권한 체크
         User author = verification.getRoundRecord()
                 .getUserChallenge()
                 .getUser();
@@ -442,8 +459,172 @@ public class VerificationServiceImpl implements VerificationService {
         if (!author.getId().equals(currentUserId)) {
             throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
         }
+
+        // 인증 요일 + 인증 시간대 안에서만 삭제 가능
+        validateVerificationEditDeleteWindow(verification);
+
         verificationRepository.delete(verification);
     }
 
+    /**
+     * 사용자 전체 챌린지 인증 기록 조회
+     */
+    @Override
+    public SliceResponseDto<VerificationResponseDto.HistoryDto> getVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+        // Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Repository에서 인증 엔티티 조회
+        Slice<Verification> verificationSlice =
+                verificationRepository.findVerificationHistoryByUser(
+                        user,
+                        VerificationStatus.COMPLETED,
+                        pageable);
+
+        // 엔티티를 DTO로 변환 (빌더 패턴 사용)
+        Slice<VerificationResponseDto.HistoryDto> dtoSlice =
+                verificationSlice.map(verificationConverter::toHistoryDto);
+
+        // SliceResponseDto로 변환하여 반환
+        return new SliceResponseDto<>(dtoSlice);
+    }
+
+    // 수정/삭제 시간 제한 로직 (최소 범위)
+
+    private void validateVerificationEditDeleteWindow(Verification verification) {
+        Challenge challenge = verification.getRoundRecord()
+                .getRound()
+                .getChallenge();
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1) 지금이 "인증 시간대"가 아니면 수정/삭제 불가
+        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+        }
+
+        // 2) 지금 인증 윈도우가 어느 "인증 요일(기준 날짜)"에 속하는지 계산
+        LocalDate currentWindowDate = getWindowAnchorDate(challenge, now);
+
+        // 3) 그 날짜가 챌린지의 인증 요일에 포함되지 않으면 불가
+        if (!isVerificationDay(challenge, currentWindowDate)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+        }
+
+        // 4) 이 인증글이 "현재 인증 윈도우"에 속하는 글이 아니면 불가
+        LocalDate postWindowDate = getWindowAnchorDate(challenge, verification.getCreatedAt());
+        if (!postWindowDate.equals(currentWindowDate)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+        }
+    }
+
+    /**
+     * 인증 시간대 포함 여부 (start <= end 일반 케이스 + start > end 자정 넘어가는 케이스 대응)
+     */
+    private boolean isWithinVerificationTime(Challenge challenge, LocalTime now) {
+        LocalTime start = challenge.getVerifyStartTime();
+        LocalTime end = challenge.getVerifyEndTime();
+
+        // 일반 케이스: 09:00 ~ 22:00
+        if (start.isBefore(end) || start.equals(end)) {
+            return !now.isBefore(start) && !now.isAfter(end);
+        }
+
+        // 자정 넘어가는 케이스: 22:00 ~ 02:00
+        return !now.isBefore(start) || !now.isAfter(end);
+    }
+
+    /**
+     * "인증 윈도우 기준 날짜(anchor date)" 계산
+     * - 일반 케이스(start<=end): anchor = 해당 시각의 날짜
+     * - 자정 넘어가는 케이스(start>end):
+     *    - 22:00~23:59 -> anchor = 오늘
+     *    - 00:00~02:00 -> anchor = 어제(시작 요일 기준)
+     */
+    private LocalDate getWindowAnchorDate(Challenge challenge, LocalDateTime dateTime) {
+        LocalTime start = challenge.getVerifyStartTime();
+        LocalTime end = challenge.getVerifyEndTime();
+
+        if (start.isBefore(end) || start.equals(end)) {
+            return dateTime.toLocalDate();
+        }
+
+        // overnight
+        LocalTime t = dateTime.toLocalTime();
+        if (!t.isBefore(start)) {
+            return dateTime.toLocalDate();
+        }
+        return dateTime.toLocalDate().minusDays(1);
+    }
+
+    /**
+     * 특정 날짜가 챌린지 인증 요일인지 확인
+     */
+    private boolean isVerificationDay(Challenge challenge, LocalDate date) {
+        ChallengeDays targetDay = mapToChallengeDays(date.getDayOfWeek());
+        List<ChallengeDayJoin> days = challenge.getChallengeDays();
+
+        return days.stream()
+                .anyMatch(join -> join.getDayOfWeek() == targetDay);
+    }
+
+    private ChallengeDays mapToChallengeDays(DayOfWeek dayOfWeek) {
+        return switch (dayOfWeek) {
+            case MONDAY -> ChallengeDays.MONDAY;
+            case TUESDAY -> ChallengeDays.TUESDAY;
+            case WEDNESDAY -> ChallengeDays.WEDNESDAY;
+            case THURSDAY -> ChallengeDays.THURSDAY;
+            case FRIDAY -> ChallengeDays.FRIDAY;
+            case SATURDAY -> ChallengeDays.SATURDAY;
+            case SUNDAY -> ChallengeDays.SUNDAY;
+        };
+    }
+
+    @Override
+    public VerificationResponseDto.OtherUserHistoryResponse getOtherUserVerificationHistory(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 1. 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 2. 비공개 계정 체크
+        if (!user.getIsPublic()) {
+            log.info("User {} is private. Returning empty list.", userId);
+            return VerificationResponseDto.OtherUserHistoryResponse.builder()
+                    .isPublic(false)
+                    .nickname(user.getNickname())
+                    .verifications(new SliceResponseDto<>(Page.empty()))
+                    .build();
+        }
+
+        // 3. 공개 계정
+        Pageable pageable = PageRequest.of(page, size);
+
+        Slice<Verification> verificationSlice =
+                verificationRepository.findVerificationHistoryByUser(
+                        user,
+                        VerificationStatus.COMPLETED,
+                        pageable);
+
+        Slice<VerificationResponseDto.HistoryDto> dtoSlice =
+                verificationSlice.map(verificationConverter::toHistoryDto);
+
+        return VerificationResponseDto.OtherUserHistoryResponse.builder()
+                .isPublic(true)
+                .nickname(user.getNickname())
+                .verifications(new SliceResponseDto<>(dtoSlice))
+                .build();
+    }
 }
+

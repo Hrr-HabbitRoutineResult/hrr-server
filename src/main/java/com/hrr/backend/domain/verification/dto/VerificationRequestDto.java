@@ -20,7 +20,12 @@ public class VerificationRequestDto {
 
     private String textUrl;
 
-    private String photoUrl;
+    @Schema(description = "글 인증 첨부 이미지1(S3 Key)", nullable = true)
+    private String textImage1;
+    @Schema(description = "글 인증 첨부 이미지2(S3 Key)", nullable = true)
+    private String textImage2;
+    @Schema(description = "글 인증 첨부 이미지3(S3 Key)", nullable = true)
+    private String textImage3;
 
     private Boolean isQuestion;
 }

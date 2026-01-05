@@ -647,9 +647,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
 
-		// 모집 상태 검증 (UPCOMING 이거나 RECRUITING 상태여야 함)
-		if (challenge.getStatus() != ChallengeStatus.UPCOMING &&
-				challenge.getStatus() != ChallengeStatus.RECRUITING) {
+		// 상태 검증 (종료만 아니면 모두 참여 가능)
+		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_RECRUITING);
 		}
 
@@ -768,14 +767,8 @@ public class ChallengeServiceImpl implements ChallengeService {
             return ActionButtonStatus.WAITLIST;
         }
 
-        // 미참여자 + 모집 중 -> 참가하기
-        if (challenge.getStatus() == ChallengeStatus.UPCOMING
-                || challenge.getStatus() == ChallengeStatus.RECRUITING) {
-            return ActionButtonStatus.JOIN;
-        }
-
-        // 그 외 -> 비활성화
-        return ActionButtonStatus.DISABLED;
+        // 그 외 -> 참가하기
+		return ActionButtonStatus.JOIN;
     }
 
     /**

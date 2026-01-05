@@ -2,6 +2,7 @@ package com.hrr.backend.domain.verification.dto;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import lombok.AllArgsConstructor;
@@ -29,6 +30,10 @@ public class VerificationDetailResponseDto {
     private String content;
     private String textUrl;
     private String photoUrl;
+
+    private String textImage1;
+    private String textImage2;
+    private String textImage3;
 
     private Boolean isQuestion;
     private Boolean isResolved;
@@ -66,7 +71,7 @@ public class VerificationDetailResponseDto {
         private Long userId;
         private String nickname;
         private String profileImageUrl;
-        private UserChallengeRole role;
+        private UserLevel level;
     }
 
     @Data

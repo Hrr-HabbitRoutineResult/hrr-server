@@ -30,6 +30,9 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
 	@Column(name = "name")	// 로그인 시 제공받는 이름. 중복이 가능하기에 unique 설정 x. 소셜 타입에 따라 이름 제공이 되지 않을 수 있어 nullable.
 	private String name;
 
@@ -46,7 +49,7 @@ public class User extends BaseEntity {
     private String password;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;	// 탈퇴 시점 - 탈퇴 후 1개월이 지나면 hard delete, 1개월 동안은 DELETED 상태로써 재가입 불가능
+    private LocalDateTime deletedAt;	// 탈퇴 시점 - 탈퇴 후 1개월이 지나면 완전 탈퇴, 1개월 동안은 INACTIVE 상태로써 재로그인 시 활성화
 
     @Column(name = "profile_image", length = 225)
     private String profileImage;
@@ -82,13 +85,14 @@ public class User extends BaseEntity {
     @Column(name = "role")
     private UserRole userRole = UserRole.USER;
 
+	@NotNull
+	@Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private UserStatus userStatus;
+	@Column(name = "status", nullable = false)
+	private UserStatus userStatus = UserStatus.ACTIVE;
 
-    @Builder.Default
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<NotificationSetting> notificationSettings = new ArrayList<>();
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private NotificationSetting notificationSetting;
 
 	@Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -111,6 +115,7 @@ public class User extends BaseEntity {
 		return User.builder()
 			.name(name)
 			.profileImage(profileImage)
+			.userStatus(UserStatus.ACTIVE)
 			.loginStatus(LoginStatus.NEW)
 			.userLevel(UserLevel.BRONZE)
 			.userRole(UserRole.USER)
@@ -132,6 +137,11 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    /** 프로필 공개 여부 업데이트 */
+    public void updateIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+  
 	/** 이메일 업데이트 */
 	public void updateEmail(String email) {
 		this.email = email;
@@ -161,7 +171,78 @@ public class User extends BaseEntity {
 
 	// 탈퇴 처리 메서드
 	public void withdraw() {
-		this.userStatus = UserStatus.DELETED;
+		this.userStatus = UserStatus.INACTIVE;
 		this.deletedAt = LocalDateTime.now();
+	}
+
+	// 재로그인
+	public void reLogin() {
+		// 이미 ACTIVE인 유저는 재로그인 로직을 탈 필요가 없음
+		if (this.userStatus == UserStatus.ACTIVE) {
+			return;
+		}
+
+		// status 변경하고 deletedAt 삭제
+		this.userStatus = UserStatus.ACTIVE;
+		this.deletedAt = null;
+	}
+
+    //팔로워 카운트 증가
+    public void incrementFollowerCount() {
+        this.followerCount++;
+    }
+
+    //팔로워 카운트 감소
+    public void decrementFollowerCount() {
+        if (this.followerCount > 0) {
+            this.followerCount--;
+        }
+    }
+
+    // 팔로잉 카운트 증가
+    public void incrementFollowingCount() {
+        this.followingCount++;
+    }
+
+    // 팔로잉 카운트 감소
+    public void decrementFollowingCount() {
+        if (this.followingCount > 0) {
+            this.followingCount--;
+        }
+    }
+
+	public void completeWithdrawal() {
+		this.name = "탈퇴한 사용자";
+		this.nickname = null; // 중복 방지 및 마스킹
+		this.userStatus = UserStatus.DELETED;
+
+		// 개인정보 삭제
+		this.email = null;
+		this.phoneNumber = null;
+		this.password = null;
+
+		// 프로필 사진 삭제
+		this.profileImage = null;
+	}
+
+	// 사용자 유효성 검사 - 비활성화 or 탈퇴 완료된 상태인지
+	public boolean isNotActive() {
+		return this.userStatus != UserStatus.ACTIVE;
+	}
+
+	// status에 따른 nickname 표시 차이
+	public String getDisplayNickname() {
+		if (this.userStatus != UserStatus.ACTIVE) {
+			return "(알 수 없음)";
+		}
+		return this.nickname;
+	}
+
+	// status에 따른 name 표시 차이
+	public String getDisplayName() {
+		if (this.userStatus != UserStatus.ACTIVE) {
+			return "탈퇴한 사용자";
+		}
+		return this.name;
 	}
 }

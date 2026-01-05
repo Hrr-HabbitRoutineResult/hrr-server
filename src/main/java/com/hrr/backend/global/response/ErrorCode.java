@@ -21,7 +21,9 @@ public enum ErrorCode implements BaseCode{
     INVALID_LOGIN_STATUS_FOR_NICKNAME(HttpStatus.BAD_REQUEST, "USER4005", "닉네임 설정은 약관 동의 후에만 가능합니다."),
 	ALREADY_REPORTED_USER(HttpStatus.CONFLICT, "USER4095", "이미 신고한 사용자입니다."),
 	CANNOT_REPORT_SELF(HttpStatus.CONFLICT, "USER4096", "자기 자신은 신고할 수 없습니다."),
-	AUTH_WITHDRAWAL_PERIOD_RESTRICTION(HttpStatus.CONFLICT, "USER4091", "탈퇴 후 한 달 이내에는 동일한 계정으로 재가입할 수 없습니다."),
+	ALREADY_BLOCKED(HttpStatus.CONFLICT, "USER4097", "이미 차단한 사용자입니다."),
+	NOT_BLOCKED_USER(HttpStatus.CONFLICT, "USER4098", "차단 내역이 없는 사용자입니다."),
+	CANNOT_BLOCK_SELF(HttpStatus.CONFLICT, "USER4099", "자기 자신은 차단할 수 없습니다."),
 
 
     // fcm
@@ -125,7 +127,8 @@ public enum ErrorCode implements BaseCode{
 	ACCESS_DENIED_REPORTED_POST(HttpStatus.CONFLICT, "VERIFICATION40917", "신고 5회 누적으로 제한된 게시글입니다."),
 	CANNOT_REPORT_OWN_POST(HttpStatus.CONFLICT, "VERIFICATION40918", "자기 자신의 인증 게시글은 신고할 수 없습니다."),
 	ALREADY_REPORTED(HttpStatus.CONFLICT, "VERIFICATION40919", "이미 신고한 게시글입니다."),
-
+    VERIFICATION_EDIT_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "VERIFICATION40020", "인증 요일 및 인증 시간 내에만 수정/삭제할 수 있습니다."),
+    VERIFICATION_INVALID_IMAGE_KEY(HttpStatus.BAD_REQUEST, "VERIFICATION40021", "이미지 키는 null 또는 공백이 아닌 값이어야 합니다."),
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE4002", "파일 크기가 제한을 초과했습니다."),
@@ -145,10 +148,16 @@ public enum ErrorCode implements BaseCode{
     CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),
     ALREADY_FOLLOWING(HttpStatus.CONFLICT, "FOLLOW4091", "이미 팔로우 중인 사용자입니다."),
     FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW4041", "팔로우 관계를 찾을 수 없습니다."),
+    FOLLOW_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW4042", "팔로우 요청을 찾을 수 없습니다."),
+    UNAUTHORIZED_FOLLOW_ACTION(HttpStatus.FORBIDDEN, "FOLLOW4031", "다른 사람의 팔로우 요청을 처리할 수 없습니다."),
+    ALREADY_APPROVED_FOLLOW(HttpStatus.BAD_REQUEST, "FOLLOW4006", "이미 승인된 팔로우입니다."),
+
 
     // notification
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4041", "존재하지 않는 알림입니다."),
+    NOTIFICATION_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4042", "알림 설정 정보를 찾을 수 없습니다."),
     NOTIFICATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTIFICATION4032", "해당 알림에 대한 접근 권한이 없습니다."),
+    NOTIFICATION_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4043", "존재하지 않는 알림 타입입니다."),
 
     // search
     MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),

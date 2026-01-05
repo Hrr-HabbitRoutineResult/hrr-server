@@ -23,6 +23,9 @@ public enum SuccessCode implements BaseCode {
     VERIFICATION_POST_OK(HttpStatus.CREATED, "VERIFICATION2001", "인증글이 작성되었습니다."),
     VERIFICATION_DELETE_OK(HttpStatus.OK, "VERIFICATION2002", "인증글이 삭제되었습니다."),
     VERIFICATION_UPDATE_OK(HttpStatus.OK, "VERIFICATION2003", "인증글이 수정되었습니다."),
+
+    //user
+    USER_UPDATE_OK(HttpStatus.OK, "USER2001", "사용자 정보가 수정되었습니다."),
     ;
 
 	private final HttpStatus status;

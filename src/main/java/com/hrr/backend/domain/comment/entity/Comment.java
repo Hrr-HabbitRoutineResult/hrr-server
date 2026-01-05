@@ -56,6 +56,10 @@ public class Comment extends BaseEntity {
     @Column(nullable = false)
     private boolean isAnonymous;
 
+	/** 익명 번호 */
+	@Column
+	private Integer anonymousNumber;	// 익명1, 익명2 등에 사용
+
     /** 좋아요 수 (develop 추가) */
     @Column(nullable = false)
     private int likesCount;
@@ -67,9 +71,8 @@ public class Comment extends BaseEntity {
 
     /** 채택 여부 (feat/90 추가) */
     @Column(nullable = false)
-    @ColumnDefault("false")
     @Builder.Default
-    private Boolean isAdopted = false;
+    private boolean isAdopted = false;
 
     // === 정적 팩토리 메서드 (develop) ===
     public static Comment create(
@@ -78,6 +81,7 @@ public class Comment extends BaseEntity {
             Comment parent,
             String content,
             boolean isAnonymous,
+			Integer anonymousNumber,
             int depth
     ) {
         return Comment.builder()
@@ -86,6 +90,7 @@ public class Comment extends BaseEntity {
                 .parent(parent)
                 .content(content)
                 .isAnonymous(isAnonymous)
+				.anonymousNumber(anonymousNumber)
                 .depth(depth)
                 .likesCount(0)
                 .isDeleted(false)

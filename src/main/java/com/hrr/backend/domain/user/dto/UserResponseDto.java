@@ -17,7 +17,7 @@ public class UserResponseDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "사용자 프로필 정보 DTO")
+    @Schema(description = "다른 사용자 프로필 정보 DTO")
     public static class ProfileDto {
 
         @Schema(description = "사용자 아이디", example = "999")
@@ -41,16 +41,20 @@ public class UserResponseDto {
         @Schema(description = "팔로잉 여부", example = "false")
         private Boolean isFollowing;
 
+        @Schema(description = "차단 여부", example = "false")
+        private Boolean isBlocked;
+
         // Entity -> DTO 변환
-        public static ProfileDto from(User user, Boolean isFollowing) {
+        public static ProfileDto from(User user, Boolean isFollowing, Boolean isBlocked) {
             return ProfileDto.builder()
                     .userId(user.getId())
-                    .nickname(user.getNickname())
+                    .nickname(user.getDisplayNickname())
                     .profileImage(user.getProfileImage())
                     .level(user.getUserLevel())
                     .followerCount(user.getFollowerCount())
                     .followingCount(user.getFollowingCount())
                     .isFollowing(isFollowing)
+                    .isBlocked(isBlocked)
                     .build();
         }
     }
@@ -142,7 +146,7 @@ public class UserResponseDto {
         public static MyInfoDto from(User user) {
             return MyInfoDto.builder()
                     .userId(user.getId())
-                    .nickname(user.getNickname())
+                    .nickname(user.getDisplayNickname())
                     .email(user.getEmail())
                     .phoneNumber(user.getPhoneNumber())
                     .profileImage(user.getProfileImage())
@@ -158,5 +162,49 @@ public class UserResponseDto {
                     .updatedAt(user.getUpdatedAt())
                     .build();
         }
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "찜한 챌린지 정보 DTO")
+    public static class LikedChallengeDto {
+
+        @Schema(description = "챌린지 아이디", example = "301")
+        private Long challengeId;
+
+        @Schema(description = "챌린지 제목", example = "자잘자잘")
+        private String title;
+
+        @Schema(description = "챌린지 간단 설명", example = "하루 5분씩 무엇이든 꼭 해야...")
+        private String description;
+
+        @JsonProperty("image")
+        @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
+        private String image;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "종료한 챌린지 정보 DTO")
+    public static class CompletedChallengeDto {
+
+        @Schema(description = "챌린지 아이디", example = "301")
+        private Long challengeId;
+
+        @Schema(description = "챌린지 제목", example = "자잘자잘")
+        private String title;
+
+        @Schema(description = "챌린지 간단 설명", example = "하루 5분씩 무엇이든 꼭 해야...")
+        private String description;
+
+        @JsonProperty("image")
+        @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
+        private String image;
     }
 }

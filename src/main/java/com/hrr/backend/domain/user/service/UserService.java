@@ -1,9 +1,7 @@
 package com.hrr.backend.domain.user.service;
 
-import com.hrr.backend.domain.user.dto.UserResponseDto;
+import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.global.response.SliceResponseDto;
-import com.hrr.backend.domain.user.dto.UserNicknameRequestDto;
-import com.hrr.backend.domain.user.dto.UserNicknameResponseDto;
 import com.hrr.backend.domain.user.entity.User;
 
 public interface UserService {
@@ -11,7 +9,7 @@ public interface UserService {
     // 사용자 정보 조회
     UserResponseDto.ProfileDto getUserProfile(
             Long userId,
-            Long currentUserId
+            User currentUser
     );
 
     // 참가중인 챌린지 목록 조회 (페이징)
@@ -20,6 +18,7 @@ public interface UserService {
             int page,
             int size
     );
+
     // 내 정보 조회
     UserResponseDto.MyInfoDto getMyInfo(Long userId);
 
@@ -42,4 +41,30 @@ public interface UserService {
 			int page,
 			int size
 	);
+
+    /**
+     * 찜한 챌린지 목록 조회 (페이징)
+     */
+    SliceResponseDto<UserResponseDto.LikedChallengeDto> getMarkedChallenges(
+            Long userId,      
+            int page,
+            int size
+    );
+
+    /**
+     * 종료한 챌린지 목록 조회 (페이징)
+     */
+    SliceResponseDto<UserResponseDto.CompletedChallengeDto> getCompletedChallenges(
+            Long userId,
+            int page,
+            int size
+    );
+  
+    /**
+     * 사용자 기본 정보 수정
+     */
+    UpdateUserInfoResponseDto updateUserInfo(
+            Long userId,
+            UpdateUserInfoRequestDto requestDto
+    );
 }

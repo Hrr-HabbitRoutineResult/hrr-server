@@ -6,11 +6,13 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.auth.service.JwtService;
+import com.hrr.backend.domain.user.service.UserBlockService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
 import com.hrr.backend.global.response.SuccessCode;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -31,14 +33,17 @@ public class CommentController {
 
     private final CommentService commentService;
     private final JwtService jwtService;
+	private final UserBlockService userBlockService;
 
     /** 댓글 작성 */
     @Operation(summary = "댓글 작성", description = "인증글에 댓글 또는 대댓글을 작성합니다.")
     @PostMapping("/{verificationId}")
     public ApiResponse<CommentResponseDto> createComment(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long verificationId,
-            @Valid @RequestBody CommentCreateRequestDto requestDto
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
+
+		@PathVariable Long verificationId,
+		@Valid @RequestBody CommentCreateRequestDto requestDto
     ) {
         Long userId = userDetails.getUser().getId();
 
@@ -51,17 +56,21 @@ public class CommentController {
     @Operation(summary = "댓글/대댓글 조회", description = "특정 인증글의 모든 댓글 및 대댓글을 조회합니다.")
     @GetMapping("/{verificationId}")
     public ApiResponse<CommentListResponseDto> getComments(
-            @PathVariable Long verificationId,
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
 
-			// 페이징
-			@Min(1)
-			@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
-			@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
+		@PathVariable Long verificationId,
+
+		// 페이징
+		@Min(1)
+		@RequestParam(name = "page", defaultValue = "1") int page, // 페이지 번호 (1-based)
+		@RequestParam(name = "size", defaultValue = "10") int size  // 페이지 크기
     ) {
+		Long userId = userDetails.getUser().getId();
 
 		Pageable pageable = PageRequest.of(page-1, size);
 
-        CommentListResponseDto response = commentService.getComments(verificationId, pageable);
+        CommentListResponseDto response = commentService.getComments(verificationId, userId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
@@ -69,9 +78,11 @@ public class CommentController {
     @Operation(summary = "댓글 수정", description = "본인이 작성한 댓글만 수정할 수 있습니다.")
     @PatchMapping("/{commentId}")
     public ApiResponse<CommentResponseDto> updateComment(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long commentId,
-            @RequestBody CommentUpdateRequestDto requestDto
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
+
+		@PathVariable Long commentId,
+		@RequestBody CommentUpdateRequestDto requestDto
     ) {
         Long userId = userDetails.getUser().getId();
 
@@ -94,4 +105,17 @@ public class CommentController {
 
         return ApiResponse.onSuccess(SuccessCode.COMMENT_DELETE_OK, null);
     }
+
+	/** 댓글 작성자 신고 */
+	@Operation(summary = "댓글 작성자 차단", description = "댓글 작성자를 차단합니다. 익명 댓글의 경우 작성자의 userId를 모르기 때문에 해당 API로 차단해주셔야 합니다.")
+	@PostMapping("/{commentId}/block")
+	public ApiResponse<String> blockByComment(
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails,
+
+		@PathVariable Long commentId
+	) {
+		userBlockService.blockUserByCommentId(userDetails.getUser().getId(), commentId);
+		return ApiResponse.onSuccess(SuccessCode.OK, "작성자를 차단했습니다.");
+	}
 }

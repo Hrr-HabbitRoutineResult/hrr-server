@@ -54,6 +54,9 @@ public class Verification extends BaseEntity {
     private String photoUrl;
 
     private String textUrl;
+    private String textImage1;
+    private String textImage2;
+    private String textImage3;
 
     private Boolean isQuestion;
 
@@ -84,7 +87,9 @@ public class Verification extends BaseEntity {
             String title,
             String content,
             String textUrl,
-            String photoUrl,
+            String textImage1,
+            String textImage2,
+            String textImage3,
             Boolean isQuestion,
             Long roundId
     ) {
@@ -96,7 +101,9 @@ public class Verification extends BaseEntity {
                 .title(title)
                 .content(content)
                 .textUrl(textUrl)
-                .photoUrl(photoUrl)
+                .textImage1(textImage1)
+                .textImage2(textImage2)
+                .textImage3(textImage3)
                 .isQuestion(isQuestion)
                 .status(VerificationStatus.COMPLETED)
                 .isResolved(false) // feat/90 필드 초기화
@@ -142,26 +149,51 @@ public class Verification extends BaseEntity {
         this.userChallenge = uc;
     }
 
-    public void update(String title, String content, String textUrl, String photoUrl) {
+    public void update(
+            String title,
+            String content,
+            String textUrl,
+            String textImage1,
+            String textImage2,
+            String textImage3,
+            Boolean isQuestion
+    ) {
         if (title != null) {
             if (title.isBlank()) {
                 throw new GlobalException(ErrorCode.VERIFICATION_TITLE_REQUIRED);
-        }
+            }
             this.title = title;
         }
+
         if (content != null) {
             if (content.isBlank()) {
-                throw new GlobalException(ErrorCode.VERIFICATION_TEXT_REQUIRED);}
+                throw new GlobalException(ErrorCode.VERIFICATION_TEXT_REQUIRED);
+            }
             this.content = content;
         }
-        if (textUrl != null) {
-            this.textUrl = textUrl;
+        if (textImage1 != null) {
+            this.textImage1 = normalizeOptionalImageKey(textImage1);
         }
-        if (photoUrl != null) {
-            this.photoUrl = photoUrl;
+        if (textImage2 != null) {
+            this.textImage2 = normalizeOptionalImageKey(textImage2);
+        }
+        if (textImage3 != null) {
+            this.textImage3 = normalizeOptionalImageKey(textImage3);
+        }
+
+        if (isQuestion != null) {
+            this.isQuestion = isQuestion;
         }
     }
-
-
+    private String normalizeOptionalImageKey(String key) {
+        String trimmed = key.trim();
+        if (trimmed.isEmpty()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_INVALID_IMAGE_KEY);
+        }
+        if ("null".equalsIgnoreCase(trimmed)) {
+            throw new GlobalException(ErrorCode.VERIFICATION_INVALID_IMAGE_KEY);
+        }
+        return trimmed;
+    }
 
 }
