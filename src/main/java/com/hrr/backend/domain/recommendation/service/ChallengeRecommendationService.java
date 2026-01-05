@@ -2,7 +2,7 @@ package com.hrr.backend.domain.recommendation.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
-import com.hrr.backend.domain.challenge.service.ChallengeStaticsServiceImpl;
+import com.hrr.backend.domain.challenge.service.ChallengeStaticsService;
 import com.hrr.backend.domain.recommendation.dto.request.ChallengeRecommendRequest;
 import com.hrr.backend.domain.recommendation.dto.request.ModelApiRequest;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemDto;
@@ -36,7 +36,7 @@ public class ChallengeRecommendationService {
     private final RecommendationRepository challengeRepository; // 메타 조회용 커스텀 repo
     private final RecommendationResultRepository recommendationResultRepository;
     private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
-    private final ChallengeStaticsServiceImpl challengeStaticsService;
+    private final ChallengeStaticsService challengeStaticsService;
 
     private final UserFavorService userFavorService;
 
@@ -208,12 +208,13 @@ public class ChallengeRecommendationService {
     }
 
     /* ======================= time slot ======================= */
-
     private String toAvailableTimeSlots(LocalTime start, LocalTime end) {
         if (start == null || end == null) return null;
 
         List<String> slots = new ArrayList<>();
-        if (start.getHour() < 5 || end.getHour() <= 5) slots.add("LATE_NIGHT");
+
+        // 00:00 ~ 05:00
+        if (overlap(start, end, 0, 5)) slots.add("LATE_NIGHT");
         if (overlap(start, end, 5, 9)) slots.add("EARLY_MORNING");
         if (overlap(start, end, 9, 12)) slots.add("MORNING");
         if (overlap(start, end, 12, 14)) slots.add("LUNCH");
@@ -224,7 +225,22 @@ public class ChallengeRecommendationService {
         return String.join(";", new LinkedHashSet<>(slots));
     }
 
-    private boolean overlap(LocalTime s, LocalTime e, int a, int b) {
-        return !(e.getHour() <= a || s.getHour() >= b);
+    private boolean overlap(LocalTime s, LocalTime e, int aHour, int bHour) {
+        int sMin = s.getHour() * 60 + s.getMinute();
+        int eMin = e.getHour() * 60 + e.getMinute();
+
+        int aMin = aHour * 60;
+        int bMin = (bHour == 24) ? 24 * 60 : bHour * 60; // 24시는 1440으로 처리
+
+        if (eMin > sMin) {
+            return intersects(sMin, eMin, aMin, bMin);
+        }
+
+        return intersects(sMin, 24 * 60, aMin, bMin) || intersects(0, eMin, aMin, bMin);
     }
+
+    private boolean intersects(int x1, int x2, int y1, int y2) {
+        return x1 < y2 && y1 < x2;
+    }
+
 }

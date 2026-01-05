@@ -35,6 +35,11 @@ public class UserFavorService {
                         .user(user)
                         .build());
 
+        if (request.getGender() == null || request.getAgeGroup() == null ||
+            request.getJob() == null || request.getGoal() == null) {
+            throw new GlobalException(ErrorCode.USER_FAVOR_REQUIRED_FIELD_MISSING);
+        }
+
         // 3. 요청 값으로 덮어쓰기 (업데이트)
         userFavor.setGender(request.getGender());
         userFavor.setAgeGroup(request.getAgeGroup());

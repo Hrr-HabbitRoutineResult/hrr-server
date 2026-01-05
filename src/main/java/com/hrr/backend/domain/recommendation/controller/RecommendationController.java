@@ -29,13 +29,8 @@ public class RecommendationController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody ChallengeRecommendRequest request
     ) {
-        //Long userId = userDetails.getUser().getId();
-        Long userId = 1L;
+        Long userId = userDetails.getUser().getId();
         request.setUserId(userId);
-
-		// 선호 정보 저장
-		//userFavorService.saveUserFavor(request);
-
         ChallengeRecommendResult result = recommendationService.recommendChallenges(request);
         return ApiResponse.onSuccess(SuccessCode.OK, result);
     }

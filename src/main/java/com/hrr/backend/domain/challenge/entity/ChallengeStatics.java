@@ -2,6 +2,8 @@ package com.hrr.backend.domain.challenge.entity;
 
 import com.hrr.backend.global.common.enums.FavorType;
 
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -39,7 +41,11 @@ public class ChallengeStatics {
 	 * 통계 수치를 새로운 값으로 업데이트합니다.
 	 */
 	public void updateNumber(Integer newCount) {
-		this.number = (newCount == null) ? 0 : newCount;
+
+        if (newCount != null && newCount < 0) {
+            throw new GlobalException(ErrorCode.STATICS_NEGATIVE_VALUE);
+        	}
+        this.number = (newCount == null) ? 0 : newCount;
 	}
 
 }

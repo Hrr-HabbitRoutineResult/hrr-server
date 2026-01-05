@@ -71,7 +71,7 @@ public class ChallengeStaticsServiceImpl implements ChallengeStaticsService {
     @Override
     public void updateChallengeStatics(Challenge challenge) {
 
-        // 해당 챌린지의 모든 참여 정보 조회(JOINED인 것만)
+        // 해당 챌린지의 모든 참여 정보 조회
         List<UserChallenge> participation =
                 userChallengeRepository.findAllJoinedWithUserFavorByChallengeId(challenge.getId());
 
@@ -187,7 +187,6 @@ public class ChallengeStaticsServiceImpl implements ChallengeStaticsService {
                 continue;
             }
 
-            // total: 성별 합으로 잡는 게 가장 단순(남/여)
             int male = getCount(byType, FavorType.GENDER, Gender.MALE.name());
             int female = getCount(byType, FavorType.GENDER, Gender.FEMALE.name());
             int total = male + female;
@@ -195,24 +194,21 @@ public class ChallengeStaticsServiceImpl implements ChallengeStaticsService {
             item.setParticipants_male_pct(pct(male, total));
             item.setParticipants_female_pct(pct(female, total));
 
-            // AgeGroup -> csv 컬럼 매핑
-            int a10 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.TEENS.name());      // 너 enum에 맞게 수정
-            int a20 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.TWENTIES.name());   // 너 enum에 맞게 수정
-            int a30 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.THIRTIES.name());   // 너 enum에 맞게 수정
-            int a40 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.FORTIES.name());    // 너 enum에 맞게 수정
-            int a50 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.FIFTIES_PLUS.name()); // 너 enum에 맞게 수정
+            int a10 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.TEENS.name());
+            int a20 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.TWENTIES.name());
+            int a30 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.THIRTIES.name());
+            int a40 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.FORTIES.name());
+            int a50 = getCount(byType, FavorType.AGE_GROUP, AgeGroup.FIFTIES_PLUS.name());
 
-            // age total은 gender total이랑 같아야 정상인데, 혹시 다르면 age 합으로도 fallback 가능
             int ageTotal = a10 + a20 + a30 + a40 + a50;
-            int denomAge = (ageTotal > 0) ? ageTotal : total;
+            int ageBaseCount = (ageTotal > 0) ? ageTotal : total;
 
-            item.setAge_10s_pct(pct(a10, denomAge));
-            item.setAge_20s_pct(pct(a20, denomAge));
-            item.setAge_30s_pct(pct(a30, denomAge));
-            item.setAge_40s_pct(pct(a40, denomAge));
-            item.setAge_50p_pct(pct(a50, denomAge));
+            item.setAge_10s_pct(pct(a10, ageBaseCount));
+            item.setAge_20s_pct(pct(a20, ageBaseCount));
+            item.setAge_30s_pct(pct(a30, ageBaseCount));
+            item.setAge_40s_pct(pct(a40, ageBaseCount));
+            item.setAge_50p_pct(pct(a50, ageBaseCount));
 
-            // Job -> csv 컬럼 매핑
             int jm = getCount(byType, FavorType.JOB, Job.STUDENT_MIDDLE_HIGH.name());
             int ju = getCount(byType, FavorType.JOB, Job.STUDENT_UNIVERSITY.name());
             int jj = getCount(byType, FavorType.JOB, Job.JOB_SEEKER.name());
@@ -221,14 +217,14 @@ public class ChallengeStaticsServiceImpl implements ChallengeStaticsService {
             int jc = getCount(byType, FavorType.JOB, Job.ETC.name());
 
             int jobTotal = jm + ju + jj + je + jh + jc;
-            int denomJob = (jobTotal > 0) ? jobTotal : total;
+            int jobBaseCount = (jobTotal > 0) ? jobTotal : total;
 
-            item.setJob_student_middle_high_pct(pct(jm, denomJob));
-            item.setJob_student_university_pct(pct(ju, denomJob));
-            item.setJob_job_seeker_pct(pct(jj, denomJob));
-            item.setJob_employee_pct(pct(je, denomJob));
-            item.setJob_homemaker_pct(pct(jh, denomJob));
-            item.setJob_etc_pct(pct(jc, denomJob));
+            item.setJob_student_middle_high_pct(pct(jm, jobBaseCount));
+            item.setJob_student_university_pct(pct(ju, jobBaseCount));
+            item.setJob_job_seeker_pct(pct(jj, jobBaseCount));
+            item.setJob_employee_pct(pct(je, jobBaseCount));
+            item.setJob_homemaker_pct(pct(jh, jobBaseCount));
+            item.setJob_etc_pct(pct(jc, jobBaseCount));
         }
     }
 
