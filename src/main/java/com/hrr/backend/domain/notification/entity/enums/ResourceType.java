@@ -5,5 +5,6 @@ public enum ResourceType {
     COMMENT,
     USER,
     CHALLENGE,
-    BADGE
+    BADGE,
+    ROUND
 }

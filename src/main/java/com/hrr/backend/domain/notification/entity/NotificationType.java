@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.notification.entity;
 
+import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -20,8 +21,9 @@ public class NotificationType extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type_name", length = 50, nullable = false, unique = true)
-    private String typeName;
+    private NotificationTypeName typeName;
 
     @NotNull
     @Column(name = "default_enabled", nullable = false)

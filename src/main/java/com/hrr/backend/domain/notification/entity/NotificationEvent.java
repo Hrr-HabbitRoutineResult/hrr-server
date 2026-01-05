@@ -59,5 +59,8 @@ public class NotificationEvent extends BaseEntity {
 
     @NotNull @Column(name = "message", length = 255, nullable = false)
     private String message;
+
+    @Column(name = "image_key", length = 255)
+    private String imageKey;
 }
 

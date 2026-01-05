@@ -163,6 +163,7 @@ public class UserController {
 
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
+    
 
     // 사용자 기본 정보 수정
     @PatchMapping("/me")
@@ -245,11 +246,11 @@ public class UserController {
     ) {
         Long userId = customUserDetails.getUser().getId();
         SliceResponseDto<VerificationResponseDto.HistoryDto> response =
-                verificationService.getVerificationHistory(userId, page-1, size);
+                verificationService.getVerificationHistory(userId, page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
-
+ 
     @GetMapping("/{userId}/verifications/history")
     @Operation(
             summary = "다른 사용자 인증 기록 조회",
@@ -274,4 +275,53 @@ public class UserController {
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
+  
+    @GetMapping("/challenges/liked")
+    @Operation(
+            summary = "찜한 챌린지 목록 조회",
+            description = "현재 로그인한 사용자가 찜한 챌린지 목록을 조회합니다."
+    )
+    public ApiResponse<SliceResponseDto<UserResponseDto.LikedChallengeDto>> getMarkedChallenges(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) {
+        Long userId = customUserDetails.getUser().getId();      
+        SliceResponseDto<UserResponseDto.LikedChallengeDto> response =
+                userService.getMarkedChallenges(userId, page - 1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @GetMapping("/challenges/completed")
+    @Operation(
+            summary = "종료한 챌린지 목록 조회",
+            description = "현재 로그인한 사용자가 참여했던 종료된 챌린지 목록을 조회합니다."
+    )
+    public ApiResponse<SliceResponseDto<UserResponseDto.CompletedChallengeDto>> getCompletedChallenges(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) { 
+        Long userId = customUserDetails.getUser().getId();
+        SliceResponseDto<UserResponseDto.CompletedChallengeDto> response =
+                userService.getCompletedChallenges(userId, page - 1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
 }
+        
