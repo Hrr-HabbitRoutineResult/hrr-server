@@ -160,7 +160,7 @@ class NotificationEventListenerTest {
         verify(eventRepository).save(eventCaptor.capture());
 
         NotificationEvent savedEvent = eventCaptor.getValue();
-        assertThat(savedEvent.getMessage()).contains("다음 라운드까지 함께 해요");
+        assertThat(savedEvent.getMessage()).contains("다음 라운드에서도 루틴을 이어가요");
         assertThat(savedEvent.getImageKey()).isEqualTo(challenge.getImageKey());
 
         // 2. NotificationDelivery 저장 확인 (수신자 검증)
@@ -194,7 +194,7 @@ class NotificationEventListenerTest {
         verify(eventRepository).save(eventCaptor.capture());
 
         NotificationEvent savedEvent = eventCaptor.getValue();
-        assertThat(savedEvent.getMessage()).contains("이번 라운드로 챌린지가 종료됩니다");
+        assertThat(savedEvent.getMessage()).contains("챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요");
         assertThat(savedEvent.getTargetId()).isEqualTo(user.getId());
     }
 
