@@ -93,7 +93,7 @@ public class UserServiceImpl implements UserService {
         slice.getContent().forEach(dto ->
                 dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
         );
-        
+
         // 인증 완료 여부 추가
         slice.getContent().forEach(dto -> {
             Long challengeId = dto.getChallengeId();
@@ -286,6 +286,60 @@ public class UserServiceImpl implements UserService {
         }
 
         return null;
+    }
+
+    // 찜한 챌린지 목록 조회
+    @Override
+    public SliceResponseDto<UserResponseDto.LikedChallengeDto> getMarkedChallenges(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Repository에서 찜한 챌린지 조회
+        Slice<UserResponseDto.LikedChallengeDto> slice =
+                userChallengeRepository.findMarkedChallengesByUser(user, pageable);
+
+        // S3 URL 변환
+        slice.getContent().forEach(dto ->
+                dto.setImage(s3UrlUtil.toFullUrl(dto.getImage()))
+        );
+
+        // SliceResponseDto로 변환하여 반환
+        return new SliceResponseDto<>(slice);
+    }
+
+    // 종료한 챌린지 목록 조회
+    @Override
+    public SliceResponseDto<UserResponseDto.CompletedChallengeDto> getCompletedChallenges(
+            Long userId,
+            int page,
+            int size
+    ) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Repository에서 종료한 챌린지 조회
+        Slice<UserResponseDto.CompletedChallengeDto> slice =
+                userChallengeRepository.findCompletedChallengesByUser(user, pageable);
+
+        // S3 URL 변환
+        slice.getContent().forEach(dto ->
+                dto.setImage(s3UrlUtil.toFullUrl(dto.getImage()))
+        );
+
+        // SliceResponseDto로 변환하여 반환
+        return new SliceResponseDto<>(slice);
     }
 
     // 내 정보 수정

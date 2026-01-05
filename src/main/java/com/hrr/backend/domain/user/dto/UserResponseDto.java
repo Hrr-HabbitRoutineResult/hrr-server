@@ -159,4 +159,48 @@ public class UserResponseDto {
                     .build();
         }
     }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "찜한 챌린지 정보 DTO")
+    public static class LikedChallengeDto {
+
+        @Schema(description = "챌린지 아이디", example = "301")
+        private Long challengeId;
+
+        @Schema(description = "챌린지 제목", example = "자잘자잘")
+        private String title;
+
+        @Schema(description = "챌린지 간단 설명", example = "하루 5분씩 무엇이든 꼭 해야...")
+        private String description;
+
+        @JsonProperty("image")
+        @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
+        private String image;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "종료한 챌린지 정보 DTO")
+    public static class CompletedChallengeDto {
+
+        @Schema(description = "챌린지 아이디", example = "301")
+        private Long challengeId;
+
+        @Schema(description = "챌린지 제목", example = "자잘자잘")
+        private String title;
+
+        @Schema(description = "챌린지 간단 설명", example = "하루 5분씩 무엇이든 꼭 해야...")
+        private String description;
+
+        @JsonProperty("image")
+        @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
+        private String image;
+    }
 }

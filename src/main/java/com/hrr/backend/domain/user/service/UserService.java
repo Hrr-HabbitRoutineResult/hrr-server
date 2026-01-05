@@ -18,6 +18,7 @@ public interface UserService {
             int page,
             int size
     );
+
     // 내 정보 조회
     UserResponseDto.MyInfoDto getMyInfo(Long userId);
 
@@ -31,16 +32,34 @@ public interface UserService {
      */
     UserNicknameResponseDto setNickname(User user, UserNicknameRequestDto request);
 
+	/**
+	 * 키워드가 닉네임에 포함된 사용자 조회
+	 */
+	SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
+			User user,
+			String keyword,
+			int page,
+			int size
+	);
+
     /**
-     * 키워드가 닉네임에 포함된 사용자 조회
+     * 찜한 챌린지 목록 조회 (페이징)
      */
-    SliceResponseDto<UserResponseDto.ProfileDto> searchChallengers(
-            User user,
-            String keyword,
+    SliceResponseDto<UserResponseDto.LikedChallengeDto> getMarkedChallenges(
+            Long userId,      
             int page,
             int size
     );
 
+    /**
+     * 종료한 챌린지 목록 조회 (페이징)
+     */
+    SliceResponseDto<UserResponseDto.CompletedChallengeDto> getCompletedChallenges(
+            Long userId,
+            int page,
+            int size
+    );
+  
     /**
      * 사용자 기본 정보 수정
      */
