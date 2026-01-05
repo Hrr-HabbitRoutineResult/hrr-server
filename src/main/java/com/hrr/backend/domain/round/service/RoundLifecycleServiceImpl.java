@@ -40,12 +40,18 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
         for (Round endedRound : endedRounds) {
+            Long endedRoundId = endedRound.getId();
+
             try {
                 transactionTemplate.executeWithoutResult(status -> {
-                    processSingleEndedRound(endedRound);
+                    //트랜잭션 내부에서 Round를 다시 조회해서(detached 방지) 처리
+                    Round managedEndedRound = roundRepository.findByIdWithChallengeAndCurrentRound(endedRoundId)
+                            .orElseThrow(() -> new IllegalStateException("Round not found. id=" + endedRoundId));
+
+                    processSingleEndedRound(managedEndedRound);
                 });
             } catch (Exception e) {
-                log.error("[RoundLifecycle] 라운드 종료 처리 실패. roundId={}", endedRound.getId(), e);
+                log.error("[RoundLifecycle] 라운드 종료 처리 실패. roundId={}", endedRoundId, e);
             }
         }
     }

@@ -43,10 +43,23 @@ public interface RoundRepository extends JpaRepository<Round, Long> {
 
     /**
      * 특정 날짜에 종료되는 라운드 목록 조회
+     * - Round.challenge는 LAZY일 수 있으므로 JOIN FETCH로 미리 로딩
+     * - challenge.currentRound도 접근될 가능성이 있어 LEFT JOIN FETCH로 함께 로딩
      */
     @Query("SELECT r FROM Round r " +
+            "JOIN FETCH r.challenge c " +
+            "LEFT JOIN FETCH c.currentRound " +
             "WHERE r.endDate = :endDate")
     List<Round> findAllByEndDate(@Param("endDate") LocalDate endDate);
+
+    /**
+     * 종료 처리 트랜잭션 내부에서 사용할 Round 재조회용 (detached 방지)
+     */
+    @Query("SELECT r FROM Round r " +
+            "JOIN FETCH r.challenge c " +
+            "LEFT JOIN FETCH c.currentRound " +
+            "WHERE r.id = :roundId")
+    Optional<Round> findByIdWithChallengeAndCurrentRound(@Param("roundId") Long roundId);
 
     // 챌린지 ID로 모든 라운드를 회차 오름차순(1R, 2R, ...)으로 조회
     List<Round> findAllByChallengeIdOrderByRoundNumberAsc(Long challengeId);
