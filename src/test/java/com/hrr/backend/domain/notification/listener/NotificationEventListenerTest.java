@@ -198,6 +198,29 @@ class NotificationEventListenerTest {
         assertThat(savedEvent.getTargetId()).isEqualTo(user.getId());
     }
 
+    @Test
+    @DisplayName("이미 결과 알림(성공 혹은 취소)이 존재하면 추가로 생성하지 않는다")
+    void handleChallengeExtensionResponse_Idempotency() {
+        // given
+        User user = createTestUser(1L, "테스터");
+        Long roundId = 100L;
+        ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(
+                roundId, user, NextRoundIntent.CONTINUE);
+
+        // 이미 알림이 존재한다고 가정
+        given(notificationRepository.existsResponseNotification(eq(user), eq(ResourceType.ROUND), eq(roundId), anyList()))
+                .willReturn(true);
+
+        // when
+        notificationEventListener.handleChallengeExtensionResponseEvent(event);
+
+        // then
+        // 멱등성 체크에서 걸러지므로 이후 로직이 실행되지 않아야 함
+        verify(roundRepository, never()).findById(anyLong());
+        verify(eventRepository, never()).save(any());
+        verify(notificationRepository, never()).save(any());
+    }
+
     // --- Helper Methods ---
     private User createTestUser(Long id, String nickname) {
         return User.builder().id(id).nickname(nickname).build();

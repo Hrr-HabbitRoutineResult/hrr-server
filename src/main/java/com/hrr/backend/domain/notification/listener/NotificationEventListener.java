@@ -9,6 +9,7 @@ import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -94,6 +95,22 @@ public class NotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleChallengeExtensionResponseEvent(ChallengeExtensionResponseEvent event) {
+        Long roundId = event.getRoundId();
+        User user = event.getUser();
+
+        // 체크할 결과 타입 정의 (성공 또는 취소)
+        List<NotificationTypeName> resultTypes = List.of(
+                NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS,
+                NotificationTypeName.CHALLENGE_EXTENSION_CANCEL
+        );
+
+        // 멱등성 체크: 해당 리스트에 포함된 타입이 하나라도 존재하면 중단
+        if (notificationRepository.existsResponseNotification(
+                user, ResourceType.ROUND, roundId, resultTypes)) {
+            log.debug("이미 결과 알림(성공/취소)이 처리된 라운드입니다: User={}, Round={}", user.getNickname(), roundId);
+            return;
+        }
+
         Round round = roundRepository.findById(event.getRoundId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
         Challenge challenge = round.getChallenge();
@@ -120,8 +137,8 @@ public class NotificationEventListener {
         NotificationEvent notificationEvent = NotificationEvent.builder()
                 .type(type)
                 .category(NotificationCategory.CHALLENGE)
-                .targetType(ResourceType.USER) // 응답한 유저 본인 대상
-                .targetId(event.getUser().getId())
+                .targetType(ResourceType.CHALLENGE)
+                .targetId(challenge.getId())
                 .contextType(ResourceType.ROUND)
                 .contextId(round.getId())
                 .title(title)

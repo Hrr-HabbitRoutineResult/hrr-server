@@ -2,6 +2,8 @@ package com.hrr.backend.domain.notification.repository;
 
 import com.hrr.backend.domain.notification.entity.NotificationDelivery;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
+import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
+import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -9,6 +11,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<NotificationDelivery, Long> {
@@ -22,5 +27,18 @@ public interface NotificationRepository extends JpaRepository<NotificationDelive
             @Param("user") User user,
             @Param("category") NotificationCategory category,
             Pageable pageable
+    );
+
+    @Query("SELECT COUNT(nd) > 0 FROM NotificationDelivery nd " +
+            "JOIN nd.event e " +
+            "WHERE nd.receiver = :user " +
+            "AND e.contextType = :contextType " +
+            "AND e.contextId = :contextId " +
+            "AND e.type.typeName IN :typeNames")
+    boolean existsResponseNotification(
+            @Param("user") User user,
+            @Param("contextType") ResourceType contextType,
+            @Param("contextId") Long contextId,
+            @Param("typeNames") List<NotificationTypeName> typeNames
     );
 }
