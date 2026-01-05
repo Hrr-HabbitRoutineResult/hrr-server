@@ -13,6 +13,10 @@ spring:
   flyway:
     enabled: false
 
+  task:
+    scheduling:
+      enabled: false
+
 springdoc:
   server-url: http://localhost:8080
 
@@ -27,9 +31,32 @@ firebase:
 
 #카카오 로그인
 kakao:
+  admin-key: ${KAKAO_ADMIN_KEY:dummy-kakao-admin-key}
   client-id: ${KAKAO_CLIENT_ID:dummy-kakao-id}
   redirect-uri: ${DOCKER_KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
   client-secret: ${KAKAO_CLIENT_SECRET:dummy-kakao-secret}
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
   #redirect-uri: ${DOCKER_KAKAO_REDIRECT_URI:hrr://oauth/kakao}
+
+apple:
+  team-id: ${APPLE_TEAM_ID:dummy-apple-team-id}
+  client-id: ${APPLE_CLIENT_ID:dummy-apple-client-id}
+  key-id: ${APPLE_KEY_ID:dummy-apple-key-id}
+  p8-key: ${APPLE_P8_KEY:dummy-apple-p8-key}
+
+naver:
+  client-id: ${NAVER_CLIENT_ID:dummy-naver-client-id}
+  client-secret: ${NAVER_CLIENT_SECRET:dummy-naver-client-secret}
+
+aws:
+  s3:
+    region: ap-northeast-2
+    bucket: test-bucket
+    prefix: test/
+    url-prefix: https://example.com/
+
+model:
+  api:
+    url: http://localhost:8000/recommend
+    embedding-url: http://localhost:8000/embedding
