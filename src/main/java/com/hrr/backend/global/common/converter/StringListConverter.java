@@ -16,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StringListConverter implements AttributeConverter<List<String>, String> {
 
-    private final ObjectMapper objectMapper;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String convertToDatabaseColumn(List<String> attribute) {
@@ -39,8 +39,8 @@ public class StringListConverter implements AttributeConverter<List<String>, Str
         try {
             return objectMapper.readValue(dbData, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
-            log.error("JSON reading error", e);
-            return new ArrayList<>();
+            log.error("JSON reading error: {}", dbData, e);
+            throw new RuntimeException("Failed to convert JSON string to List<String>", e);
         }
     }
 }
