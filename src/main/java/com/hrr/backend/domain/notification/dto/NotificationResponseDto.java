@@ -97,4 +97,14 @@ public class NotificationResponseDto {
         @Schema(description = "배지 알림 설정 여부", example = "true")
         private Boolean isBadgeEnabled;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "새 알림 여부 확인 DTO")
+    public static class UnreadStatusDto {
+        @Schema(description = "새 알림 존재 여부 (true: 있음, false: 없음)", example = "true")
+        private Boolean hasUnread;
+    }
 }

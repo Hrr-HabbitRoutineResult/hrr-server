@@ -80,4 +80,15 @@ public class NotificationController {
         );
     }
 
+    @GetMapping("/unread-status")
+    @Operation(summary = "새 알림 여부 확인", description = "읽지 않은 알림이 하나라도 존재하는지 확인합니다.")
+    public ApiResponse<NotificationResponseDto.UnreadStatusDto> checkUnreadStatus(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        NotificationResponseDto.UnreadStatusDto response =
+                notificationService.checkUnreadStatus(userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
 }

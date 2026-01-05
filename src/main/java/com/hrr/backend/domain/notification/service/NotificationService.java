@@ -22,4 +22,7 @@ public interface NotificationService {
     NotificationResponseDto.SettingInfoDto updateNotificationSettings(
             User user, NotificationRequestDto.UpdateSettingDto dto
     );
+
+    // 읽지 않은 알림 존재 여부 조회
+    NotificationResponseDto.UnreadStatusDto checkUnreadStatus(User user);
 }

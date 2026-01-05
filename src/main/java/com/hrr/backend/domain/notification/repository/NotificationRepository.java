@@ -41,4 +41,8 @@ public interface NotificationRepository extends JpaRepository<NotificationDelive
             @Param("contextId") Long contextId,
             @Param("typeNames") List<NotificationTypeName> typeNames
     );
+
+    // 읽지 않은 알림이 존재하는지 확인
+    boolean existsByReceiverAndIsReadFalse(User user);
+
 }
