@@ -1,17 +1,20 @@
 package com.hrr.backend.domain.notification.listener;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.notification.entity.NotificationDelivery;
 import com.hrr.backend.domain.notification.entity.NotificationEvent;
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.notification.entity.NotificationType;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
+import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.repository.NotificationEventRepository;
 import com.hrr.backend.domain.notification.repository.NotificationRepository;
 import com.hrr.backend.domain.notification.repository.NotificationTypeRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
@@ -20,6 +23,7 @@ import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -125,5 +130,107 @@ class NotificationEventListenerTest {
         // then
         verify(roundRepository, never()).findById(anyLong());
         verify(notificationRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("챌린지 연장 '계속하기' 응답 시 성공 알림이 생성된다")
+    void handleChallengeExtensionResponse_Continue() {
+        // given
+        User user = createTestUser(1L, "테스터"); //
+        Challenge challenge = createTestChallenge("운동 챌린지");
+        Round round = createTestRound(10L, challenge);
+
+        NotificationType successType = NotificationType.builder()
+                .typeName(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
+                .build();
+
+        ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(
+                round.getId(), user, NextRoundIntent.CONTINUE);
+
+        given(roundRepository.findById(anyLong())).willReturn(Optional.of(round));
+        given(typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS))
+                .willReturn(Optional.of(successType));
+
+        // when
+        notificationEventListener.handleChallengeExtensionResponseEvent(event);
+
+        // then
+        // 1. NotificationEvent 저장 확인
+        ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(eventRepository).save(eventCaptor.capture());
+
+        NotificationEvent savedEvent = eventCaptor.getValue();
+        assertThat(savedEvent.getMessage()).contains("다음 라운드에서도 루틴을 이어가요");
+        assertThat(savedEvent.getImageKey()).isEqualTo(challenge.getImageKey());
+
+        // 2. NotificationDelivery 저장 확인 (수신자 검증)
+        verify(notificationRepository).save(any(NotificationDelivery.class));
+    }
+
+    @Test
+    @DisplayName("챌린지 연장 '그만하기' 응답 시 종료 알림이 생성된다")
+    void handleChallengeExtensionResponse_Stop() {
+        // given
+        User user = createTestUser(1L, "테스터");
+        Challenge challenge = createTestChallenge("운동 챌린지");
+        Round round = createTestRound(10L, challenge);
+
+        NotificationType cancelType = NotificationType.builder()
+                .typeName(NotificationTypeName.CHALLENGE_EXTENSION_CANCEL)
+                .build();
+
+        ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(
+                round.getId(), user, NextRoundIntent.STOP);
+
+        given(roundRepository.findById(anyLong())).willReturn(Optional.of(round));
+        given(typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_EXTENSION_CANCEL))
+                .willReturn(Optional.of(cancelType));
+
+        // when
+        notificationEventListener.handleChallengeExtensionResponseEvent(event);
+
+        // then
+        ArgumentCaptor<NotificationEvent> eventCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(eventRepository).save(eventCaptor.capture());
+
+        NotificationEvent savedEvent = eventCaptor.getValue();
+        assertThat(savedEvent.getMessage()).contains("챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요");
+        assertThat(savedEvent.getTargetId()).isEqualTo(challenge.getId());
+    }
+
+    @Test
+    @DisplayName("이미 결과 알림(성공 혹은 취소)이 존재하면 추가로 생성하지 않는다")
+    void handleChallengeExtensionResponse_Idempotency() {
+        // given
+        User user = createTestUser(1L, "테스터");
+        Long roundId = 100L;
+        ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(
+                roundId, user, NextRoundIntent.CONTINUE);
+
+        // 이미 알림이 존재한다고 가정
+        given(notificationRepository.existsResponseNotification(eq(user), eq(ResourceType.ROUND), eq(roundId), anyList()))
+                .willReturn(true);
+
+        // when
+        notificationEventListener.handleChallengeExtensionResponseEvent(event);
+
+        // then
+        // 멱등성 체크에서 걸러지므로 이후 로직이 실행되지 않아야 함
+        verify(roundRepository, never()).findById(anyLong());
+        verify(eventRepository, never()).save(any());
+        verify(notificationRepository, never()).save(any());
+    }
+
+    // --- Helper Methods ---
+    private User createTestUser(Long id, String nickname) {
+        return User.builder().id(id).nickname(nickname).build();
+    }
+
+    private Challenge createTestChallenge(String title) {
+        return Challenge.builder().id(1L).title(title).imageKey("test-image-key").build();
+    }
+
+    private Round createTestRound(Long id, Challenge challenge) {
+        return Round.builder().id(id).challenge(challenge).build();
     }
 }

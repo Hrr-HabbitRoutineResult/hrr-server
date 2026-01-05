@@ -4,9 +4,12 @@ import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
+import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.round.entity.*;
+import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -86,5 +89,71 @@ public class NotificationEventListener {
 
             log.info("챌린지 연장 알림 DB 저장 완료: RoundId={}, 대상={}명", roundId, deliveries.size());
         }
+    }
+
+    @Async("getAsyncExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleChallengeExtensionResponseEvent(ChallengeExtensionResponseEvent event) {
+        Long roundId = event.getRoundId();
+        User user = event.getUser();
+
+        // 체크할 결과 타입 정의 (성공 또는 취소)
+        List<NotificationTypeName> resultTypes = List.of(
+                NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS,
+                NotificationTypeName.CHALLENGE_EXTENSION_CANCEL
+        );
+
+        // 멱등성 체크: 해당 리스트에 포함된 타입이 하나라도 존재하면 중단
+        if (notificationRepository.existsResponseNotification(
+                user, ResourceType.ROUND, roundId, resultTypes)) {
+            log.debug("이미 결과 알림(성공/취소)이 처리된 라운드입니다: User={}, Round={}", user.getNickname(), roundId);
+            return;
+        }
+
+        Round round = roundRepository.findById(event.getRoundId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
+        Challenge challenge = round.getChallenge();
+
+        // NextRoundIntent에 따른 알림 타입 및 메시지 결정
+        NotificationTypeName typeName;
+        String title;
+        String message;
+
+        if (event.getIntent() == NextRoundIntent.CONTINUE) {
+            typeName = NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS;
+            title = String.format("[%s] 챌린지가 연장되었어요", challenge.getTitle());
+            message = "다음 라운드에서도 루틴을 이어가요";
+        } else {
+            typeName = NotificationTypeName.CHALLENGE_EXTENSION_CANCEL;
+            title = String.format("[%s] 챌린지를 마무리해요", challenge.getTitle());
+            message = "챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요";
+        }
+
+        NotificationType type = typeRepository.findByTypeName(typeName)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        // NotificationEvent 생성 및 저장
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .type(type)
+                .category(NotificationCategory.CHALLENGE)
+                .targetType(ResourceType.CHALLENGE)
+                .targetId(challenge.getId())
+                .contextType(ResourceType.ROUND)
+                .contextId(round.getId())
+                .title(title)
+                .message(message)
+                .imageKey(challenge.getImageKey())
+                .build();
+        eventRepository.save(notificationEvent);
+
+        // 해당 유저에게만 알림 내역(Delivery) 생성
+        notificationRepository.save(NotificationDelivery.builder()
+                .event(notificationEvent)
+                .receiver(event.getUser())
+                .isRead(false)
+                .build());
+
+        log.info("연장 응답 알림 생성 완료: User={}, Intent={}", event.getUser().getNickname(), event.getIntent());
     }
 }
