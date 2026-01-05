@@ -17,7 +17,7 @@ public class UserResponseDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "사용자 프로필 정보 DTO")
+    @Schema(description = "다른 사용자 프로필 정보 DTO")
     public static class ProfileDto {
 
         @Schema(description = "사용자 아이디", example = "999")
@@ -41,8 +41,11 @@ public class UserResponseDto {
         @Schema(description = "팔로잉 여부", example = "false")
         private Boolean isFollowing;
 
+        @Schema(description = "차단 여부", example = "false")
+        private Boolean isBlocked;
+
         // Entity -> DTO 변환
-        public static ProfileDto from(User user, Boolean isFollowing) {
+        public static ProfileDto from(User user, Boolean isFollowing, Boolean isBlocked) {
             return ProfileDto.builder()
                     .userId(user.getId())
                     .nickname(user.getDisplayNickname())
@@ -51,6 +54,7 @@ public class UserResponseDto {
                     .followerCount(user.getFollowerCount())
                     .followingCount(user.getFollowingCount())
                     .isFollowing(isFollowing)
+                    .isBlocked(isBlocked)
                     .build();
         }
     }
