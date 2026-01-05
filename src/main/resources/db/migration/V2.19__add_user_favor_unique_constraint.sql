@@ -1,10 +1,3 @@
-DELETE uf
-FROM user_favor uf
-JOIN user_favor uf2
-  ON uf.user_id = uf2.user_id
- AND uf.id < uf2.id
-WHERE uf.user_id IS NOT NULL;
-
 SET @exists := (
   SELECT COUNT(1)
   FROM INFORMATION_SCHEMA.STATISTICS

@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChallengeRecommendationService {
 
-    private final RecommendationRepository challengeRepository; // 메타 조회용 커스텀 repo
+    private final RecommendationRepository recommendationRepository;
     private final RecommendationResultRepository recommendationResultRepository;
     private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
     private final ChallengeStaticsService challengeStaticsService;
@@ -52,7 +52,7 @@ public class ChallengeRecommendationService {
         UserFavor favor = userFavorService.saveUserFavor(request);
 
         // 1) 전체 챌린지 메타 조회
-        List<ChallengeItemDto> allChallenges = challengeRepository.findAllChallengeMeta();
+        List<ChallengeItemDto> allChallenges = recommendationRepository.findAllChallengeMeta();
         if (allChallenges.isEmpty()) {
             log.warn("[Recommend] No challenges found in DB. Returning empty result.");
             return ChallengeRecommendResult.builder()
