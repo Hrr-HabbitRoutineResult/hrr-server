@@ -73,9 +73,9 @@ public class UserServiceImpl implements UserService {
 
         // 차단 여부 확인 (양방향)
         boolean isBlockedByMe = userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser);
-        boolean iBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
+        boolean isBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
 
-        if (iBlockedByOther) {
+        if (isBlockedByOther) {
             throw new GlobalException(ErrorCode.USER_NOT_FOUND);
         }
 
