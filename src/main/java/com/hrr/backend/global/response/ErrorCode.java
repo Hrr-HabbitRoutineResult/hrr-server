@@ -96,6 +96,10 @@ public enum ErrorCode implements BaseCode{
     ROUND_NOT_STARTED(HttpStatus.BAD_REQUEST, "ROUND4003", "아직 시작되지 않은 라운드입니다."),
     ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
     ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
+    ROUND_NOT_CURRENT(HttpStatus.BAD_REQUEST, "ROUND4006", "현재 진행 중인 라운드에 대해서만 처리할 수 있습니다."),
+    ROUND_DECISION_PERIOD_NOT_OPEN(HttpStatus.BAD_REQUEST, "ROUND4007", "아직 라운드 연장/하차 결정 기간이 아닙니다."),
+    ROUND_DECISION_INTENT_INVALID(HttpStatus.BAD_REQUEST, "ROUND4008", "연장/하차 의사결정 값이 올바르지 않습니다."),
+
 
     // mission
     RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),

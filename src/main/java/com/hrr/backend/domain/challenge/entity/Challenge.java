@@ -115,4 +115,10 @@ public class Challenge extends BaseEntity {
 	public void changeCurrentRound(Round round) {
 		this.currentRound = round;
 	}
+
+    //상태 변경 메서드 추가
+    public void updateStatus(ChallengeStatus status) {
+        this.status = status;
+    }
+
 }
