@@ -34,6 +34,7 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -181,14 +182,18 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// 방장 정보 조회
 		UserChallenge ownerUc = userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER)
-				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+				.orElse(null);
+
+		// 방장 객체 및 활성 상태 추출
+		User owner = (ownerUc != null) ? ownerUc.getUser() : null;
+		boolean isOwnerActive = (owner != null) && (owner.getUserStatus() == UserStatus.ACTIVE);
 
 		// 버튼 상태 결정
 		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday);
 
 		// DTO 변환 및 반환
 		return challengeConverter.toHeaderInfoDto(
-				challenge, ownerUc.getUser(), startDate, endDate, remainDays,
+				challenge, owner, isOwnerActive, startDate, endDate, remainDays,
 				isParticipant, isLiked, buttonStatus
 		);
 	}
