@@ -11,6 +11,7 @@ import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -298,6 +299,64 @@ class ChallengeServiceInfoTest {
     }
 
     /**
+     * 4. 방장 상태 관련 시나리오 (신규 추가)
+     */
+    @Test
+    @DisplayName("상황 10: 방장이 탈퇴함 (UserStatus != ACTIVE) -> 정상 조회")
+    void owner_inactive_returns_info_successfully() {
+        // Given
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+        setRoundDate(challenge, LocalDate.now());
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 10, 30);
+
+        // 방장이 존재하지만 탈퇴 상태
+        User owner = mock(User.class);
+        given(owner.getUserStatus()).willReturn(UserStatus.INACTIVE);
+        UserChallenge ownerUc = mock(UserChallenge.class);
+        given(ownerUc.getUser()).willReturn(owner);
+
+        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        given(userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER))
+                .willReturn(Optional.of(ownerUc));
+
+        mockParticipant(user, challenge, false);
+        mockConverter(ActionButtonStatus.JOIN);
+
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
+        // Then
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("상황 11: 방장 데이터가 아예 없음 (owner == null) -> 에러 없이 조회")
+    void owner_not_found_returns_info_successfully() {
+        // Given
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+        setRoundDate(challenge, LocalDate.now());
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 10, 30);
+
+        // 방장 정보가 Optional.empty()
+        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        given(userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER))
+                .willReturn(Optional.empty());
+
+        mockParticipant(user, challenge, false);
+        mockConverter(ActionButtonStatus.JOIN);
+
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
+        // Then
+        assertThat(result).isNotNull();
+    }
+
+    /**
      * Helper Methods (테스트 설정을 쉽게 하기 위한 도구들)
      */
 
@@ -364,9 +423,9 @@ class ChallengeServiceInfoTest {
 
     // Converter가 Status를 그대로 통과시키도록 Stubbing
     private void mockConverter(ActionButtonStatus expectedStatus) {
-        given(challengeConverter.toHeaderInfoDto(any(), any(), any(), any(), anyLong(), anyBoolean(), anyBoolean(), any()))
+        given(challengeConverter.toHeaderInfoDto(any(), any(), anyBoolean(), any(), any(), anyLong(), anyBoolean(), anyBoolean(), any()))
                 .willAnswer(invocation -> ChallengeResponseDto.HeaderInfoDto.builder()
-                        .actionButtonStatus(invocation.getArgument(7))
+                        .actionButtonStatus(invocation.getArgument(8))
                         .build());
     }
 }

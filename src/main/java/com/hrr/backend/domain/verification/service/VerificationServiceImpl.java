@@ -7,6 +7,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
@@ -117,17 +118,21 @@ public class VerificationServiceImpl implements VerificationService {
             return verificationConverter.toStatDto(0, totalParticipantCount, null);
         }
 
-        Long currentRoundId = currentRound.getId();
-        LocalDateTime targetDateTime = determineTargetDateTime(challenge, currentRoundId);
+        // [수정] 실시간 현황 체크: 인증 요일/시간대가 아니면 null 반환
+        LocalDateTime targetDateTime = determineTargetDateTime(challenge);
 
         if (targetDateTime == null) {
+            // 인증 시간이 아니면 분자(certifiedCount)는 무조건 0
             return verificationConverter.toStatDto(0, totalParticipantCount, null);
         }
 
         LocalDate targetDate = targetDateTime.toLocalDate();
+
+        // 인증자 중 현재 ACTIVE 상태인 유저만 집계
         Long certifiedCount = verificationRepository.countDistinctCertifiers(
-                currentRoundId,
+                currentRound.getId(),
                 VerificationStatus.COMPLETED,
+                UserStatus.ACTIVE,
                 targetDate.atStartOfDay(),
                 targetDate.atTime(LocalTime.MAX)
         );
@@ -260,26 +265,20 @@ public class VerificationServiceImpl implements VerificationService {
         }
     }
 
-    private LocalDateTime determineTargetDateTime(Challenge challenge, Long roundId) {
-        LocalTime now = LocalTime.now();
-        LocalTime start = challenge.getVerifyStartTime();
-        LocalTime end = challenge.getVerifyEndTime();
+    private LocalDateTime determineTargetDateTime(Challenge challenge) {
+        LocalDateTime now = LocalDateTime.now();
 
-        boolean isVerificationTime;
-        if (start.isBefore(end)) {
-            isVerificationTime = !now.isBefore(start) && !now.isAfter(end);
-        } else {
-            isVerificationTime = !now.isBefore(start) || !now.isAfter(end);
+        // 오늘이 인증 요일인지 체크
+        if (!isVerificationDay(challenge, now.toLocalDate())) {
+            return null;
         }
 
-        if (isVerificationTime) {
-            return LocalDateTime.now();
-        } else {
-            return verificationRepository.findLatestVerificationTime(
-                    roundId,
-                    VerificationStatus.COMPLETED
-            );
+        // 현재 시간이 인증 시간대 내인지 체크
+        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+            return null;
         }
+
+        return now;
     }
 
     @Override

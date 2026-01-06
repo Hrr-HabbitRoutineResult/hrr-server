@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.verification.repository;
 
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -72,14 +73,20 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     );
 
     // 특정 날짜(범위)의 인증 인원 수 (중복 제거, COMPLETED 상태만)
-    @Query("SELECT COUNT(DISTINCT r.userChallenge.id) FROM Verification v " +
-            "JOIN v.roundRecord r " +
-            "WHERE r.round.id = :roundId " +
-            "AND v.status = :status " +
-            "AND v.createdAt BETWEEN :start AND :end")
+    @Query("""
+    SELECT COUNT(DISTINCT r.userChallenge.id) FROM Verification v 
+    JOIN v.roundRecord r 
+    JOIN r.userChallenge uc 
+    JOIN uc.user u 
+    WHERE r.round.id = :roundId 
+    AND v.status = :status 
+    AND u.userStatus = :userStatus 
+    AND v.createdAt BETWEEN :start AND :end
+""")
     Long countDistinctCertifiers(
             @Param("roundId") Long roundId,
             @Param("status") VerificationStatus status,
+            @Param("userStatus") UserStatus userStatus,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );

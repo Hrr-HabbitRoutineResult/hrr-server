@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.auth.service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
@@ -12,6 +13,9 @@ import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -34,6 +38,7 @@ public class AuthService {
 
 	private final SocialAuthRepository socialAuthRepository;
 	private final UserRepository userRepository;
+	private final UserChallengeRepository userChallengeRepository;
 
     public AuthResponseDto.LoginResponse socialLogin(SocialType socialType, AuthRequestDto.SocialLoginRequest request) {
         // 지원하지 않는 소셜 타입이면 GlobalException 던지기
@@ -254,6 +259,18 @@ public class AuthService {
 
 		// 유저 상태 변경 (Soft Delete)
 		user.withdraw();
+
+		// 해당 사용자가 '참여 중(JOINED)'인 챌린지만 조회
+		List<UserChallenge> activeParticipations =
+				userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
+
+		for (UserChallenge uc : activeParticipations) {
+			// 연관된 챌린지의 현재 인원수 필드 감소
+			uc.getChallenge().decreaseCurrentParticipants();
+
+			// 유저의 참여 상태를 '하차(DROPPED)'로 업데이트
+			uc.updateStatus(ChallengeJoinStatus.DROPPED);
+		}
 
 		// TODO: 리프레시 토큰 등 세션 정보 삭제
 	}

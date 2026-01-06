@@ -77,6 +77,7 @@ public class ChallengeConverter {
     public ChallengeResponseDto.HeaderInfoDto toHeaderInfoDto(
             Challenge challenge,
             User owner,
+            boolean isOwnerActive,
             LocalDate startDate,
             LocalDate endDate,
             long remainDays,
@@ -84,14 +85,26 @@ public class ChallengeConverter {
             boolean isLiked,
             ActionButtonStatus actionButtonStatus
     ) {
-        // 방장 정보 DTO 생성
+        // 방장 정보 마스킹: owner가 null(정보 삭제됨)이거나 비활성 상태(탈퇴 처리됨)인 경우 통합 처리
+        String nickname;
+        String profileImageUrl = null;
+        Long ownerId = null;
+
+        if (owner != null && isOwnerActive) {
+            nickname = owner.getDisplayNickname();
+            profileImageUrl = owner.getProfileImage();
+            ownerId = owner.getId();
+        } else {
+            // 그 외 모든 경우 "탈퇴한 회원"으로 표시
+            nickname = "탈퇴한 사용자";
+        }
+
         ChallengeResponseDto.OwnerDto ownerDto = ChallengeResponseDto.OwnerDto.builder()
-                .id(owner.getId())
-                .nickname(owner.getDisplayNickname())
-                .profileImageUrl(owner.getProfileImage())
+                .id(ownerId)
+                .nickname(nickname)
+                .profileImageUrl(profileImageUrl)
                 .build();
 
-        // 상단 정보 DTO 생성 및 반환
         return ChallengeResponseDto.HeaderInfoDto.builder()
                 .challengeId(challenge.getId())
                 .title(challenge.getTitle())
@@ -103,7 +116,7 @@ public class ChallengeConverter {
                 .startDate(startDate)
                 .endDate(endDate)
                 .remainDays(remainDays)
-				.isPublic(challenge.getIsPublic())
+                .isPublic(challenge.getIsPublic())
                 .isObserverMode(challenge.getIsViewerMode())
                 .isParticipant(isParticipant)
                 .isLiked(isLiked)
