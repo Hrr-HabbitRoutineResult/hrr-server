@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -31,9 +32,7 @@ public class VerificationDetailResponseDto {
     private String textUrl;
     private String photoUrl;
 
-    private String textImage1;
-    private String textImage2;
-    private String textImage3;
+    private List<String> textImages;
 
     private Boolean isQuestion;
     private Boolean isResolved;

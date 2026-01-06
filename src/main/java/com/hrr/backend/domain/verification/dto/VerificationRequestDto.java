@@ -2,9 +2,12 @@ package com.hrr.backend.domain.verification.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -20,12 +23,9 @@ public class VerificationRequestDto {
 
     private String textUrl;
 
-    @Schema(description = "글 인증 첨부 이미지1(S3 Key)", nullable = true)
-    private String textImage1;
-    @Schema(description = "글 인증 첨부 이미지2(S3 Key)", nullable = true)
-    private String textImage2;
-    @Schema(description = "글 인증 첨부 이미지3(S3 Key)", nullable = true)
-    private String textImage3;
+    @Schema(description = "글 인증 첨부 이미지 리스트(S3 Key), 최대 3개", nullable = true)
+    @Size(max = 3, message = "이미지는 최대 3개까지 등록 가능합니다.")
+    private List<String> textImages;
 
     private Boolean isQuestion;
 }

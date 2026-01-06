@@ -1,6 +1,9 @@
 package com.hrr.backend.domain.verification.converter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
@@ -23,7 +26,13 @@ import lombok.RequiredArgsConstructor;
 public class VerificationConverter {
 
     private final S3UrlUtil s3UrlUtil;
-
+    // 편의 메서드: 리스트의 각 Key를 Full URL로 변환
+    private List<String> toFullUrls(List<String> keys) {
+        if (keys == null) return new ArrayList<>();
+        return keys.stream()
+                .map(s3UrlUtil::toFullUrl)
+                .collect(Collectors.toList());
+    }
 
     /** 인증 피드 목록 항목 변환 */
     public VerificationResponseDto.FeedDto toFeedDto(Verification verification) {
@@ -40,13 +49,9 @@ public class VerificationConverter {
                 fullImageUrl = s3UrlUtil.toFullUrl(verification.getPhotoUrl());
             }
         } else {
-            String key = firstNonNull(
-                    verification.getTextImage1(),
-                    verification.getTextImage2(),
-                    verification.getTextImage3()
-            );
-            if (key != null) {
-                fullImageUrl = s3UrlUtil.toFullUrl(key);
+            //  리스트의 첫 번째 이미지를 대표 이미지로 사용
+            if (verification.getTextImages() != null && !verification.getTextImages().isEmpty()) {
+                fullImageUrl = s3UrlUtil.toFullUrl(verification.getTextImages().get(0));
             }
         }
         return VerificationResponseDto.FeedDto.builder()
@@ -84,9 +89,7 @@ public class VerificationConverter {
     public VerificationResponseDto.CreateResponseDto toResponseDto(Verification verification) {
         String fullPhotoUrl = verification.getPhotoUrl() != null ? s3UrlUtil.toFullUrl(verification.getPhotoUrl()) : null;
 
-        String fullTextImage1 = verification.getTextImage1() != null ? s3UrlUtil.toFullUrl(verification.getTextImage1()) : null;
-        String fullTextImage2 = verification.getTextImage2() != null ? s3UrlUtil.toFullUrl(verification.getTextImage2()) : null;
-        String fullTextImage3 = verification.getTextImage3() != null ? s3UrlUtil.toFullUrl(verification.getTextImage3()) : null;
+        List<String> fullTextImages = toFullUrls(verification.getTextImages());
         return VerificationResponseDto.CreateResponseDto.builder()
                 .verificationId(verification.getId())
                 .roundId(verification.getRoundRecord().getRound().getId())
@@ -96,9 +99,7 @@ public class VerificationConverter {
                 .content(verification.getContent())
                 .textUrl(verification.getTextUrl())
                 .photoUrl(fullPhotoUrl)
-                .textImage1(fullTextImage1)
-                .textImage2(fullTextImage2)
-                .textImage3(fullTextImage3)
+                .textImages(fullTextImages)
                 .isQuestion(verification.getIsQuestion())
                 .status(verification.getStatus())
                 .createdAt(verification.getCreatedAt())
@@ -142,11 +143,7 @@ public class VerificationConverter {
 
         String fullPhotoUrl = verification.getPhotoUrl() != null ? s3UrlUtil.toFullUrl(verification.getPhotoUrl()) : null;
 
-        String fullTextImage1 = verification.getTextImage1() != null ? s3UrlUtil.toFullUrl(verification.getTextImage1()) : null;
-        String fullTextImage2 = verification.getTextImage2() != null ? s3UrlUtil.toFullUrl(verification.getTextImage2()) : null;
-        String fullTextImage3 = verification.getTextImage3() != null ? s3UrlUtil.toFullUrl(verification.getTextImage3()) : null;
-
-
+        List<String> fullTextImages = toFullUrls(verification.getTextImages());
         VerificationDetailResponseDto.UserInfo userInfo =
                 VerificationDetailResponseDto.UserInfo.builder()
                         .userId(user.getId())
@@ -174,9 +171,7 @@ public class VerificationConverter {
                 .content(verification.getContent())
                 .textUrl(verification.getTextUrl())
                 .photoUrl(fullPhotoUrl)
-                .textImage1(fullTextImage1)
-                .textImage2(fullTextImage2)
-                .textImage3(fullTextImage3)
+                .textImages(fullTextImages)
                 .isQuestion(verification.getIsQuestion())
                 .isResolved(verification.getIsResolved())
                 .status(verification.getStatus())
@@ -205,9 +200,7 @@ public class VerificationConverter {
     public VerificationResponseDto.HistoryDto toHistoryDto(Verification verification) {
         String fullPhotoUrl = verification.getPhotoUrl() != null ? s3UrlUtil.toFullUrl(verification.getPhotoUrl()) : null;
 
-        String fullTextImage1 = verification.getTextImage1() != null ? s3UrlUtil.toFullUrl(verification.getTextImage1()) : null;
-        String fullTextImage2 = verification.getTextImage2() != null ? s3UrlUtil.toFullUrl(verification.getTextImage2()) : null;
-        String fullTextImage3 = verification.getTextImage3() != null ? s3UrlUtil.toFullUrl(verification.getTextImage3()) : null;
+        List<String> fullTextImages = toFullUrls(verification.getTextImages());
         return VerificationResponseDto.HistoryDto.builder()
                 .verificationId(verification.getId())
                 .challengeId(verification.getRoundRecord().getUserChallenge().getChallenge().getId())
@@ -217,9 +210,7 @@ public class VerificationConverter {
                 .content(verification.getContent())
                 .photoUrl(fullPhotoUrl)
                 .textUrl(verification.getTextUrl())
-                .textImage1(fullTextImage1)
-                .textImage2(fullTextImage2)
-                .textImage3(fullTextImage3)
+                .textImages(fullTextImages)
                 .verifiedAt(verification.getCreatedAt())
                 .build();
     }

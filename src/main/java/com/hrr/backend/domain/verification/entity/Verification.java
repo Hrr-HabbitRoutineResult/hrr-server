@@ -5,11 +5,15 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.common.BaseEntity;
+import com.hrr.backend.global.common.converter.StringListConverter;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -54,9 +58,11 @@ public class Verification extends BaseEntity {
     private String photoUrl;
 
     private String textUrl;
-    private String textImage1;
-    private String textImage2;
-    private String textImage3;
+
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "TEXT")
+    @Builder.Default
+    private List<String> textImages = new ArrayList<>();
 
     private Boolean isQuestion;
 
@@ -87,9 +93,7 @@ public class Verification extends BaseEntity {
             String title,
             String content,
             String textUrl,
-            String textImage1,
-            String textImage2,
-            String textImage3,
+            List<String> textImages,
             Boolean isQuestion,
             Long roundId
     ) {
@@ -101,9 +105,7 @@ public class Verification extends BaseEntity {
                 .title(title)
                 .content(content)
                 .textUrl(textUrl)
-                .textImage1(textImage1)
-                .textImage2(textImage2)
-                .textImage3(textImage3)
+                .textImages(textImages != null ? textImages : new ArrayList<>()) // Null Safe
                 .isQuestion(isQuestion)
                 .status(VerificationStatus.COMPLETED)
                 .isResolved(false) // feat/90 필드 초기화
@@ -153,9 +155,7 @@ public class Verification extends BaseEntity {
             String title,
             String content,
             String textUrl,
-            String textImage1,
-            String textImage2,
-            String textImage3,
+            List<String> textImages,
             Boolean isQuestion
     ) {
         if (title != null) {
@@ -171,14 +171,12 @@ public class Verification extends BaseEntity {
             }
             this.content = content;
         }
-        if (textImage1 != null) {
-            this.textImage1 = normalizeOptionalImageKey(textImage1);
-        }
-        if (textImage2 != null) {
-            this.textImage2 = normalizeOptionalImageKey(textImage2);
-        }
-        if (textImage3 != null) {
-            this.textImage3 = normalizeOptionalImageKey(textImage3);
+        // 텍스트 URL 업데이트 (null 허용일 경우 로직에 따라 분기 처리 필요, 여기선 그대로 반영)
+        this.textUrl = textUrl;
+
+        // 이미지 리스트 업데이트: 들어온 리스트가 null이 아니면 그대로 덮어씀 (순서 보장)
+        if (textImages != null) {
+            this.textImages = textImages;
         }
 
         if (isQuestion != null) {
