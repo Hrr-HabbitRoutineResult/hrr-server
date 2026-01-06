@@ -71,9 +71,9 @@ public class NotificationScheduler {
      * 결정 기간(endDate - 2)이 종료되는 시점인 자정에 바로 실행합니다.
      */
     @Transactional(readOnly = true)
-    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul") // 매일 자정 실행
+    @Scheduled(cron = "0 0 0 * * *") // 매일 자정 실행
     public void scheduleChallengeExtensionResultNotifications() {
-        // 오늘(자정)이 endDate - 1일인 라운드들을 찾습니다. (즉, 내일이 endDate인 라운드)
+        // 오늘(자정)이 endDate - 1일인 라운드들을 찾음
         LocalDate targetEndDate = LocalDate.now().plusDays(1);
 
         log.info("[ExtensionResultScheduler] 결정 기간 종료. 결과 알림 발송 시작 (대상 endDate: {})", targetEndDate);
