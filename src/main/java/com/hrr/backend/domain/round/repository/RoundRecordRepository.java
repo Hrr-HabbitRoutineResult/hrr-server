@@ -66,4 +66,9 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
             @Param("round") Round round,
             @Param("status") ChallengeJoinStatus status
     );
+
+    /**멱등성 위한 exists 메서드 추가-> 스케줄러 장애 또는 재시작으로 재실행돼도 중복 생성 방지하게*/
+    boolean existsByUserChallengeAndRound(UserChallenge userChallenge, Round round);
+
+
 }

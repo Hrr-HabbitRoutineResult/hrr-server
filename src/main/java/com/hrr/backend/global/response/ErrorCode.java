@@ -52,6 +52,10 @@ public enum ErrorCode implements BaseCode{
     USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."), // develop
     CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."), // develop
 	MAX_CHALLENGE_EXCEEDED(HttpStatus.BAD_REQUEST, "CHALLENGE40012", "참가할 수 있는 챌린지는 최대 5개입니다."),
+	STATICS_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE4042", "통계 데이터 생성에 실패했거나 존재하지 않습니다."),
+    STATICS_NEGATIVE_VALUE(HttpStatus.BAD_REQUEST, "CHALLENGE40013", "통계 수치는 음수일 수 없습니다."),
+    USER_FAVOR_REQUIRED_FIELD_MISSING(HttpStatus.BAD_REQUEST, "CHALLENGE40014", "필수 선호 정보가 누락되었습니다."),
+
 
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
@@ -92,6 +96,10 @@ public enum ErrorCode implements BaseCode{
     ROUND_NOT_STARTED(HttpStatus.BAD_REQUEST, "ROUND4003", "아직 시작되지 않은 라운드입니다."),
     ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
     ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
+    ROUND_NOT_CURRENT(HttpStatus.BAD_REQUEST, "ROUND4006", "현재 진행 중인 라운드에 대해서만 처리할 수 있습니다."),
+    ROUND_DECISION_PERIOD_NOT_OPEN(HttpStatus.BAD_REQUEST, "ROUND4007", "아직 라운드 연장/하차 결정 기간이 아닙니다."),
+    ROUND_DECISION_INTENT_INVALID(HttpStatus.BAD_REQUEST, "ROUND4008", "연장/하차 의사결정 값이 올바르지 않습니다."),
+
 
     // mission
     RANDOM_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION404", "미션을 찾을 수 없습니다."),

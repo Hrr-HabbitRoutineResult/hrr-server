@@ -86,6 +86,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final RoundRecordRepository roundRecordRepository;
 	private final RoundConverter roundConverter;
 
+	private final ChallengeStaticsService challengeStaticsService;
+
 	private final VerificationRepository verificationRepository;
 
 	private final RedisTemplate<String, String> redisTemplate;
@@ -407,6 +409,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// RoundRecord(방장의 레코드) 생성
 		createRoundRecordOrFail(saved, userChallenge);
 
+		// ChallengeStatics(참가자들의 선호 통계) 생성
+		challengeStaticsService.updateChallengeStatics(saved);
+
         // 임베딩 계산
         String challengeText = buildChallengeText(saved);
         eventPublisher.publishEvent(
@@ -451,7 +456,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 현재 진행 중인 라운드의 RoundRecord 생성
 		createRoundRecordOrFail(challenge, userChallenge);
 
-		// 현재 인원 포함한 응답
+        // challenge_statics 업데이트 트리거
+        challengeStaticsService.updateChallengeStatics(challenge);
+
+        // 현재 인원 포함한 응답
 		return challengeConverter.toJoinResponseDto(challenge);
 	}
 
