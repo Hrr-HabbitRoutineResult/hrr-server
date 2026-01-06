@@ -111,6 +111,13 @@ public class Challenge extends BaseEntity {
 		this.currentParticipants++;
 	}
 
+	// 참가자 수 감소 편의 메서드
+	public void decreaseCurrentParticipants() {
+		if (this.currentParticipants > 0) {
+			this.currentParticipants--;
+		}
+	}
+
 	// 라운드 교체
 	public void changeCurrentRound(Round round) {
 		this.currentRound = round;
