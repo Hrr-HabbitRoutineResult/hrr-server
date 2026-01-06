@@ -16,14 +16,20 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "user_favor")
-@ToString(exclude = {"user", "userFavorEmbedding", "recommendationResults"})
+@Table(
+        name = "user_favor",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_user_favor_user_id",
+                columnNames = "user_id"
+        )
+)
+@ToString(exclude = {"user", "recommendationResults"})
 public class UserFavor extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -65,11 +71,8 @@ public class UserFavor extends BaseEntity {
     @Column(name = "goal", nullable = false)
     private Goal goal;
 
-    @OneToOne(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = true)
-    private UserFavorEmbedding userFavorEmbedding;
-
     @Builder.Default
-    @OneToMany(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = false)
+    @OneToMany(mappedBy = "userFavor", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecommendationResult> recommendationResults = new ArrayList<>();
 
 }

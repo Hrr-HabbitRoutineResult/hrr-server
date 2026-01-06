@@ -25,4 +25,9 @@ public class ModelApiRequest {
     @Positive
     @JsonProperty("top_k")
     private int topK;
+
+    private String userGender;
+    private String userAgeGroup;
+    private String userJob;
+    private List<String> userAvailableTime;
 }

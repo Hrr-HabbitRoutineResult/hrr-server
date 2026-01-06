@@ -1,18 +1,27 @@
 package com.hrr.backend.domain.recommendation.service;
 
-import com.hrr.backend.domain.recommendation.repository.RecommendationRepository;
+import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.challenge.service.ChallengeStaticsService;
 import com.hrr.backend.domain.recommendation.dto.request.ChallengeRecommendRequest;
 import com.hrr.backend.domain.recommendation.dto.request.ModelApiRequest;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemDto;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeItemResponseDto;
-import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
 import com.hrr.backend.domain.recommendation.dto.response.ChallengeRecommendResult;
-import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
+import com.hrr.backend.domain.recommendation.repository.RecommendationRepository;
+import com.hrr.backend.domain.recommendation.repository.RecommendationResultRepository;
+import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
+import com.hrr.backend.domain.user.entity.UserFavor;
+import com.hrr.backend.domain.user.service.UserFavorService;
+import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.util.*;
@@ -24,7 +33,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChallengeRecommendationService {
 
-    private final RecommendationRepository challengeRepository;
+    private final RecommendationRepository recommendationRepository;
+    private final RecommendationResultRepository recommendationResultRepository;
+    private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
+    private final ChallengeStaticsService challengeStaticsService;
+
+    private final UserFavorService userFavorService;
+
     private final ModelApiClient modelApiClient;
     private final S3UrlUtil s3UrlUtil;
 
@@ -32,102 +47,131 @@ public class ChallengeRecommendationService {
 
     public ChallengeRecommendResult recommendChallenges(ChallengeRecommendRequest request) {
 
-        // 1) 전체 챌린지 메타 정보 조회
-        List<ChallengeItemDto> allChallenges = challengeRepository.findAllChallengeMeta();
+        // 0) 유저 검증 + 선호 저장 (Tx)
+        UserFavor favor = saveFavorTx(request);
 
+        // 1) 전체 챌린지 메타 조회
+        List<ChallengeItemDto> allChallenges = recommendationRepository.findAllChallengeMeta();
         if (allChallenges.isEmpty()) {
             log.warn("[Recommend] No challenges found in DB. Returning empty result.");
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
-                    .modelVersion(null)
-                    .latencyMs(0)
                     .recommendations(List.of())
                     .build();
         }
 
-        boolean hasInvalidEmbedding = false;
-
+        // 2) 임베딩 검증
         for (ChallengeItemDto ch : allChallenges) {
-            List<Float> emb = ch.getEmbedding();
-            int size = (emb == null) ? -1 : emb.size();
-
-            if (emb == null || size != EMBED_DIM) {
-                hasInvalidEmbedding = true;
+            if (ch.getEmbedding() == null || ch.getEmbedding().size() != EMBED_DIM) {
+                throw new GlobalException(ErrorCode.EMBEDDING_LENGTH_ERROR);
             }
         }
 
-        if (hasInvalidEmbedding) {
-            throw new GlobalException(ErrorCode.EMBEDDING_LENGTH_ERROR);
-        }
+        // 3) cert_time_slots 세팅
+        allChallenges.forEach(ch ->
+                ch.setCert_time_slots(toAvailableTimeSlots(
+                        ch.getVerifyStartTime(),
+                        ch.getVerifyEndTime()
+                ))
+        );
+        // 챌린지 임베딩 외 정보 계산
+        challengeStaticsService.applyStaticsToItems(allChallenges);
 
-        allChallenges.forEach(ch -> {
-            String slot = formatCertTimeSlots(ch.getVerifyStartTime(), ch.getVerifyEndTime());
-            ch.setCert_time_slots(slot);
-        });
+        // 4) E5 query 생성 (요청 포맷 적용 + 카테고리 쉼표 나열)
+        String query = buildUserQueryE5(favor);
 
-        // 2) 모델에 보낼 query 문자열 구성
-        String query = buildUserQuery(request);
-
-        // 3) 모델 API 요청 DTO 생성
-        ModelApiRequest modelApiRequest = ModelApiRequest.builder()
-                .query(query)
-                .items(allChallenges)
-                .topK(5)
-                .build();
-
-        ModelApiResponse modelApiResponse = null;
+        // 5) 모델 호출
+        int topK = 5;
+        ModelApiResponse modelApiResponse;
         try {
-            // 4) 모델 서버 호출
-            modelApiResponse = modelApiClient.requestRecommendations(modelApiRequest);
+            modelApiResponse = modelApiClient.requestRecommendations(
+                    ModelApiRequest.builder()
+                            .query(query)
+                            .items(allChallenges)
+                            .topK(topK)
 
+                            .userGender(favor.getGender() != null ? favor.getGender().name() : null)
+                            .userAgeGroup(favor.getAgeGroup() != null ? favor.getAgeGroup().name() : null)
+                            .userJob(favor.getJob() != null ? favor.getJob().name() : null)
+                            .userAvailableTime(
+                                    favor.getAvailableTime() != null
+                                            ? favor.getAvailableTime().stream()
+                                            .map(Enum::name)
+                                            .toList()
+                                            : List.of()
+                            )
+
+                            .build()
+
+            );
             log.info("[Recommend] Model-api response: version={}, latencyMs={}",
                     modelApiResponse != null ? modelApiResponse.getModelVersion() : null,
                     modelApiResponse != null ? modelApiResponse.getLatencyMs() : null);
-
         } catch (Exception e) {
-            log.error("[Recommend] Model API call failed");
+            log.error("[Recommend] Model API call failed", e);
             throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
         }
 
-        // 5) 추천 결과를 최종 응답 DTO로 매핑
-        return mapToResultDto(request, allChallenges, modelApiResponse);
+        // 6) 추천 결과 저장
+        saveRecommendationResults(favor, modelApiResponse);
+
+        // 7) 응답 매핑
+        return mapToResultDto(request.getUserId(), allChallenges, modelApiResponse);
     }
 
-    private String formatCertTimeSlots(LocalTime start, LocalTime end) {
-        if (start == null || end == null) {
-            return null;
+    /* ======================= helpers ======================= */
+    @Transactional
+    protected UserFavor saveFavorTx(ChallengeRecommendRequest request) {
+        return userFavorService.saveUserFavor(request);
+    }
+
+    private String buildUserQueryE5(UserFavor favor) {
+        String goalText = (favor.getGoal() == null)
+                ? "원하는"
+                : favor.getGoal().getDescription();
+
+        String categoryText = (favor.getCategory() == null || favor.getCategory().isEmpty())
+                ? "전체"
+                : favor.getCategory().stream()
+                .map(Category::getDescription)
+                .collect(Collectors.joining(", ")); // ✅ 쉼표 나열
+
+        return String.format("query: %s 목표를 위한 %s 챌린지", goalText, categoryText);
+    }
+
+    private void saveRecommendationResults(UserFavor favor, ModelApiResponse modelApiResponse) {
+        if (modelApiResponse == null || modelApiResponse.getRecommendations() == null) return;
+
+        int rank = 1;
+        List<RecommendationResult> results = new ArrayList<>();
+
+        for (var rec : modelApiResponse.getRecommendations()) {
+            Challenge challenge = challengeJpaRepository
+                    .findById(rec.getChallengeId())
+                    .orElse(null);
+            if (challenge == null) continue;
+
+            results.add(
+                    RecommendationResult.builder()
+                            .userFavor(favor)
+                            .challenge(challenge)
+                            .cosineScore((float) rec.getMatchScore())
+                            .ranking(rank++)
+                            .build()
+            );
         }
-        return String.format("%02d-%02d", start.getHour(), end.getHour());
-    }
 
-    private String buildUserQuery(ChallengeRecommendRequest request) {
-        String categories = Optional.ofNullable(request.getCategory())
-                .orElse(List.of())
-                .stream()
-                .map(Enum::name)
-                .collect(Collectors.joining("/"));
-
-        return String.format(
-                "성별: %s, 연령대: %s, 직업: %s, 활동 시간: %s, 관심사: %s, 목표: %s",
-                request.getGender(),
-                request.getAgeGroup(),
-                request.getJob(),
-                request.getAvailableTime(),
-                categories,
-                request.getGoal()
-        );
+        recommendationResultRepository.saveAll(results);
     }
 
     private ChallengeRecommendResult mapToResultDto(
-            ChallengeRecommendRequest request,
+            Long userId,
             List<ChallengeItemDto> allChallenges,
             ModelApiResponse modelApiResponse
     ) {
         if (modelApiResponse == null || modelApiResponse.getRecommendations() == null) {
             return ChallengeRecommendResult.builder()
-                    .userId(request.getUserId())
-                    .modelVersion(null)
-                    .latencyMs(0)
+                    .userId(userId)
                     .recommendations(List.of())
                     .build();
         }
@@ -142,10 +186,7 @@ public class ChallengeRecommendationService {
                 modelApiResponse.getRecommendations().stream()
                         .map(rec -> {
                             ChallengeItemDto base = challengeMap.get(rec.getChallengeId());
-                            if (base == null) {
-                                log.warn("[Recommend] Recommendation refers to unknown challengeId={}", rec.getChallengeId());
-                                return null;
-                            }
+                            if (base == null) return null;
 
                             return ChallengeItemResponseDto.builder()
                                     .challengeId(base.getChallengeId())
@@ -156,20 +197,54 @@ public class ChallengeRecommendationService {
                                     .goalText(base.getGoal_text())
                                     .verifyStartTime(base.getVerifyStartTime())
                                     .verifyEndTime(base.getVerifyEndTime())
-                                    .imageKey(
-                                            s3UrlUtil.toFullUrl(base.getImageKey())
-                                    )
+                                    .imageKey(s3UrlUtil.toFullUrl(base.getImageKey()))
                                     .build();
                         })
                         .filter(Objects::nonNull)
                         .toList();
 
-
         return ChallengeRecommendResult.builder()
-                .userId(request.getUserId())
+                .userId(userId)
                 .modelVersion(modelApiResponse.getModelVersion())
                 .latencyMs(modelApiResponse.getLatencyMs())
                 .recommendations(items)
                 .build();
     }
+
+    /* ======================= time slot ======================= */
+    private String toAvailableTimeSlots(LocalTime start, LocalTime end) {
+        if (start == null || end == null) return null;
+
+        List<String> slots = new ArrayList<>();
+
+        // 00:00 ~ 05:00
+        if (overlap(start, end, 0, 5)) slots.add("LATE_NIGHT");
+        if (overlap(start, end, 5, 9)) slots.add("EARLY_MORNING");
+        if (overlap(start, end, 9, 12)) slots.add("MORNING");
+        if (overlap(start, end, 12, 14)) slots.add("LUNCH");
+        if (overlap(start, end, 14, 18)) slots.add("AFTERNOON");
+        if (overlap(start, end, 18, 21)) slots.add("EVENING");
+        if (overlap(start, end, 21, 24)) slots.add("NIGHT");
+
+        return String.join(";", new LinkedHashSet<>(slots));
+    }
+
+    private boolean overlap(LocalTime s, LocalTime e, int aHour, int bHour) {
+        int sMin = s.getHour() * 60 + s.getMinute();
+        int eMin = e.getHour() * 60 + e.getMinute();
+
+        int aMin = aHour * 60;
+        int bMin = (bHour == 24) ? 24 * 60 : bHour * 60; // 24시는 1440으로 처리
+
+        if (eMin > sMin) {
+            return intersects(sMin, eMin, aMin, bMin);
+        }
+
+        return intersects(sMin, 24 * 60, aMin, bMin) || intersects(0, eMin, aMin, bMin);
+    }
+
+    private boolean intersects(int x1, int x2, int y1, int y2) {
+        return x1 < y2 && y1 < x2;
+    }
+
 }
