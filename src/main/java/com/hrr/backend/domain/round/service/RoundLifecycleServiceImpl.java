@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
@@ -30,7 +31,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final RoundConverter roundConverter;
-    private final DataSourceTransactionManager transactionManager;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
     public void processRoundsEndedAt(LocalDate endDate) {
