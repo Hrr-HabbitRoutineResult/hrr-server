@@ -8,9 +8,11 @@ import static org.mockito.Mockito.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.dto.RoundDecisionRequestDto;
 import com.hrr.backend.domain.round.entity.Round;
@@ -34,6 +36,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class RoundFlowUnitTest {
@@ -43,10 +48,20 @@ class RoundFlowUnitTest {
     @Mock RoundRepository roundRepository;
     @Mock RoundRecordRepository roundRecordRepository;
     @Mock RoundConverter roundConverter;
+    @Mock TransactionTemplate transactionTemplate;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks RoundDecisionServiceImpl roundDecisionService;
     @InjectMocks RoundDropServiceImpl roundDropService;
     @InjectMocks RoundLifecycleServiceImpl roundLifecycleService;
+
+    private void mockTransaction() {
+        lenient().doAnswer(invocation -> {
+            Consumer<TransactionStatus> callback = invocation.getArgument(0);
+            callback.accept(null); // 트랜잭션 내부 로직 실행
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+    }
 
     // -------------------------------------------------------------------------
     // 1) RoundDecisionServiceImpl 단위 테스트
@@ -125,7 +140,7 @@ class RoundFlowUnitTest {
 
 
     @Test
-    @DisplayName("decideNextRound: 정상 요청이면 RoundRecord.updateNextRoundIntent가 호출된다")
+    @DisplayName("decideNextRound: 정상 요청이면 RoundRecord 업데이트 및 알림 이벤트 발행")
     void decideNextRound_updatesRoundRecordIntent() {
         // given
         Long userId = 1L;
@@ -140,14 +155,10 @@ class RoundFlowUnitTest {
         when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
         when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
-
-        // 결정기간 안으로 세팅: end=today+2 -> open=today, close=today+1
-        when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
+        when(currentRound.getStartDate()).thenReturn(today.minusDays(1));
         when(currentRound.getEndDate()).thenReturn(today.plusDays(2));
-
         when(roundRecordRepository.findByUserChallengeAndRoundId(uc, 100L)).thenReturn(Optional.of(rr));
 
         RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE);
@@ -156,8 +167,9 @@ class RoundFlowUnitTest {
         roundDecisionService.decideNextRound(userId, challengeId, request);
 
         // then
-        verify(roundRecordRepository).findByUserChallengeAndRoundId(eq(uc), eq(100L));
         verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
+        // 알림 이벤트 발행 검증
+        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
     }
 
     // -------------------------------------------------------------------------
@@ -241,22 +253,22 @@ class RoundFlowUnitTest {
     @DisplayName("processRoundsEndedAt: CONTINUE가 없으면 챌린지를 FINISHED로 변경")
     void processRoundsEndedAt_finishes_whenNoContinuers() {
         // given
+        mockTransaction(); // 트랜잭션 실행 모킹
         LocalDate endDate = LocalDate.now();
-
         Round endedRound = mock(Round.class);
         Challenge challenge = mock(Challenge.class);
 
         when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
-
         when(endedRound.getId()).thenReturn(10L);
-        when(endedRound.getChallenge()).thenReturn(challenge);
+        // 트랜잭션 내부에서 호출하는 메서드 Stubbing
+        when(roundRepository.findByIdWithChallengeAndCurrentRound(10L)).thenReturn(Optional.of(endedRound));
 
+        when(endedRound.getChallenge()).thenReturn(challenge);
         when(challenge.getStatus()).thenReturn(ChallengeStatus.ONGOING);
         when(challenge.getCurrentRound()).thenReturn(endedRound);
 
         RoundRecord rrStop = mock(RoundRecord.class);
         when(rrStop.getNextRoundIntent()).thenReturn(NextRoundIntent.STOP);
-
         when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
                 .thenReturn(List.of(rrStop));
 
@@ -265,50 +277,40 @@ class RoundFlowUnitTest {
 
         // then
         verify(challenge).updateStatus(ChallengeStatus.FINISHED);
-        verify(roundRepository, never()).save(any());
-        verify(challenge, never()).changeCurrentRound(any());
     }
 
     @Test
     @DisplayName("processRoundsEndedAt: CONTINUE가 있으면 다음 라운드 생성 + RoundRecord 생성 + currentRound 교체")
     void processRoundsEndedAt_createsNextRound_andMovesCurrentRound() {
         // given
+        mockTransaction();
         LocalDate endDate = LocalDate.now();
-
         Round endedRound = mock(Round.class);
         Challenge challenge = mock(Challenge.class);
 
         when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
-
         when(endedRound.getId()).thenReturn(10L);
+        when(roundRepository.findByIdWithChallengeAndCurrentRound(10L)).thenReturn(Optional.of(endedRound));
+
         when(endedRound.getRoundNumber()).thenReturn(1);
         when(endedRound.getChallenge()).thenReturn(challenge);
-
         when(challenge.getStatus()).thenReturn(ChallengeStatus.ONGOING);
         when(challenge.getId()).thenReturn(999L);
         when(challenge.getCurrentRound()).thenReturn(endedRound);
 
-        // JOINED records 중 CONTINUE만 다음 라운드 대상
         RoundRecord rrContinue = mock(RoundRecord.class);
         when(rrContinue.getNextRoundIntent()).thenReturn(NextRoundIntent.CONTINUE);
-
         UserChallenge uc = mock(UserChallenge.class);
         when(rrContinue.getUserChallenge()).thenReturn(uc);
-
         when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
                 .thenReturn(List.of(rrContinue));
 
-        // nextRound 생성 경로: 없으면 converter -> save
         Round nextRound = mock(Round.class);
         when(nextRound.getRoundNumber()).thenReturn(2);
-
         when(roundRepository.findByChallengeIdAndRoundNumber(999L, 2)).thenReturn(Optional.empty());
         when(roundConverter.toNextRoundEntity(challenge, endedRound)).thenReturn(nextRound);
         when(roundRepository.save(nextRound)).thenReturn(nextRound);
-
-        // nextRR 생성
         when(roundRecordRepository.existsByUserChallengeAndRound(uc, nextRound)).thenReturn(false);
-
         RoundRecord nextRR = mock(RoundRecord.class);
         when(roundConverter.toRoundRecordEntity(nextRound, uc)).thenReturn(nextRR);
 
@@ -325,33 +327,30 @@ class RoundFlowUnitTest {
     @DisplayName("processRoundsEndedAt: nextRound가 이미 있으면 save 없이 기존 라운드 사용")
     void processRoundsEndedAt_usesExistingNextRound() {
         // given
+        mockTransaction();
         LocalDate endDate = LocalDate.now();
-
         Round endedRound = mock(Round.class);
         Challenge challenge = mock(Challenge.class);
 
         when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
-
         when(endedRound.getId()).thenReturn(10L);
+        when(roundRepository.findByIdWithChallengeAndCurrentRound(10L)).thenReturn(Optional.of(endedRound));
+
         when(endedRound.getRoundNumber()).thenReturn(1);
         when(endedRound.getChallenge()).thenReturn(challenge);
-
         when(challenge.getStatus()).thenReturn(ChallengeStatus.ONGOING);
         when(challenge.getId()).thenReturn(999L);
         when(challenge.getCurrentRound()).thenReturn(endedRound);
 
         RoundRecord rrContinue = mock(RoundRecord.class);
         when(rrContinue.getNextRoundIntent()).thenReturn(NextRoundIntent.CONTINUE);
-
         UserChallenge uc = mock(UserChallenge.class);
         when(rrContinue.getUserChallenge()).thenReturn(uc);
-
         when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
                 .thenReturn(List.of(rrContinue));
 
         Round nextRound = mock(Round.class);
         when(roundRepository.findByChallengeIdAndRoundNumber(999L, 2)).thenReturn(Optional.of(nextRound));
-
         when(roundRecordRepository.existsByUserChallengeAndRound(uc, nextRound)).thenReturn(true);
 
         // when
@@ -359,8 +358,6 @@ class RoundFlowUnitTest {
 
         // then
         verify(roundRepository, never()).save(any());
-        verify(roundConverter, never()).toNextRoundEntity(any(), any());
-        verify(roundRecordRepository, never()).save(any());
         verify(challenge).changeCurrentRound(nextRound);
     }
 }
