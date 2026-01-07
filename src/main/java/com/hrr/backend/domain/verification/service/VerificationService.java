@@ -15,6 +15,7 @@ public interface VerificationService {
     SliceResponseDto<VerificationResponseDto.FeedDto> getVerificationFeed(
             Long challengeId,
             Integer roundNumber,
+            Long currentUserId,
             int page,
             int size
     );

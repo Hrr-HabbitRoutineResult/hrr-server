@@ -73,6 +73,7 @@ public class VerificationServiceImpl implements VerificationService {
     public SliceResponseDto<VerificationResponseDto.FeedDto> getVerificationFeed(
             Long challengeId,
             Integer roundNumber,
+            Long currentUserId,
             int page,
             int size
     ) {
@@ -93,6 +94,7 @@ public class VerificationServiceImpl implements VerificationService {
                 round.getId(),
                 targetType,
                 VerificationStatus.COMPLETED,
+                currentUserId,
                 pageable
         );
 
