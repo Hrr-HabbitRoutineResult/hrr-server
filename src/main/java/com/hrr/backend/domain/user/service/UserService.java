@@ -15,6 +15,7 @@ public interface UserService {
     // 참가중인 챌린지 목록 조회 (페이징)
     SliceResponseDto<UserResponseDto.OngoingChallengeDto> getOngoingChallenges(
             Long userId,
+            User currentUser,
             int page,
             int size
     );

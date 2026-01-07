@@ -78,7 +78,8 @@ public interface VerificationService {
      * 다른 사용자 전체 챌린지 인증 기록 조회
      */
     VerificationResponseDto.OtherUserHistoryResponse getOtherUserVerificationHistory(
-            Long userId,
+            Long targetUserId,
+            User me,
             int page,
             int size
     );
