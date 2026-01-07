@@ -81,20 +81,26 @@ public class NotificationScheduler {
         List<Round> targetRounds = roundRepository.findAllByEndDate(targetEndDate);
 
         for (Round round : targetRounds) {
-            // 해당 라운드의 참여자 전체 조회
-            List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(
-                    round, ChallengeJoinStatus.JOINED);
+            try { // 1차 격리: 특정 라운드 조회 실패 시에도 다른 라운드는 진행
+                List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(
+                        round, ChallengeJoinStatus.JOINED);
 
-            for (RoundRecord record : records) {
-                // API로 응답한 유저: 리스너의 멱등성 로직이 중복 발송을 막아줌
-                // 미응답 유저(UNDECIDED): 리스너 로직에 의해 자동으로 '종료' 알림이 발송됨
-                eventPublisher.publishEvent(new ChallengeExtensionResponseEvent(
-                        round.getId(),
-                        record.getUserChallenge().getUser(),
-                        record.getNextRoundIntent()
-                ));
+                for (RoundRecord record : records) {
+                    try { // 2차 격리: 특정 사용자 이벤트 발행 실패 시에도 다음 사용자는 진행
+                        eventPublisher.publishEvent(new ChallengeExtensionResponseEvent(
+                                round.getId(),
+                                record.getUserChallenge().getUser(),
+                                record.getNextRoundIntent()
+                        ));
+                    } catch (Exception e) {
+                        log.error("[ExtensionResultScheduler] 이벤트 발행 실패 - RoundId: {}, UserId: {}, 사유: {}",
+                                round.getId(), record.getUserChallenge().getUser().getId(), e.getMessage());
+                    }
+                }
+                log.info("[ExtensionResultScheduler] RoundId: {} 결과 알림 발행 완료", round.getId());
+            } catch (Exception e) {
+                log.error("[ExtensionResultScheduler] 라운드 처리 실패 - RoundId: {}, 사유: {}", round.getId(), e.getMessage());
             }
-            log.info("[ExtensionResultScheduler] RoundId: {} 결과 알림 발행 완료", round.getId());
         }
     }
 }
