@@ -1,6 +1,7 @@
 package com.hrr.backend.global.config;
 
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AsyncConfig implements AsyncConfigurer {
 
     @Override
+    @Bean(name = "getAsyncExecutor")
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
