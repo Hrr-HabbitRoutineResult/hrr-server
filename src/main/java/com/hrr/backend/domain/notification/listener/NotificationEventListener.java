@@ -121,11 +121,11 @@ public class NotificationEventListener {
 
         if (event.getIntent() == NextRoundIntent.CONTINUE) {
             typeName = NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS;
-            title = String.format("[%s] 챌린지가 연장되었어요", challenge.getTitle());
+            title = String.format("%s 챌린지가 연장되었어요", challenge.getTitle());
             message = "다음 라운드에서도 루틴을 이어가요";
         } else {
             typeName = NotificationTypeName.CHALLENGE_EXTENSION_CANCEL;
-            title = String.format("[%s] 챌린지를 마무리해요", challenge.getTitle());
+            title = String.format("%s 챌린지를 마무리해요", challenge.getTitle());
             message = "챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요";
         }
 
