@@ -6,8 +6,11 @@ import com.hrr.backend.domain.notification.dto.NotificationResponseDto;
 import com.hrr.backend.domain.notification.entity.NotificationDelivery;
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
+import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.repository.NotificationRepository;
 import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
+import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -28,6 +31,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationSettingRepository notificationSettingRepository;
     private final NotificationConverter notificationConverter;
+    private final RoundRecordRepository roundRecordRepository;
 
     private final S3UrlUtil s3UrlUtil;
 
@@ -46,7 +50,19 @@ public class NotificationServiceImpl implements NotificationService {
         Slice<NotificationResponseDto.InfoDto> dtoSlice = deliverySlice
                 .map(delivery -> {
                     String fullUrl = s3UrlUtil.toFullUrl(delivery.getEvent().getImageKey());
-                    return notificationConverter.toInfoDto(delivery, fullUrl);
+                    NotificationResponseDto.InfoDto dto = notificationConverter.toInfoDto(delivery, fullUrl);
+
+                    // 연장 안내 알림일 경우 응답 여부 계산
+                    if (dto.getType() == NotificationTypeName.CHALLENGE_EXTENSION) {
+                        boolean responded = roundRecordRepository.findByUserAndRoundId(user, dto.getContextId())
+                                .map(record -> record.getNextRoundIntent() != NextRoundIntent.UNDECIDED)
+                                .orElse(false);
+                        dto.setIsResponded(responded);
+                    } else {
+                        dto.setIsResponded(null);
+                    }
+
+                    return dto;
                 });
 
         return new SliceResponseDto<>(dtoSlice);
