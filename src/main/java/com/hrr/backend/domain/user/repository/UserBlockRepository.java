@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserBlock;
 
+import java.util.List;
+
 public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
 
 	// 차단 여부 확인
@@ -26,4 +28,14 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
 		"WHERE b.blocker = :blocker " +
 		"AND b.blocked.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.ACTIVE")
 	Slice<UserBlock> findByBlocker(@Param("blocker") User blocker, Pageable pageable);
+
+    // [최적화] 내가 차단한 사람들의 ID만 조회
+    @Query("SELECT b.blocked.id FROM UserBlock b WHERE b.blocker.id = :blockerId")
+    List<Long> findBlockedIdsByBlockerId(@Param("blockerId") Long blockerId);
+
+    // [최적화] 나를 차단한 사람들의 ID만 조회
+    @Query("SELECT b.blocker.id FROM UserBlock b WHERE b.blocked.id = :blockedId")
+    List<Long> findBlockerIdsByBlockedId(@Param("blockedId") Long blockedId);
+
+
 }

@@ -8,6 +8,7 @@ import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
@@ -30,7 +31,8 @@ public class CommentServiceImpl implements CommentService {
     private final VerificationRepository verificationRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
-	private final CommentConverter commentConverter;
+    private final CommentConverter commentConverter;
+    private final UserBlockRepository userBlockRepository;
 
     /** 댓글 작성 */
     @Override
@@ -61,22 +63,22 @@ public class CommentServiceImpl implements CommentService {
             }
         }
 
-		Integer anonymousNumber = null;
+        Integer anonymousNumber = null;
 
-		if (requestDto.isAnonymous()) {
-			// 해당 인증글에서 이 유저가 이미 쓴 익명 댓글이 있는지 확인
-			Optional<Comment> existingComment = commentRepository
-				.findFirstByVerificationAndUserAndIsAnonymousTrue(verification, user);
+        if (requestDto.isAnonymous()) {
+            // 해당 인증글에서 이 유저가 이미 쓴 익명 댓글이 있는지 확인
+            Optional<Comment> existingComment = commentRepository
+                    .findFirstByVerificationAndUserAndIsAnonymousTrue(verification, user);
 
-			if (existingComment.isPresent()) {
-				// 있다면 해당 익명 번호 그대로 사용
-				anonymousNumber = existingComment.get().getAnonymousNumber();
-			} else {
-				// 없다면 해당 인증글의 최대 익명 번호 조회 후 +1
-				Integer maxNumber = commentRepository.findMaxAnonymousNumberByVerification(verification);
-				anonymousNumber = (maxNumber == null) ? 1 : maxNumber + 1;
-			}
-		}
+            if (existingComment.isPresent()) {
+                // 있다면 해당 익명 번호 그대로 사용
+                anonymousNumber = existingComment.get().getAnonymousNumber();
+            } else {
+                // 없다면 해당 인증글의 최대 익명 번호 조회 후 +1
+                Integer maxNumber = commentRepository.findMaxAnonymousNumberByVerification(verification);
+                anonymousNumber = (maxNumber == null) ? 1 : maxNumber + 1;
+            }
+        }
 
         Comment comment = Comment.create(
                 verification,
@@ -84,13 +86,16 @@ public class CommentServiceImpl implements CommentService {
                 parent,
                 requestDto.getContent(),
                 requestDto.isAnonymous(),
-				anonymousNumber,
+                anonymousNumber,
                 parent == null ? 0 : parent.getDepth() + 1
         );
 
         commentRepository.save(comment);
 
-        return commentConverter.toDto(comment, userId);
+        // 차단 관계 조회 (댓글 작성 시에는 자신의 댓글이므로 빈 Set 전달)
+        Set<Long> blockedUserIds = Collections.emptySet();
+
+        return commentConverter.toDto(comment, userId, blockedUserIds);
     }
 
     /** 댓글/대댓글 조회 */
@@ -99,6 +104,13 @@ public class CommentServiceImpl implements CommentService {
 
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        // 조회하는 사용자 정보 가져오기
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 차단 관계 조회 (내가 차단한 + 나를 차단한 사용자)
+        Set<Long> blockedUserIds = getBlockedUserIds(currentUser);
 
         // 부모 댓글(Depth 0)만 페이징하여 조회 + 삭제 안 된 것만 필터링
         Page<Comment> parentPage = commentRepository
@@ -124,7 +136,7 @@ public class CommentServiceImpl implements CommentService {
                 adoptedChildren = commentRepository
                         .findByParentAndIsDeletedFalseOrderByCreatedAtAsc(adoptedParent)
                         .stream()
-                        .map(child -> commentConverter.toDto(child, userId))
+                        .map(child -> commentConverter.toDto(child, userId, blockedUserIds))
                         .toList();
 
 
@@ -152,18 +164,18 @@ public class CommentServiceImpl implements CommentService {
 
             for (Comment parent : parents) {
                 // 부모 댓글 추가
-                result.add(commentConverter.toDto(parent, userId));
+                result.add(commentConverter.toDto(parent, userId, blockedUserIds));
 
                 // 부모에 해당하는 자식(대댓글)들 추가
                 List<Comment> childList = childrenMap.getOrDefault(parent.getId(), Collections.emptyList());
                 for (Comment child : childList) {
-                    result.add(commentConverter.toDto(child, userId));
+                    result.add(commentConverter.toDto(child, userId, blockedUserIds));
                 }
             }
         }
 
         return CommentListResponseDto.builder()
-                .adoptedParent(adoptedParent != null ? commentConverter.toDto(adoptedParent, userId) : null)
+                .adoptedParent(adoptedParent != null ? commentConverter.toDto(adoptedParent, userId, blockedUserIds) : null)
                 .adoptedChildren(adoptedChildren)
                 .comments(result)
                 .currentPage(parentPage.getNumber() + 1)
@@ -184,7 +196,7 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
 
         if (comment.isDeleted()) {
-                      throw new GlobalException(ErrorCode.COMMENT_NOT_FOUND);
+            throw new GlobalException(ErrorCode.COMMENT_NOT_FOUND);
         }
 
         if (!comment.getUser().getId().equals(userId)) {
@@ -194,10 +206,13 @@ public class CommentServiceImpl implements CommentService {
 
         comment.updateContent(requestDto.getContent());
 
-		// 수동으로 DB 에 반영하여 Auditing 필드(updatedAt)를 갱신
-		commentRepository.saveAndFlush(comment);
+        // 수동으로 DB 에 반영하여 Auditing 필드(updatedAt)를 갱신
+        commentRepository.saveAndFlush(comment);
 
-        return commentConverter.toDto(comment, userId);
+        // 자신의 댓글이므로 차단 관계는 빈 Set
+        Set<Long> blockedUserIds = Collections.emptySet();
+
+        return commentConverter.toDto(comment, userId, blockedUserIds);
     }
 
 
@@ -215,5 +230,23 @@ public class CommentServiceImpl implements CommentService {
 
         // 엔티티에 @SQLDelete가 적용되어 있으므로 repository.delete를 호출하면 update 쿼리가 실행
         commentRepository.delete(comment);
+    }
+
+    /**
+     * 차단 관계 조회 헬퍼 메서드
+     * @param currentUser 조회하는 사용자
+     * @return 차단된 사용자 ID Set (내가 차단한 + 나를 차단한 사용자)
+     */
+    private Set<Long> getBlockedUserIds(User currentUser) {
+        Long userId = currentUser.getId();
+        Set<Long> blockedIds = new HashSet<>();
+
+        // 1. 내가 차단한 유저 ID 목록
+        blockedIds.addAll(userBlockRepository.findBlockedIdsByBlockerId(userId));
+
+        // 2. 나를 차단한 유저 ID 목록 (양방향 차단 적용)
+        blockedIds.addAll(userBlockRepository.findBlockerIdsByBlockedId(userId));
+
+        return blockedIds;
     }
 }
