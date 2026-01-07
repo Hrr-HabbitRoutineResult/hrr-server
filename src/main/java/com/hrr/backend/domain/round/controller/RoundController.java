@@ -1,5 +1,8 @@
 package com.hrr.backend.domain.round.controller;
 
+import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -16,19 +19,25 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/challenges")
+@Tag(name = "Round", description = "라운드 관련 API")
 @Validated
 public class RoundController {
 
     private final RoundDecisionService roundDecisionService;
 
     // POST /api/v1/challenges/{challengeId}/rounds/decision
+    @Operation(summary = "챌린지 라운드 연장 API", description = "챌린저가 라운드를 연장하는지의 여부를 확인하는 API입니다.")
     @PostMapping("/{challengeId}/rounds/decision")
-    public ApiResponse<Void> decideNextRound(
+    public ApiResponse<RoundDecisionResponseDto> decideNextRound(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long challengeId,
             @RequestBody @Valid RoundDecisionRequestDto request
     ) {
-        roundDecisionService.decideNextRound(userDetails.getUser().getId(), challengeId, request);
-        return ApiResponse.onSuccess(SuccessCode.OK, null);
+        RoundDecisionResponseDto response = roundDecisionService.decideNextRound(
+                userDetails.getUser().getId(),
+                challengeId,
+                request
+        );
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 }
