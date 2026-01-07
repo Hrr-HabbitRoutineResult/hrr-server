@@ -31,14 +31,12 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final RoundConverter roundConverter;
-    private final PlatformTransactionManager transactionManager;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
     public void processRoundsEndedAt(LocalDate endDate) {
 
         List<Round> endedRounds = roundRepository.findAllByEndDate(endDate);
-
-        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
         for (Round endedRound : endedRounds) {
             Long endedRoundId = endedRound.getId();
