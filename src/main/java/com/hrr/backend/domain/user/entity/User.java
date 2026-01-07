@@ -105,6 +105,7 @@ public class User extends BaseEntity {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private UserFavor userFavor;
 
+    @Builder.Default
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<UserMission> userMissions = new ArrayList<>();
 

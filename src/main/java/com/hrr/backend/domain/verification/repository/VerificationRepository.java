@@ -19,7 +19,7 @@ import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
 
-public interface VerificationRepository extends JpaRepository<Verification, Long> {
+public interface VerificationRepository extends JpaRepository<Verification, Long>, VerificationRepositoryCustom {
 
 	// 비관적 락 걸면서 id로 조회
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -40,26 +40,6 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("status") VerificationStatus status,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay
-    );
-
-    // 피드 조회
-    // 조건: 라운드ID, 타입(사진/글), 상태(COMPLETED)
-    // 정렬: 미해결 질문(0) -> 그 외(1), 이후 최신순
-    @Query("SELECT v FROM Verification v " +
-            "JOIN FETCH v.roundRecord r " +
-            "JOIN FETCH r.userChallenge uc " +
-            "JOIN FETCH uc.user u " +
-            "WHERE r.round.id = :roundId " +
-            "AND v.type = :type " +
-            "AND v.status = :status " +
-            "ORDER BY " +
-            "  CASE WHEN (v.isQuestion = true AND v.isResolved = false) THEN 0 ELSE 1 END ASC, " +
-            "  v.createdAt DESC")
-    Page<Verification> findVerificationFeed(
-            @Param("roundId") Long roundId,
-            @Param("type") VerificationPostType type,
-            @Param("status") VerificationStatus status,
-            Pageable pageable
     );
 
     // 가장 최근 인증 날짜 조회 (COMPLETED 상태만)
