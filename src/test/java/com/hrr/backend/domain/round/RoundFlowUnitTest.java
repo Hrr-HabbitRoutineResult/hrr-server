@@ -1,8 +1,8 @@
 package com.hrr.backend.domain.round;
 
+import static org.assertj.core.api.Assertions.assertThat; // 추가됨
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDate;
@@ -15,6 +15,7 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.dto.RoundDecisionRequestDto;
+import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto; // 추가됨
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
@@ -86,19 +87,19 @@ class RoundFlowUnitTest {
         when(challenge.getCurrentRound()).thenReturn(currentRound);
 
         // startDate가 null이 아니어야 "라운드 기간 체크" 로직을 통과할 수 있습니다.
-        // 이미 시작된 라운드라고 가정하기 위해 과거 날짜로 설정
         when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
 
         // endDate 설정 (결정 기간 안으로 설정)
         when(currentRound.getEndDate()).thenReturn(today.plusDays(2));
 
-        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.UNDECIDED);
+        // RequestDto 수정됨 (notificationId 필드 추가 반영)
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.UNDECIDED, null);
 
         // when & then
         assertThatThrownBy(() -> roundDecisionService.decideNextRound(userId, challengeId, request))
                 .isInstanceOf(GlobalException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.ROUND_DECISION_INTENT_INVALID); //
+                .isEqualTo(ErrorCode.ROUND_DECISION_INTENT_INVALID);
 
         verifyNoInteractions(roundRecordRepository);
     }
@@ -121,27 +122,27 @@ class RoundFlowUnitTest {
 
         when(challenge.getCurrentRound()).thenReturn(currentRound);
 
-        // startDate가 null이면 안 됨. 시작된 라운드로 가정.
+        // startDate 세팅
         when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
 
-        // 기간 밖으로 세팅: end=today+4 -> open=today+2, close=today+3
+        // 기간 밖으로 세팅: end=today+4 -> open=today+2, close=today+3 (현재 today는 아직 오픈 전)
         when(currentRound.getEndDate()).thenReturn(today.plusDays(4));
 
-        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE);
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
 
         // when & then
         assertThatThrownBy(() -> roundDecisionService.decideNextRound(userId, challengeId, request))
                 .isInstanceOf(GlobalException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.ROUND_DECISION_PERIOD_NOT_OPEN); //
+                .isEqualTo(ErrorCode.ROUND_DECISION_PERIOD_NOT_OPEN);
 
         verifyNoInteractions(roundRecordRepository);
     }
 
 
     @Test
-    @DisplayName("decideNextRound: 정상 요청이면 RoundRecord 업데이트 및 알림 이벤트 발행")
-    void decideNextRound_updatesRoundRecordIntent() {
+    @DisplayName("decideNextRound: 정상 요청이면 RoundRecord 업데이트, 이벤트 발행, 그리고 응답 DTO(isResponded=true) 반환")
+    void decideNextRound_updatesRoundRecordIntent_andReturnsResponse() {
         // given
         Long userId = 1L;
         Long challengeId = 10L;
@@ -157,19 +158,29 @@ class RoundFlowUnitTest {
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
+        // 결정 기간: endDate=today+2 -> open=today, close=today+1 -> today는 open에 해당
         when(currentRound.getStartDate()).thenReturn(today.minusDays(1));
         when(currentRound.getEndDate()).thenReturn(today.plusDays(2));
+
         when(roundRecordRepository.findByUserChallengeAndRoundId(uc, 100L)).thenReturn(Optional.of(rr));
 
-        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE);
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
 
         // when
-        roundDecisionService.decideNextRound(userId, challengeId, request);
+        // 반환값 검증을 위해 결과를 받음
+        RoundDecisionResponseDto response = roundDecisionService.decideNextRound(userId, challengeId, request);
 
         // then
+        // 1. DB 업데이트 확인
         verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
-        // 알림 이벤트 발행 검증
+        // 2. 알림 이벤트 발행 확인
         verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
+
+        // 3. 반환값 검증 (isResponded 체크)
+        assertThat(response).isNotNull();
+        assertThat(response.roundId()).isEqualTo(100L);
+        assertThat(response.intent()).isEqualTo(NextRoundIntent.CONTINUE);
+        assertThat(response.isResponded()).isTrue();
     }
 
     // -------------------------------------------------------------------------

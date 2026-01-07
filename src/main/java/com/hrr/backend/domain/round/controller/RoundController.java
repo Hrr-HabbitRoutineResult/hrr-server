@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.round.controller;
 
+import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +24,16 @@ public class RoundController {
 
     // POST /api/v1/challenges/{challengeId}/rounds/decision
     @PostMapping("/{challengeId}/rounds/decision")
-    public ApiResponse<Void> decideNextRound(
+    public ApiResponse<RoundDecisionResponseDto> decideNextRound(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long challengeId,
             @RequestBody @Valid RoundDecisionRequestDto request
     ) {
-        roundDecisionService.decideNextRound(userDetails.getUser().getId(), challengeId, request);
-        return ApiResponse.onSuccess(SuccessCode.OK, null);
+        RoundDecisionResponseDto response = roundDecisionService.decideNextRound(
+                userDetails.getUser().getId(),
+                challengeId,
+                request
+        );
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 }
