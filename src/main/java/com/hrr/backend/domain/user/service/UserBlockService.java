@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.user.service;
 
+import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
@@ -48,20 +49,25 @@ public class UserBlockService {
 		}
 
         // 상호 팔로우 관계 해제 및 카운트 감소
-        // (1) 내가 상대를 팔로우 중인 경우 해제
+        // (1) 내가 상대를 팔로우 중인 경우 해제 및 카운트 관리
         followRepository.findByFollowerIdAndFollowingId(blockerId, blockedId)
                 .ifPresent(follow -> {
-                    followRepository.delete(follow); // 데이터 삭제
-                    blocker.decrementFollowingCount(); // 내 팔로잉 수 감소
-                    blocked.decrementFollowerCount();  // 상대 팔로워 수 감소
+                    // 승인된(APPROVED) 상태일 때만 카운트 감소
+                    if (follow.getStatus() == FollowStatus.APPROVED) {
+                        blocker.decrementFollowingCount();
+                        blocked.decrementFollowerCount();
+                    }
+                    followRepository.delete(follow);
                 });
 
         // (2) 상대가 나를 팔로우 중인 경우 해제
         followRepository.findByFollowerIdAndFollowingId(blockedId, blockerId)
                 .ifPresent(follow -> {
-                    followRepository.delete(follow); // 데이터 삭제
-                    blocked.decrementFollowingCount(); // 상대 팔로잉 수 감소
-                    blocker.decrementFollowerCount();  // 내 팔로워 수 감소
+                    if (follow.getStatus() == FollowStatus.APPROVED) {
+                        blocked.decrementFollowingCount();
+                        blocker.decrementFollowerCount();
+                    }
+                    followRepository.delete(follow);
                 });
 
 		// 차단 내역 저장
