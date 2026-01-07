@@ -6,6 +6,7 @@ import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -28,6 +29,7 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
 
     /**
      * 사용자 팔로우 (공개 계정: 즉시 승인, 비공개 계정: 요청)
@@ -50,12 +52,9 @@ public class FollowService {
             throw new GlobalException(ErrorCode.CANNOT_FOLLOW_SELF);
         }
 
-        // 팔로우할 사용자 존재 여부 확인
+        // 팔로우할 사용자 조회 및 유효성 체크
         User followedUser = userRepository.findById(followedUserId)
-                .orElseThrow(() -> {
-                    log.warn("팔로우할 사용자를 찾을 수 없습니다 - userId: {}", followedUserId);
-                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
-                });
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         // 현재 사용자 조회
         User currentUser = userRepository.findById(currentUserId)
@@ -63,6 +62,16 @@ public class FollowService {
                     log.warn("현재 사용자를 찾을 수 없습니다 - userId: {}", currentUserId);
                     return new GlobalException(ErrorCode.USER_NOT_FOUND);
                 });
+
+        // 탈퇴 유저 또는 나를 차단한 유저 체크
+        if (followedUser.isNotActive() || userBlockRepository.existsByBlockerAndBlocked(followedUser, currentUser)) {
+            throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 내가 차단한 유저인 경우 체크 -> 팔로우 불가
+        if (userBlockRepository.existsByBlockerAndBlocked(currentUser, followedUser)) {
+            throw new GlobalException(ErrorCode.CANNOT_FOLLOW_BLOCKED_USER); // 해당 에러코드 추가 필요
+        }
 
         // 이미 팔로우 중이거나 요청 중인지 확인
         if (followRepository.existsByFollowerIdAndFollowingId(currentUserId, followedUserId)) {

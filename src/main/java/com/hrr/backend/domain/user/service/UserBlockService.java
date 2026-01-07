@@ -47,9 +47,22 @@ public class UserBlockService {
 			throw new GlobalException(ErrorCode.ALREADY_BLOCKED);
 		}
 
-		// 서로의 팔로우 관계 삭제 (나 -> 상대방, 상대방 -> 나)
-		followRepository.deleteByFollowerAndFollowing(blocker, blocked);
-		followRepository.deleteByFollowerAndFollowing(blocked, blocker);
+        // 상호 팔로우 관계 해제 및 카운트 감소
+        // (1) 내가 상대를 팔로우 중인 경우 해제
+        followRepository.findByFollowerIdAndFollowingId(blockerId, blockedId)
+                .ifPresent(follow -> {
+                    followRepository.delete(follow); // 데이터 삭제
+                    blocker.decrementFollowingCount(); // 내 팔로잉 수 감소
+                    blocked.decrementFollowerCount();  // 상대 팔로워 수 감소
+                });
+
+        // (2) 상대가 나를 팔로우 중인 경우 해제
+        followRepository.findByFollowerIdAndFollowingId(blockedId, blockerId)
+                .ifPresent(follow -> {
+                    followRepository.delete(follow); // 데이터 삭제
+                    blocked.decrementFollowingCount(); // 상대 팔로잉 수 감소
+                    blocker.decrementFollowerCount();  // 내 팔로워 수 감소
+                });
 
 		// 차단 내역 저장
 		UserBlock userBlock = UserBlock.builder()

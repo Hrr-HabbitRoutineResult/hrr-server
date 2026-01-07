@@ -3,6 +3,7 @@ package com.hrr.backend.domain.follow.service;
 import com.hrr.backend.domain.follow.dto.FollowListResponseDto;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -11,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -27,6 +30,7 @@ public class FollowListService {
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
 
     /**
      * 특정 사용자의 팔로워 목록 조회 (Slice 페이징)
@@ -39,12 +43,23 @@ public class FollowListService {
         log.info("팔로워 목록 조회 - userId: {}, currentUserId: {}, page: {}, size: {}",
                 userId, currentUserId, pageable.getPageNumber(), pageable.getPageSize());
 
-        // 조회할 사용자 존재 여부 확인
-        userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    log.warn("사용자를 찾을 수 없습니다 - userId: {}", userId);
-                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
-                });
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        User me = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 타인 조회 시: 탈퇴 유저 또는 나를 차단한 유저 조회
+        if (!userId.equals(currentUserId)) {
+            if (targetUser.isNotActive() || userBlockRepository.existsByBlockerAndBlocked(targetUser, me)) {
+                throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+            }
+
+            //  내가 차단한 유저의 목록 조회 시 -> 빈 리스트 반환
+            if (userBlockRepository.existsByBlockerAndBlocked(me, targetUser)) {
+                return new SliceResponseDto<>(new SliceImpl<>(Collections.emptyList(), pageable, false));
+            }
+        }
 
         // TODO: 비공개 계정 팔로우 목록 조회 권한 체크 추가 필요
         // - 공개 계정: 누구나 조회 가능
@@ -89,12 +104,23 @@ public class FollowListService {
         log.info("팔로잉 목록 조회 - userId: {}, currentUserId: {}, page: {}, size: {}",
                 userId, currentUserId, pageable.getPageNumber(), pageable.getPageSize());
 
-        // 조회할 사용자 존재 여부 확인
-        userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    log.warn("사용자를 찾을 수 없습니다 - userId: {}", userId);
-                    return new GlobalException(ErrorCode.USER_NOT_FOUND);
-                });
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        User me = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 타인 조회 시: 탈퇴 유저 또는 나를 차단한 유저 조회 -> 404
+        if (!userId.equals(currentUserId)) {
+            if (targetUser.isNotActive() || userBlockRepository.existsByBlockerAndBlocked(targetUser, me)) {
+                throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+            }
+
+            // 내가 차단한 유저의 목록 조회 시 -> 빈 리스트 반환
+            if (userBlockRepository.existsByBlockerAndBlocked(me, targetUser)) {
+                return new SliceResponseDto<>(new SliceImpl<>(Collections.emptyList(), pageable, false));
+            }
+        }
 
         // TODO: 비공개 계정 팔로우 목록 조회 권한 체크 추가 필요
         // - 공개 계정: 누구나 조회 가능

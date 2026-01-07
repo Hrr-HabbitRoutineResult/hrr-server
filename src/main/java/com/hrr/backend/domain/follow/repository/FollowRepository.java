@@ -30,21 +30,29 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     Optional<Follow> findByFollowerIdAndFollowingIdAndStatus(Long followerId, Long followingId, FollowStatus status);
 
     /**
-     * 특정 사용자를 팔로우하는 사용자 목록 조회 (팔로워 목록) - APPROVED만
+     * 특정 사용자를 팔로우하는 사용자 목록 조회 (팔로워 목록) - APPROVED만 + ACTIVE 유저만
      * @param userId 조회할 사용자 ID
      * @param pageable 페이징 정보
      * @return 팔로워 목록 (Slice)
      */
-    @Query("SELECT f.follower FROM Follow f WHERE f.following.id = :userId AND f.status = 'APPROVED' ORDER BY f.createdAt DESC")
+    @Query("SELECT f.follower FROM Follow f " +
+            "WHERE f.following.id = :userId " +
+            "AND f.status = 'APPROVED' " +
+            "AND f.follower.userStatus = 'ACTIVE' " +
+            "ORDER BY f.createdAt DESC")
     Slice<User> findFollowersByUserId(@Param("userId") Long userId, Pageable pageable);
 
     /**
-     * 특정 사용자가 팔로우하는 사용자 목록 조회 (팔로잉 목록) - APPROVED만
+     * 특정 사용자가 팔로우하는 사용자 목록 조회 (팔로잉 목록) - APPROVED만 + ACTIVE 유저만
      * @param userId 조회할 사용자 ID
      * @param pageable 페이징 정보
      * @return 팔로잉 목록 (Slice)
      */
-    @Query("SELECT f.following FROM Follow f WHERE f.follower.id = :userId AND f.status = 'APPROVED' ORDER BY f.createdAt DESC")
+    @Query("SELECT f.following FROM Follow f " +
+            "WHERE f.follower.id = :userId " +
+            "AND f.status = 'APPROVED' " +
+            "AND f.following.userStatus = 'ACTIVE' " + // 탈퇴 유저 필터링 추가
+            "ORDER BY f.createdAt DESC")
     Slice<User> findFollowingsByUserId(@Param("userId") Long userId, Pageable pageable);
 
     /**
@@ -53,7 +61,10 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
      * @param followingIds 확인할 팔로잉 ID 목록
      * @return 팔로우 중인 사용자 ID 목록
      */
-    @Query("SELECT f.following.id FROM Follow f WHERE f.follower.id = :followerId AND f.following.id IN :followingIds AND f.status = 'APPROVED'")
+    @Query("SELECT f.following.id FROM Follow f " +
+            "WHERE f.follower.id = :followerId " +
+            "AND f.following.id IN :followingIds " +
+            "AND f.status = 'APPROVED'")
     List<Long> findFollowingIdsByFollowerIdAndFollowingIds(@Param("followerId") Long followerId, @Param("followingIds") List<Long> followingIds);
 
     /**
@@ -65,12 +76,16 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     @Query("SELECT f FROM Follow f " +
             "WHERE f.following.id = :userId " +
             "AND f.status = :status " +
+            "AND f.follower.userStatus = 'ACTIVE' " + // 탈퇴 유저 제외
+            "AND f.follower.id NOT IN ( " +           // 나를 차단한 유저 제외
+            "   SELECT ub.blocker.id FROM UserBlock ub WHERE ub.blocked.id = :userId" +
+            ") " +
             "ORDER BY f.createdAt DESC")
     Slice<Follow> findPendingFollowRequests(@Param("userId") Long userId, @Param("status") FollowStatus status, Pageable pageable);
 
 	/**
 	 * 차단으로 인해 팔로우 관계를 삭제
-	 * @param blocker 차단 하는 사람 = folllower
+	 * @param blocker 차단 하는 사람 = follower
 	 * @param blocked 차단 당하는 사람 = following
 	 */
 	void deleteByFollowerAndFollowing(User blocker, User blocked);
