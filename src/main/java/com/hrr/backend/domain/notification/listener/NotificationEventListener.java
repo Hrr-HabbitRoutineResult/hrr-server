@@ -98,16 +98,15 @@ public class NotificationEventListener {
         Long roundId = event.getRoundId();
         User user = event.getUser();
 
-        // 체크할 결과 타입 정의 (성공 또는 취소)
+        // 1. [멱등성 체크] 이미 성공 또는 취소 알림이 발송되었는지 확인
+        // 안내 알림(CHALLENGE_EXTENSION)과 달리 결과 알림은 '성공' 혹은 '취소' 중 하나만 존재해야 합니다.
         List<NotificationTypeName> resultTypes = List.of(
                 NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS,
                 NotificationTypeName.CHALLENGE_EXTENSION_CANCEL
         );
 
-        // 멱등성 체크: 해당 리스트에 포함된 타입이 하나라도 존재하면 중단
-        if (notificationRepository.existsResponseNotification(
-                user, ResourceType.ROUND, roundId, resultTypes)) {
-            log.debug("이미 결과 알림(성공/취소)이 처리된 라운드입니다: User={}, Round={}", user.getNickname(), roundId);
+        if (notificationRepository.existsResponseNotification(user, ResourceType.ROUND, roundId, resultTypes)) {
+            log.info("이미 결과 알림(성공/취소)이 처리된 라운드입니다: User={}, Round={}", user.getId(), roundId);
             return;
         }
 

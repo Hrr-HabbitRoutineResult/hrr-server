@@ -2,6 +2,7 @@ package com.hrr.backend.domain.round.repository;
 
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -70,5 +71,12 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
     /**멱등성 위한 exists 메서드 추가-> 스케줄러 장애 또는 재시작으로 재실행돼도 중복 생성 방지하게*/
     boolean existsByUserChallengeAndRound(UserChallenge userChallenge, Round round);
 
-
+    /** 사용자와 라운드 ID로 RoundRecord 조회 (응답 여부 확인용) */
+    @Query("SELECT rr FROM RoundRecord rr " +
+            "JOIN rr.userChallenge uc " +
+            "WHERE uc.user = :user AND rr.round.id = :roundId")
+    Optional<RoundRecord> findByUserAndRoundId(
+            @Param("user") User user,
+            @Param("roundId") Long roundId
+    );
 }

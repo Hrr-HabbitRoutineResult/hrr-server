@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class NotificationResponseDto {
 
     @Getter
+    @Setter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
@@ -50,6 +51,9 @@ public class NotificationResponseDto {
 
         @Schema(description = "읽음 여부 (true: 읽음, false: 안읽음-NEW)", example = "false")
         private Boolean isRead;
+
+        @Schema(description = "응답 완료 여부 (연장 알림 한정)", example = "true")
+        private Boolean isResponded;
 
         @Schema(description = "알림 발생 시간", example = "2025-12-25T14:30:00")
         private LocalDateTime createdAt;
