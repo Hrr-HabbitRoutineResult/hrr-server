@@ -8,6 +8,7 @@ import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
@@ -65,6 +66,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final VerificationConverter verificationConverter;
     private final CommentService commentService;
     private final CommentRepository commentRepository;
+    private final UserBlockRepository userBlockRepository;
 
 
     @Override
@@ -301,6 +303,27 @@ public class VerificationServiceImpl implements VerificationService {
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
         User author = userChallenge.getUser();
+
+        // ===== 추가: 작성자 상태 확인 (탈퇴/차단) =====
+        // 1. 작성자가 탈퇴한 경우
+        if (author.getUserStatus() != UserStatus.ACTIVE) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
+        // 2. 현재 사용자가 로그인한 경우 차단 관계 확인
+        if (currentUserId != null) {
+            // 내가 작성자를 차단한 경우
+            boolean iBlockedAuthor = userBlockRepository.existsByBlockerIdAndBlockedId(currentUserId, author.getId());
+            if (iBlockedAuthor) {
+                throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+            }
+
+            // 작성자가 나를 차단한 경우
+            boolean authorBlockedMe = userBlockRepository.existsByBlockerIdAndBlockedId(author.getId(), currentUserId);
+            if (authorBlockedMe) {
+                throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+            }
+        }
 
         boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
         boolean isResolved = Boolean.TRUE.equals(verification.getIsResolved());
