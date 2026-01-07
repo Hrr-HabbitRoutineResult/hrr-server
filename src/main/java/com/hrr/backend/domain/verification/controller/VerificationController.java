@@ -38,8 +38,10 @@ public class VerificationController {
             @RequestParam(name = "page", defaultValue = "1") @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
+        Long currentUserId = userDetails.getUser().getId();
+
         SliceResponseDto<VerificationResponseDto.FeedDto> response =
-                verificationService.getVerificationFeed(challengeId, roundNumber, page - 1, size);
+                verificationService.getVerificationFeed(challengeId, roundNumber, currentUserId, page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
