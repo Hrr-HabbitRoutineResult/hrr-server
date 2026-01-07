@@ -112,10 +112,9 @@ public class CommentServiceImpl implements CommentService {
         // 차단 관계 조회 (내가 차단한 + 나를 차단한 사용자)
         Set<Long> blockedUserIds = getBlockedUserIds(currentUser);
 
-        // 부모 댓글(Depth 0)만 페이징하여 조회 + 삭제 안 된 것만 필터링
+        // 부모 댓글 조회 시 삭제된 댓글도 포함 (IsDeletedFalse 제거된 메서드 사용)
         Page<Comment> parentPage = commentRepository
-                .findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(verification, 0, pageable);
-
+                .findByVerificationAndDepthOrderByCreatedAtAsc(verification, 0, pageable);
         List<Comment> parents = new ArrayList<>(parentPage.getContent());
 
         Optional<Comment> adoptedOpt =
@@ -132,9 +131,9 @@ public class CommentServiceImpl implements CommentService {
                     : adopted.getParent();
 
             if (adoptedParent != null) {
-                // 자식들 조회
+                // 채택된 댓글의 대댓글들도 삭제된 내역 포함하여 조회
                 adoptedChildren = commentRepository
-                        .findByParentAndIsDeletedFalseOrderByCreatedAtAsc(adoptedParent)
+                        .findByParentOrderByCreatedAtAsc(adoptedParent)
                         .stream()
                         .map(child -> commentConverter.toDto(child, userId, blockedUserIds))
                         .toList();
@@ -150,10 +149,9 @@ public class CommentServiceImpl implements CommentService {
 
 
         if (!parents.isEmpty()) {
-            // 부모 댓글 목록에 대한 모든 자식 댓글을 한 번에 조회
+            // 부모 댓글들에 달린 대댓글들을 한 번에 조회할 때도 삭제된 댓글 포함
             List<Comment> children = commentRepository
-                    .findByParentInAndIsDeletedFalseOrderByCreatedAtAsc(parents);
-
+                    .findByParentInOrderByCreatedAtAsc(parents);
             // parentId 기준으로 자식 댓글들을 그룹핑
             Map<Long, List<Comment>> childrenMap = children.stream()
                     .collect(Collectors.groupingBy(
