@@ -39,8 +39,15 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "WHERE f.following.id = :userId " +
             "AND f.status = 'APPROVED' " +
             "AND f.follower.userStatus = 'ACTIVE' " +
+            "AND f.follower.id NOT IN ( " +
+            "    SELECT ub.blocked.id FROM UserBlock ub WHERE ub.blocker.id = :currentUserId" +
+            ") " +
             "ORDER BY f.createdAt DESC")
-    Slice<User> findFollowersByUserId(@Param("userId") Long userId, Pageable pageable);
+    Slice<User> findFollowersByUserId(
+            @Param("userId") Long userId,
+            @Param("currentUserId") Long currentUserId,
+            Pageable pageable
+    );
 
     /**
      * 특정 사용자가 팔로우하는 사용자 목록 조회 (팔로잉 목록) - APPROVED만 + ACTIVE 유저만
@@ -51,9 +58,16 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
     @Query("SELECT f.following FROM Follow f " +
             "WHERE f.follower.id = :userId " +
             "AND f.status = 'APPROVED' " +
-            "AND f.following.userStatus = 'ACTIVE' " + // 탈퇴 유저 필터링 추가
+            "AND f.following.userStatus = 'ACTIVE' " +
+            "AND f.following.id NOT IN ( " +
+            "    SELECT ub.blocked.id FROM UserBlock ub WHERE ub.blocker.id = :currentUserId" +
+            ") " +
             "ORDER BY f.createdAt DESC")
-    Slice<User> findFollowingsByUserId(@Param("userId") Long userId, Pageable pageable);
+    Slice<User> findFollowingsByUserId(
+            @Param("userId") Long userId,
+            @Param("currentUserId") Long currentUserId,
+            Pageable pageable
+    );
 
     /**
      * 특정 사용자가 팔로우 중인 사용자 ID 목록 조회 (N+1 문제 해결용) - APPROVED만

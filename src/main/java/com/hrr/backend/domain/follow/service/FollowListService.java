@@ -66,7 +66,7 @@ public class FollowListService {
         // - 비공개 계정: 본인 또는 승인된 팔로워만 조회 가능
 
         // 팔로워 목록 조회 (Slice 페이징)
-        Slice<User> followersSlice = followRepository.findFollowersByUserId(userId, pageable);
+        Slice<User> followersSlice = followRepository.findFollowersByUserId(userId, currentUserId, pageable);
         log.info("팔로워 목록 조회 완료 - userId: {}, hasNext: {}", userId, followersSlice.hasNext());
 
         // 팔로워가 없으면 빈 Slice 반환
@@ -127,7 +127,7 @@ public class FollowListService {
         // - 비공개 계정: 본인 또는 승인된 팔로워만 조회 가능
 
         // 팔로잉 목록 조회 (Slice 페이징)
-        Slice<User> followingsSlice = followRepository.findFollowingsByUserId(userId, pageable);
+        Slice<User> followingsSlice = followRepository.findFollowersByUserId(userId, currentUserId, pageable);
         log.info("팔로잉 목록 조회 완료 - userId: {}, hasNext: {}", userId, followingsSlice.hasNext());
 
         // 팔로잉이 없으면 빈 Slice 반환
