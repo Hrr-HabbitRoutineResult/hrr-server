@@ -237,14 +237,8 @@ public class CommentServiceImpl implements CommentService {
      */
     private Set<Long> getBlockedUserIds(User currentUser) {
         Long userId = currentUser.getId();
-        Set<Long> blockedIds = new HashSet<>();
 
-        // 1. 내가 차단한 유저 ID 목록
-        blockedIds.addAll(userBlockRepository.findBlockedIdsByBlockerId(userId));
-
-        // 2. 나를 차단한 유저 ID 목록 (양방향 차단 적용)
-        blockedIds.addAll(userBlockRepository.findBlockerIdsByBlockedId(userId));
-
-        return blockedIds;
+        // 내가 차단한 사용자 ID 목록만 반환 (단방향)
+        return new HashSet<>(userBlockRepository.findBlockedIdsByBlockerId(userId));
     }
 }

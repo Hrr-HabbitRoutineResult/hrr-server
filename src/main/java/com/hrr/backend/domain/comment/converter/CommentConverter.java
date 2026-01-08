@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import com.hrr.backend.domain.comment.entity.enums.CommentMaskingType;
 import org.springframework.stereotype.Component;
 
 import com.hrr.backend.domain.comment.dto.CommentResponseDto;
@@ -54,9 +55,18 @@ public class CommentConverter {
         boolean isMyComment = commentOwner.getId().equals(currentUserId);
 
         // 마스킹 조건 확인
-        boolean isOwnerDeleted = comment.isDeleted();
-        boolean isOwnerInactive = commentOwner.isNotActive();
-        boolean isOwnerBlocked = blockedUserIds != null && blockedUserIds.contains(commentOwner.getId());
+        boolean isOwnerDeleted = comment.isDeleted(); //댓글 삭제
+        boolean isOwnerInactive = commentOwner.isNotActive(); // 사용자 탈퇴
+        boolean isOwnerBlocked = blockedUserIds != null && blockedUserIds.contains(commentOwner.getId()); //내가 차단함
+
+        CommentMaskingType maskingType = CommentMaskingType.NONE;
+        if (isOwnerDeleted) {
+            maskingType = CommentMaskingType.DELETED;
+        } else if (isOwnerBlocked) {
+            maskingType = CommentMaskingType.BLOCKED;
+        } else if (isOwnerInactive) {
+            maskingType = CommentMaskingType.INACTIVE;
+        }
 
         // 마스킹이 필요한 경우 (삭제 or 탈퇴 or 차단)
         boolean needsMasking = isOwnerDeleted || isOwnerInactive || isOwnerBlocked;
@@ -80,26 +90,28 @@ public class CommentConverter {
         // 닉네임 결정 (우선순위: 삭제 > 차단 > 탈퇴 > 익명 > 실명)
         String userName;
 
-        if (isOwnerDeleted) {
-            userName = "삭제";
-        } else if (isOwnerBlocked) {
-            // 차단된 사용자 마스킹
-            userName = "(알 수 없음)";
-        } else if (isOwnerInactive) {
-            // 탈퇴한 사용자 마스킹
-            userName = "(알 수 없음)";
-        } else {
-            // 기본 이름 설정 (익명 vs 실명)
-            if (isAnonymous) {
-                // 익명 댓글의 경우, 본인 댓글이어도 익명 번호 표시
-                userName = isCommentFromVerificationAuthor ? "익명(글쓴이)" : "익명" + Objects.toString(comment.getAnonymousNumber(), "");
-            } else {
-                // 실명
-                userName = commentOwner.getDisplayNickname();
-                if (isCommentFromVerificationAuthor) {
-                    userName += "(글쓴이)";
+        switch (maskingType) {
+            case DELETED:
+                userName = "삭제";
+                break;
+            case BLOCKED:
+                userName = null;  // 차단된 경우 null
+                break;
+            case INACTIVE:
+                userName = "탈퇴한 사용자";
+                break;
+            default:  // NONE
+                // 기본 이름 설정 (익명 vs 실명)
+                if (isAnonymous) {
+                    userName = isCommentFromVerificationAuthor
+                            ? "익명(글쓴이)"
+                            : "익명" + Objects.toString(comment.getAnonymousNumber(), "");
+                } else {
+                    userName = commentOwner.getDisplayNickname();
+                    if (isCommentFromVerificationAuthor) {
+                        userName += "(글쓴이)";
+                    }
                 }
-            }
         }
 
         // userId - 마스킹이 필요하거나 익명이면서 본인 댓글이 아닌 경우 null
@@ -112,14 +124,18 @@ public class CommentConverter {
 
         // 내용
         String content;
-        if (isOwnerDeleted) {
-            content = "삭제된 댓글입니다.";
-        } else if (isOwnerBlocked) {
-            content = "차단된 사용자의 댓글입니다.";
-        } else if (isOwnerInactive) {
-            content = "탈퇴한 사용자의 댓글입니다.";
-        } else {
-            content = comment.getContent();
+        switch (maskingType) {
+            case DELETED:
+                content = "삭제된 댓글입니다.";
+                break;
+            case BLOCKED:
+                content = "차단된 사용자의 댓글입니다.";
+                break;
+            case INACTIVE:
+            case NONE:
+            default:
+                // 탈퇴한 사용자와 일반 사용자는 원본 내용 표시
+                content = comment.getContent();
         }
 
 
@@ -139,6 +155,7 @@ public class CommentConverter {
                 .content(content)
                 .likesCount(likesCount)
                 .isAdopted(isAdopted)
+                .maskingType(maskingType)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();

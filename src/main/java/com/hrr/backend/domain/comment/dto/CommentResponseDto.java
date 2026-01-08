@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.comment.dto;
 
+import com.hrr.backend.domain.comment.entity.enums.CommentMaskingType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -28,6 +29,8 @@ public class CommentResponseDto {
     private int likesCount;
 
 	private boolean isMyComment; // 조회하는 사람이 쓴 댓글인지(프론트 분기 처리용)
+
+    private CommentMaskingType maskingType; // 마스킹 타입
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
