@@ -362,10 +362,11 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // 닉네임이 제공된 경우 중복 검사 및 업데이트
-        if (requestDto.getNickname() != null) {
-            String nickname = normalize(requestDto.getNickname()); // 정규화 추가
+        // 닉네임 변경 플래그가 true일 때만 처리
+        if (Boolean.TRUE.equals(requestDto.getIsNicknameChanged())) {
+            String nickname = normalize(requestDto.getNickname());
 
+            // 자기 닉네임과 다를 때만 중복 체크 및 업데이트
             if (!nickname.equals(user.getNickname())) {
                 if (userRepository.existsByNickname(nickname)) {
                     throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
@@ -374,21 +375,32 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        // 프로필 이미지 Key가 제공된 경우 업데이트
-        if (requestDto.getProfileImageKey() != null) {
+        // 프로필 이미지 변경 플래그가 true일 때만 처리
+        if (Boolean.TRUE.equals(requestDto.getIsProfileImageChanged())) {
             String oldImageKey = user.getProfileImage();
+            String newImageKey = requestDto.getProfileImageKey();
 
-            // 새 이미지로 업데이트
-            user.updateProfileImage(requestDto.getProfileImageKey());
+            // null이거나 빈 문자열이면 기본 이미지로
+            if (newImageKey == null || newImageKey.isBlank()) {
+                user.updateProfileImage(null);  // DB에 null 저장
 
-            // 트랜잭션 커밋 후 기존 이미지 삭제 이벤트 발행
-            if (oldImageKey != null && !oldImageKey.isBlank()) {
-                eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
+                // 기존 커스텀 이미지가 있으면 트랜잭션 커밋 후 S3에서 삭제
+                if (oldImageKey != null && !oldImageKey.isBlank()) {
+                    eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
+                }
+            }
+            // 동일 이미지가 아니면 변경
+            else if (!newImageKey.equals(oldImageKey)) {
+                user.updateProfileImage(newImageKey);
+
+                // 기존 이미지가 있으면 트랜잭션 커밋 후 S3에서 삭제
+                if (oldImageKey != null && !oldImageKey.isBlank()) {
+                    eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
+                }
             }
         }
 
-
-        // 프로필 공개 여부가 제공된 경우 업데이트
+        // 프로필 공개 여부
         if (requestDto.getIsPublic() != null) {
             user.updateIsPublic(requestDto.getIsPublic());
         }
