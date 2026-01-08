@@ -3,7 +3,9 @@ package com.hrr.backend.domain.round.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.hrr.backend.domain.challenge.event.ChallengeParticipantsChangedEvent;
 import com.hrr.backend.domain.challenge.service.ChallengeStaticsService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -35,6 +37,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final TransactionTemplate transactionTemplate;
 
     private final ChallengeStaticsService challengeStaticsService;
+    private final ApplicationEventPublisher publisher;
 
     @Override
     public void processRoundsEndedAt(LocalDate endDate) {
@@ -113,7 +116,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
         challenge.changeCurrentRound(nextRound);
 
         // 8. 통계 최신화 1회
-        challengeStaticsService.updateChallengeStatics(challenge);
+        publisher.publishEvent(new ChallengeParticipantsChangedEvent(challenge.getId()));
 
         log.info("[RoundLifecycle] 라운드 전환 완료. challengeId={}, {}R -> {}R",
                 challenge.getId(), endedRound.getRoundNumber(), nextRound.getRoundNumber());
