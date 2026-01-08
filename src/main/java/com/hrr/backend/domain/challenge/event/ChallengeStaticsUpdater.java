@@ -19,7 +19,8 @@ public class ChallengeStaticsUpdater {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recalculateInNewTx(Long challengeId) {
-        Challenge ch = challengeRepository.getReferenceById(challengeId);
+        Challenge ch = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new IllegalArgumentException("Challenge not found. id=" + challengeId));
         challengeStaticsService.updateChallengeStatics(ch);
     }
 }

@@ -36,7 +36,6 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final RoundConverter roundConverter;
     private final TransactionTemplate transactionTemplate;
 
-    private final ChallengeStaticsService challengeStaticsService;
     private final ApplicationEventPublisher publisher;
 
     @Override
