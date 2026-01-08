@@ -5,6 +5,9 @@ import com.hrr.backend.domain.auth.dto.NaverUserResponse;
 import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
+import com.hrr.backend.domain.notification.entity.NotificationSetting;
+import com.hrr.backend.domain.notification.repository.NotificationRepository;
+import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -26,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SocialUserService {
     private final UserRepository userRepository;
 	private final SocialAuthRepository socialAuthRepository;
+	private final NotificationSettingRepository notificationSettingRepository;
 
     // 카카오 응답 → 우리 User db에 upsert(있으면 update하고 없으면 insert)
     @Transactional
@@ -58,6 +62,9 @@ public class SocialUserService {
 				// User 생성
 				User newUser = User.signUp(name, profileImage);
 				userRepository.save(newUser);
+
+				// 알림 설정 생성
+				createNotificationSettings(newUser);
 
 				// SocialAuth 생성 및 연결
 				SocialAuth auth = SocialAuth.builder()
@@ -101,6 +108,9 @@ public class SocialUserService {
 				User newUser = User.signUp(userName, null);
 
 				userRepository.save(newUser);
+
+				// 알림 설정 생성
+				createNotificationSettings(newUser);
 
 				// SocialAuth 생성 및 애플 전용 RT 저장
 				SocialAuth auth = SocialAuth.builder()
@@ -170,6 +180,9 @@ public class SocialUserService {
 
 				userRepository.save(newUser);
 
+				// 알림 설정 생성
+				createNotificationSettings(newUser);
+
 				// SocialAuth 생성
 				SocialAuth auth = SocialAuth.builder()
 					.user(newUser)
@@ -197,5 +210,22 @@ public class SocialUserService {
 		if (user.getUserStatus() == UserStatus.INACTIVE) {
 			user.reLogin();
 		}
+	}
+
+	/**
+	 * 신규 유저 회원가입 시 알림 설정 인스턴스 생성
+	 */
+	private void createNotificationSettings(User user) {
+
+		// 사용자의 동의를 받아야 알림 전송이 가능하므로 다 false로 기본값 생성
+		NotificationSetting setting = NotificationSetting.builder()
+			.user(user)
+			.isBadgeEnabled(false)
+			.isChallengeEnabled(false)
+			.isFollowEnabled(false)
+			.isVerificationEnabled(false)
+			.build();
+
+		notificationSettingRepository.save(setting);
 	}
 }
