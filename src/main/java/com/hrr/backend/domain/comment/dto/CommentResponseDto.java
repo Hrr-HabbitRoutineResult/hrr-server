@@ -30,7 +30,7 @@ public class CommentResponseDto {
 
 	private boolean isMyComment; // 조회하는 사람이 쓴 댓글인지(프론트 분기 처리용)
 
-    private CommentMaskingType maskingType; // 바스킹 타입
+    private CommentMaskingType maskingType; // 마스킹 타입
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
