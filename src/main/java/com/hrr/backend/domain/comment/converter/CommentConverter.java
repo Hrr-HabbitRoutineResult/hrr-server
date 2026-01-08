@@ -87,7 +87,7 @@ public class CommentConverter {
             userName = "(알 수 없음)";
         } else if (isOwnerInactive) {
             // 탈퇴한 사용자 마스킹
-            userName = "(알 수 없음)";
+            userName = "탈퇴한 사용자";
         } else {
             // 기본 이름 설정 (익명 vs 실명)
             if (isAnonymous) {
@@ -116,9 +116,8 @@ public class CommentConverter {
             content = "삭제된 댓글입니다.";
         } else if (isOwnerBlocked) {
             content = "차단된 사용자의 댓글입니다.";
-        } else if (isOwnerInactive) {
-            content = "탈퇴한 사용자의 댓글입니다.";
         } else {
+            // 탈퇴한 사용자도 원본 내용 표시하게
             content = comment.getContent();
         }
 
