@@ -362,8 +362,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // 닉네임 변경 플래그가 true일 때만 처리
-        if (Boolean.TRUE.equals(requestDto.getIsNicknameChanged())) {
+        // isNicknameChanged가 true이고 nickname이 null이 아닐 때만 처리
+        if (Boolean.TRUE.equals(requestDto.getIsNicknameChanged()) && requestDto.getNickname() != null) {
             String nickname = normalize(requestDto.getNickname());
 
             // 자기 닉네임과 다를 때만 중복 체크 및 업데이트
@@ -398,11 +398,6 @@ public class UserServiceImpl implements UserService {
                     eventPublisher.publishEvent(new ProfileImageDeletedEvent(oldImageKey));
                 }
             }
-        }
-
-        // 프로필 공개 여부
-        if (requestDto.getIsPublic() != null) {
-            user.updateIsPublic(requestDto.getIsPublic());
         }
 
         // 응답 시 Full URL로 변환

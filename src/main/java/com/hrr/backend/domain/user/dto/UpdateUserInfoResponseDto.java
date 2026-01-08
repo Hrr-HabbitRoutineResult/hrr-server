@@ -22,9 +22,6 @@ public class UpdateUserInfoResponseDto {
     @Schema(description = "프로필 이미지 URL", example = "https://hrr-bucket.s3.ap-northeast-2.amazonaws.com/users/uuid-profile.jpg")
     private String profileImageUrl;
 
-    @Schema(description = "프로필 공개 여부", example = "false")
-    private Boolean isPublic;
-
     @Schema(description = "수정 일시", example = "2025-10-10T12:15:00")
     private LocalDateTime updatedAt;
 
@@ -32,7 +29,6 @@ public class UpdateUserInfoResponseDto {
         return UpdateUserInfoResponseDto.builder()
                 .nickname(user.getDisplayNickname())
                 .profileImageUrl(profileImageUrl)
-                .isPublic(user.getIsPublic())
                 .updatedAt(user.getUpdatedAt())
                 .build();
     }
