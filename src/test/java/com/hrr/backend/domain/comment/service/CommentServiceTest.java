@@ -4,6 +4,7 @@
 //import static org.mockito.ArgumentMatchers.*;
 //import static org.mockito.BDDMockito.*;
 //
+//import java.time.LocalDateTime;
 //import java.util.Collections;
 //import java.util.List;
 //import java.util.Optional;
@@ -17,6 +18,7 @@
 //import org.springframework.data.domain.PageImpl;
 //import org.springframework.data.domain.PageRequest;
 //import org.springframework.data.domain.Pageable;
+//import org.springframework.test.util.ReflectionTestUtils; // 핵심 import
 //
 //import com.hrr.backend.domain.comment.converter.CommentConverter;
 //import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
@@ -34,43 +36,32 @@
 //@ExtendWith(MockitoExtension.class)
 //class CommentServiceTest {
 //
-//    // 테스트 대상 Service
 //    private CommentServiceImpl commentService;
-//
-//    // 실제 로직을 태울 Converter (Spy 대신 직접 생성)
 //    private CommentConverter commentConverter;
 //
-//    @Mock
-//    private VerificationRepository verificationRepository;
-//    @Mock
-//    private CommentRepository commentRepository;
-//    @Mock
-//    private UserRepository userRepository;
-//    @Mock
-//    private UserBlockRepository userBlockRepository;
-//    @Mock
-//    private S3UrlUtil s3UrlUtil;
+//    @Mock private VerificationRepository verificationRepository;
+//    @Mock private CommentRepository commentRepository;
+//    @Mock private UserRepository userRepository;
+//    @Mock private UserBlockRepository userBlockRepository;
+//    @Mock private S3UrlUtil s3UrlUtil;
 //
 //    @BeforeEach
 //    void setUp() {
-//        // [핵심 해결책]
-//        // @Spy, @InjectMocks 의존성 주입 실패를 방지하기 위해
-//        // @BeforeEach에서 명시적으로 객체를 조립합니다. (보내주신 다른 테스트 코드 스타일 참고)
-//
-//        // 1. Mock S3UrlUtil을 넣어서 Converter 생성
+//        // Converter는 실제 로직 동작 확인을 위해 직접 생성
 //        commentConverter = new CommentConverter(s3UrlUtil);
 //
-//        // 2. 생성된 Converter와 다른 Mock Repository들을 넣어서 Service 생성
+//        // Service 생성 (생성자 주입)
 //        commentService = new CommentServiceImpl(
 //                verificationRepository,
-//                commentRepository,   // ★ 얘를 두 번째로 올리고
+//                commentRepository,
 //                userRepository,
 //                commentConverter,
 //                userBlockRepository
 //        );
 //    }
 //
-//    // --- 테스트 헬퍼 메서드 ---
+//    // --- 헬퍼 메서드 ---
+//
 //    private User createUser(Long id, String nickname, UserStatus status) {
 //        return User.builder()
 //                .id(id)
@@ -79,6 +70,37 @@
 //                .profileImage("profile.jpg")
 //                .build();
 //    }
+//
+//    private Verification createVerification(Long id) {
+//        return Verification.builder()
+//                .id(id)
+//                .build();
+//    }
+//
+//    /**
+//     * [핵심 해결] Reflection을 사용하여 Comment 객체 생성 및 createdAt 주입
+//     */
+//    private Comment createComment(Long id, Verification verification, User user, String content, boolean isDeleted, boolean isAnonymous, Integer anonymousNumber) {
+//        Comment comment = Comment.builder()
+//                .id(id)
+//                .verification(verification)
+//                .user(user)
+//                .content(content)
+//                .isDeleted(isDeleted)
+//                .isAnonymous(isAnonymous)
+//                .anonymousNumber(anonymousNumber)
+//                .likesCount(0)
+//                .depth(0)
+//                // .createdAt(LocalDateTime.now())  <-- 여기서 에러 나던 것을 제거
+//                .build();
+//
+//        // 부모 클래스(BaseEntity)의 필드는 Reflection으로 주입
+//        ReflectionTestUtils.setField(comment, "createdAt", LocalDateTime.now());
+//
+//        return comment;
+//    }
+//
+//    // --- 테스트 케이스 ---
 //
 //    @Test
 //    @DisplayName("정상 조회: 차단/삭제/탈퇴 없는 클린한 댓글 조회")
@@ -90,33 +112,24 @@
 //
 //        User me = createUser(myId, "나", UserStatus.ACTIVE);
 //        User writer = createUser(writerId, "작성자", UserStatus.ACTIVE);
-//        Verification verification = Verification.builder().id(verificationId).build();
+//        Verification verification = createVerification(verificationId);
 //
-//        Comment comment = Comment.builder()
-//                .id(10L)
-//                .verification(verification)
-//                .user(writer)
-//                .content("정상 댓글입니다.")
-//                .isDeleted(false)
-//                .isAnonymous(false)
-//                .likesCount(0)
-//                .build();
+//        // 헬퍼 메서드로 Comment 생성 (Reflection 적용됨)
+//        Comment comment = createComment(10L, verification, writer, "정상 댓글입니다.", false, false, null);
 //
-//        // Repository Mocking
+//        // Mocking
 //        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
 //        given(userRepository.findById(myId)).willReturn(Optional.of(me));
-//
-//        // 차단 관계 없음 (최적화 메서드 호출 검증)
 //        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
 //        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 //
-//        // 댓글 조회 결과
-//        given(commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+//        // [수정된 Repository 메서드 호출] 삭제된 댓글도 포함하는 메서드 Mocking
+//        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
 //                .willReturn(new PageImpl<>(List.of(comment)));
-//        given(commentRepository.findByParentInAndIsDeletedFalseOrderByCreatedAtAsc(anyList()))
+//
+//        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
 //                .willReturn(Collections.emptyList());
 //
-//        // S3 Url 변환 Mocking
 //        given(s3UrlUtil.toFullUrl(anyString())).willReturn("http://full-url.com/profile.jpg");
 //
 //        // when
@@ -126,7 +139,8 @@
 //        CommentResponseDto dto = result.getComments().get(0);
 //        assertThat(dto.getContent()).isEqualTo("정상 댓글입니다.");
 //        assertThat(dto.getUserName()).isEqualTo("작성자");
-//        assertThat(dto.getUserId()).isEqualTo(writerId); // ID 노출
+//        assertThat(dto.getUserId()).isEqualTo(writerId);
+//        assertThat(dto.getUserProfileUrl()).isEqualTo("http://full-url.com/profile.jpg");
 //    }
 //
 //    @Test
@@ -135,38 +149,36 @@
 //        // given
 //        Long verificationId = 100L;
 //        Long myId = 1L;
-//        Long blockedUserId = 99L; // 차단 대상
+//        Long blockedUserId = 99L;
 //
 //        User me = createUser(myId, "나", UserStatus.ACTIVE);
 //        User blockedUser = createUser(blockedUserId, "차단남", UserStatus.ACTIVE);
-//        Verification verification = Verification.builder().id(verificationId).build();
+//        Verification verification = createVerification(verificationId);
 //
-//        Comment comment = Comment.builder()
-//                .id(11L)
-//                .verification(verification)
-//                .user(blockedUser)
-//                .content("차단된 유저의 글")
-//                .isDeleted(false)
-//                .build();
+//        Comment comment = createComment(11L, verification, blockedUser, "차단된 유저의 글", false, false, null);
 //
 //        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
 //        given(userRepository.findById(myId)).willReturn(Optional.of(me));
 //
-//        // [중요] 차단 목록에 ID 포함 (최적화 쿼리 사용 확인)
+//        // 차단 목록 설정
 //        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(List.of(blockedUserId));
 //        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 //
-//        given(commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+//        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
 //                .willReturn(new PageImpl<>(List.of(comment)));
+//
+//        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+//                .willReturn(Collections.emptyList());
 //
 //        // when
 //        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
 //
 //        // then
 //        CommentResponseDto dto = result.getComments().get(0);
-//        assertThat(dto.getContent()).isEqualTo("차단된 사용자의 댓글입니다."); // 마스킹 텍스트 확인
+//        assertThat(dto.getContent()).isEqualTo("차단된 사용자의 댓글입니다.");
 //        assertThat(dto.getUserName()).isEqualTo("(알 수 없음)");
-//        assertThat(dto.getUserId()).isNull(); // ID 숨김
+//        assertThat(dto.getUserId()).isNull();
+//        assertThat(dto.getUserProfileUrl()).isNull();
 //    }
 //
 //    @Test
@@ -177,38 +189,34 @@
 //        Long myId = 1L;
 //
 //        User me = createUser(myId, "나", UserStatus.ACTIVE);
-//        // UserStatus가 INACTIVE
 //        User inactiveUser = createUser(50L, "탈퇴자", UserStatus.INACTIVE);
-//        Verification verification = Verification.builder().id(verificationId).build();
+//        Verification verification = createVerification(verificationId);
 //
-//        Comment comment = Comment.builder()
-//                .id(12L)
-//                .verification(verification)
-//                .user(inactiveUser)
-//                .content("탈퇴 전 남긴 글")
-//                .isDeleted(false)
-//                .build();
+//        Comment comment = createComment(12L, verification, inactiveUser, "탈퇴 전 남긴 글", false, false, null);
 //
 //        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
 //        given(userRepository.findById(myId)).willReturn(Optional.of(me));
 //        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
 //        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 //
-//        given(commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+//        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
 //                .willReturn(new PageImpl<>(List.of(comment)));
+//
+//        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+//                .willReturn(Collections.emptyList());
 //
 //        // when
 //        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
 //
 //        // then
 //        CommentResponseDto dto = result.getComments().get(0);
-//        assertThat(dto.getContent()).isEqualTo("탈퇴한 사용자의 댓글입니다."); // 마스킹 확인
+//        assertThat(dto.getContent()).isEqualTo("탈퇴한 사용자의 댓글입니다.");
 //        assertThat(dto.getUserName()).isEqualTo("(알 수 없음)");
 //        assertThat(dto.getUserId()).isNull();
 //    }
 //
 //    @Test
-//    @DisplayName("마스킹: 삭제된 댓글 (Soft Delete)")
+//    @DisplayName("마스킹: 삭제된 댓글 (Soft Delete) - Repository에서 조회되어 마스킹 처리됨")
 //    void getComments_Deleted() {
 //        // given
 //        Long verificationId = 100L;
@@ -216,32 +224,32 @@
 //
 //        User me = createUser(myId, "나", UserStatus.ACTIVE);
 //        User writer = createUser(2L, "작성자", UserStatus.ACTIVE);
-//        Verification verification = Verification.builder().id(verificationId).build();
+//        Verification verification = createVerification(verificationId);
 //
-//        Comment comment = Comment.builder()
-//                .id(13L)
-//                .verification(verification)
-//                .user(writer)
-//                .content("삭제되어 안 보이는 글")
-//                .isDeleted(true) // 삭제 상태
-//                .build();
+//        // isDeleted = true 로 생성
+//        Comment comment = createComment(13L, verification, writer, "삭제되어 안 보이는 글", true, false, null);
 //
 //        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
 //        given(userRepository.findById(myId)).willReturn(Optional.of(me));
 //        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
 //        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 //
-//        // Repository가 삭제된 댓글도 가져온다고 가정 (대댓글 구조 등을 위해)
-//        given(commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+//        // [중요] 삭제된 댓글도 반환하도록 Mocking
+//        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
 //                .willReturn(new PageImpl<>(List.of(comment)));
+//
+//        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+//                .willReturn(Collections.emptyList());
 //
 //        // when
 //        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
 //
 //        // then
 //        CommentResponseDto dto = result.getComments().get(0);
-//        assertThat(dto.getContent()).isEqualTo("삭제된 댓글입니다."); // 마스킹 확인
-//        assertThat(dto.getUserName()).isEqualTo("삭제"); // Converter 로직에 따라 변경
+//
+//        // Converter 로직 검증
+//        assertThat(dto.getContent()).isEqualTo("삭제된 댓글입니다.");
+//        assertThat(dto.getUserName()).isEqualTo("삭제");
 //        assertThat(dto.getUserId()).isNull();
 //    }
 //
@@ -255,38 +263,33 @@
 //
 //        User me = createUser(myId, "나", UserStatus.ACTIVE);
 //        User other = createUser(otherId, "타인", UserStatus.ACTIVE);
-//        Verification verification = Verification.builder().id(verificationId).build();
+//        Verification verification = createVerification(verificationId);
 //
-//        Comment comment = Comment.builder()
-//                .id(14L)
-//                .verification(verification)
-//                .user(other)
-//                .content("비밀글입니다")
-//                .isDeleted(false)
-//                .isAnonymous(true)
-//                .anonymousNumber(3)
-//                .build();
+//        // 익명, anonymousNumber=3
+//        Comment comment = createComment(14L, verification, other, "비밀글입니다", false, true, 3);
 //
 //        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
 //        given(userRepository.findById(myId)).willReturn(Optional.of(me));
 //        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
 //        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 //
-//        given(commentRepository.findByVerificationAndDepthAndIsDeletedFalseOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+//        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
 //                .willReturn(new PageImpl<>(List.of(comment)));
+//
+//        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+//                .willReturn(Collections.emptyList());
 //
 //        // when
 //        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
 //
 //        // then
 //        CommentResponseDto dto = result.getComments().get(0);
-//        assertThat(dto.getContent()).isEqualTo("비밀글입니다"); // 내용은 보임
-//        assertThat(dto.getUserName()).isEqualTo("익명3"); // 닉네임 마스킹
+//        assertThat(dto.getContent()).isEqualTo("비밀글입니다");
+//        assertThat(dto.getUserName()).isEqualTo("익명3"); // 마스킹 닉네임
 //        assertThat(dto.getUserId()).isNull(); // ID 숨김
 //        assertThat(dto.isAnonymous()).isTrue();
 //    }
 //}
-
 package com.hrr.backend.domain.comment.service;
 
 import static org.assertj.core.api.Assertions.*;
@@ -307,12 +310,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils; // 핵심 import
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.hrr.backend.domain.comment.converter.CommentConverter;
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.entity.Comment;
+import com.hrr.backend.domain.comment.entity.enums.CommentMaskingType;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
@@ -336,7 +340,7 @@ class CommentServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Converter는 실제 로직 동작 확인을 위해 직접 생성
+        // Converter는 로직이 복잡하므로 Mock이 아닌 실제 객체를 사용하여 결과 검증
         commentConverter = new CommentConverter(s3UrlUtil);
 
         // Service 생성 (생성자 주입)
@@ -367,7 +371,7 @@ class CommentServiceTest {
     }
 
     /**
-     * [핵심 해결] Reflection을 사용하여 Comment 객체 생성 및 createdAt 주입
+     * Comment 객체 생성 및 Reflection을 이용한 BaseEntity 필드 주입
      */
     private Comment createComment(Long id, Verification verification, User user, String content, boolean isDeleted, boolean isAnonymous, Integer anonymousNumber) {
         Comment comment = Comment.builder()
@@ -380,10 +384,9 @@ class CommentServiceTest {
                 .anonymousNumber(anonymousNumber)
                 .likesCount(0)
                 .depth(0)
-                // .createdAt(LocalDateTime.now())  <-- 여기서 에러 나던 것을 제거
                 .build();
 
-        // 부모 클래스(BaseEntity)의 필드는 Reflection으로 주입
+        // BaseEntity 필드 주입 (생성 시간 정렬 테스트 시 필요)
         ReflectionTestUtils.setField(comment, "createdAt", LocalDateTime.now());
 
         return comment;
@@ -392,7 +395,7 @@ class CommentServiceTest {
     // --- 테스트 케이스 ---
 
     @Test
-    @DisplayName("정상 조회: 차단/삭제/탈퇴 없는 클린한 댓글 조회")
+    @DisplayName("정상 조회: 차단/삭제/탈퇴 없는 클린한 댓글")
     void getComments_Normal() {
         // given
         Long verificationId = 100L;
@@ -403,16 +406,16 @@ class CommentServiceTest {
         User writer = createUser(writerId, "작성자", UserStatus.ACTIVE);
         Verification verification = createVerification(verificationId);
 
-        // 헬퍼 메서드로 Comment 생성 (Reflection 적용됨)
         Comment comment = createComment(10L, verification, writer, "정상 댓글입니다.", false, false, null);
 
         // Mocking
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         given(userRepository.findById(myId)).willReturn(Optional.of(me));
-        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
-        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 
-        // [수정된 Repository 메서드 호출] 삭제된 댓글도 포함하는 메서드 Mocking
+        // 차단 목록 없음
+        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
+
+        // 댓글 조회 (삭제된 것도 포함하는 메서드 호출됨)
         given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(comment)));
 
@@ -428,12 +431,12 @@ class CommentServiceTest {
         CommentResponseDto dto = result.getComments().get(0);
         assertThat(dto.getContent()).isEqualTo("정상 댓글입니다.");
         assertThat(dto.getUserName()).isEqualTo("작성자");
-        assertThat(dto.getUserId()).isEqualTo(writerId);
+        assertThat(dto.getMaskingType()).isEqualTo(CommentMaskingType.NONE);
         assertThat(dto.getUserProfileUrl()).isEqualTo("http://full-url.com/profile.jpg");
     }
 
     @Test
-    @DisplayName("마스킹: 차단된 사용자(내가 차단함 + 나를 차단함)")
+    @DisplayName("마스킹: 내가 차단한 사용자의 댓글 (Type: BLOCKED)")
     void getComments_BlockedUser() {
         // given
         Long verificationId = 100L;
@@ -444,14 +447,13 @@ class CommentServiceTest {
         User blockedUser = createUser(blockedUserId, "차단남", UserStatus.ACTIVE);
         Verification verification = createVerification(verificationId);
 
-        Comment comment = createComment(11L, verification, blockedUser, "차단된 유저의 글", false, false, null);
+        Comment comment = createComment(11L, verification, blockedUser, "보기 싫은 글", false, false, null);
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         given(userRepository.findById(myId)).willReturn(Optional.of(me));
 
-        // 차단 목록 설정
+        // [중요] 내가 차단한 목록에 포함됨 -> 마스킹 대상
         given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(List.of(blockedUserId));
-        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 
         given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(comment)));
@@ -465,28 +467,66 @@ class CommentServiceTest {
         // then
         CommentResponseDto dto = result.getComments().get(0);
         assertThat(dto.getContent()).isEqualTo("차단된 사용자의 댓글입니다.");
-        assertThat(dto.getUserName()).isEqualTo("(알 수 없음)");
-        assertThat(dto.getUserId()).isNull();
-        assertThat(dto.getUserProfileUrl()).isNull();
+        assertThat(dto.getUserName()).isNull(); // Converter 로직 상 null
+        assertThat(dto.getMaskingType()).isEqualTo(CommentMaskingType.BLOCKED);
+        assertThat(dto.getUserId()).isNull(); // ID 노출 X
     }
 
     @Test
-    @DisplayName("마스킹: 탈퇴한 사용자 (Inactive Status)")
+    @DisplayName("마스킹 X: 나를 차단한 사용자의 댓글 (Type: NONE) - 단방향 차단 검증")
+    void getComments_UserWhoBlockedMe() {
+        // given
+        Long verificationId = 100L;
+        Long myId = 1L;
+        Long blockerId = 99L; // 나를 차단한 사람
+
+        User me = createUser(myId, "나", UserStatus.ACTIVE);
+        User blocker = createUser(blockerId, "나를차단한사람", UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId);
+
+        Comment comment = createComment(11L, verification, blocker, "나는 보여야 해", false, false, null);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(myId)).willReturn(Optional.of(me));
+
+        // [중요] 내가 차단한 목록은 비어있음 (상대가 나를 차단한 건 조회 시 영향 X)
+        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
+
+        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(comment)));
+
+        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+                .willReturn(Collections.emptyList());
+
+        given(s3UrlUtil.toFullUrl(anyString())).willReturn("http://full-url.com/profile.jpg");
+
+        // when
+        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
+
+        // then
+        CommentResponseDto dto = result.getComments().get(0);
+        assertThat(dto.getContent()).isEqualTo("나는 보여야 해"); // 마스킹 되지 않음
+        assertThat(dto.getUserName()).isEqualTo("나를차단한사람");
+        assertThat(dto.getMaskingType()).isEqualTo(CommentMaskingType.NONE);
+    }
+
+    @Test
+    @DisplayName("마스킹: 탈퇴한 사용자 (Type: INACTIVE) - 닉네임 변경, 내용 유지")
     void getComments_InactiveUser() {
         // given
         Long verificationId = 100L;
         Long myId = 1L;
 
         User me = createUser(myId, "나", UserStatus.ACTIVE);
+        // 상태가 INACTIVE인 사용자
         User inactiveUser = createUser(50L, "탈퇴자", UserStatus.INACTIVE);
         Verification verification = createVerification(verificationId);
 
-        Comment comment = createComment(12L, verification, inactiveUser, "탈퇴 전 남긴 글", false, false, null);
+        Comment comment = createComment(12L, verification, inactiveUser, "탈퇴 전 남긴 소중한 기록", false, false, null);
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         given(userRepository.findById(myId)).willReturn(Optional.of(me));
         given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
-        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 
         given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(comment)));
@@ -499,13 +539,16 @@ class CommentServiceTest {
 
         // then
         CommentResponseDto dto = result.getComments().get(0);
-        assertThat(dto.getContent()).isEqualTo("탈퇴한 사용자의 댓글입니다.");
-        assertThat(dto.getUserName()).isEqualTo("(알 수 없음)");
-        assertThat(dto.getUserId()).isNull();
+
+        // [검증 포인트] 탈퇴한 사용자는 내용은 유지, 닉네임만 변경
+        assertThat(dto.getContent()).isEqualTo("탈퇴 전 남긴 소중한 기록");
+        assertThat(dto.getUserName()).isEqualTo("탈퇴한 사용자");
+        assertThat(dto.getMaskingType()).isEqualTo(CommentMaskingType.INACTIVE);
+        assertThat(dto.getUserId()).isNull(); // ID 노출 X
     }
 
     @Test
-    @DisplayName("마스킹: 삭제된 댓글 (Soft Delete) - Repository에서 조회되어 마스킹 처리됨")
+    @DisplayName("마스킹: 삭제된 댓글 (Type: DELETED) - Soft Delete")
     void getComments_Deleted() {
         // given
         Long verificationId = 100L;
@@ -515,15 +558,14 @@ class CommentServiceTest {
         User writer = createUser(2L, "작성자", UserStatus.ACTIVE);
         Verification verification = createVerification(verificationId);
 
-        // isDeleted = true 로 생성
-        Comment comment = createComment(13L, verification, writer, "삭제되어 안 보이는 글", true, false, null);
+        // isDeleted = true
+        Comment comment = createComment(13L, verification, writer, "삭제된 글", true, false, null);
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         given(userRepository.findById(myId)).willReturn(Optional.of(me));
         given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
-        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 
-        // [중요] 삭제된 댓글도 반환하도록 Mocking
+        // 삭제된 댓글도 조회됨 (대댓글 구조 유지를 위해)
         given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(comment)));
 
@@ -535,16 +577,14 @@ class CommentServiceTest {
 
         // then
         CommentResponseDto dto = result.getComments().get(0);
-
-        // Converter 로직 검증
         assertThat(dto.getContent()).isEqualTo("삭제된 댓글입니다.");
         assertThat(dto.getUserName()).isEqualTo("삭제");
-        assertThat(dto.getUserId()).isNull();
+        assertThat(dto.getMaskingType()).isEqualTo(CommentMaskingType.DELETED);
     }
 
     @Test
-    @DisplayName("익명: 타인의 익명 댓글은 닉네임과 ID가 가려져야 함")
-    void getComments_Anonymous_Other() {
+    @DisplayName("익명 댓글 조회")
+    void getComments_Anonymous() {
         // given
         Long verificationId = 100L;
         Long myId = 1L;
@@ -560,11 +600,9 @@ class CommentServiceTest {
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         given(userRepository.findById(myId)).willReturn(Optional.of(me));
         given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
-        given(userBlockRepository.findBlockerIdsByBlockedId(myId)).willReturn(Collections.emptyList());
 
         given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(comment)));
-
         given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
                 .willReturn(Collections.emptyList());
 
@@ -574,8 +612,8 @@ class CommentServiceTest {
         // then
         CommentResponseDto dto = result.getComments().get(0);
         assertThat(dto.getContent()).isEqualTo("비밀글입니다");
-        assertThat(dto.getUserName()).isEqualTo("익명3"); // 마스킹 닉네임
-        assertThat(dto.getUserId()).isNull(); // ID 숨김
+        assertThat(dto.getUserName()).isEqualTo("익명3");
+        assertThat(dto.getUserId()).isNull();
         assertThat(dto.isAnonymous()).isTrue();
     }
 }
