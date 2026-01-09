@@ -40,7 +40,7 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "AND f.status = 'APPROVED' " +
             "AND f.follower.userStatus = 'ACTIVE' " +
             "AND f.follower.id NOT IN ( SELECT ub.blocked.id FROM UserBlock ub WHERE ub.blocker.id = :currentUserId )" +
-            "AND f.following.id NOT IN ( SELECT ub.blocker.id FROM UserBlock ub WHERE ub.blocked.id = :currentUserId )" +
+            "AND f.follower.id NOT IN ( SELECT ub.blocker.id FROM UserBlock ub WHERE ub.blocked.id = :currentUserId )" +
             "ORDER BY f.createdAt DESC")
     Slice<User> findFollowersByUserId(
             @Param("userId") Long userId,
@@ -58,8 +58,8 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "WHERE f.follower.id = :userId " +
             "AND f.status = 'APPROVED' " +
             "AND f.following.userStatus = 'ACTIVE' " +
-            "AND f.follower.id NOT IN (SELECT ub.blocked.id FROM UserBlock ub WHERE ub.blocker.id = :currentUserId) " +
-            "AND f.follower.id NOT IN (SELECT ub.blocker.id FROM UserBlock ub WHERE ub.blocked.id = :currentUserId) " +
+            "AND f.following.id NOT IN (SELECT ub.blocked.id FROM UserBlock ub WHERE ub.blocker.id = :currentUserId) " +
+            "AND f.following.id NOT IN (SELECT ub.blocker.id FROM UserBlock ub WHERE ub.blocked.id = :currentUserId) " +
             "ORDER BY f.createdAt DESC")
     Slice<User> findFollowingsByUserId(
             @Param("userId") Long userId,

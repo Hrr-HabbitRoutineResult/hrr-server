@@ -76,20 +76,22 @@ public class UserServiceImpl implements UserService {
         boolean isBlockedByMe = userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser);
         boolean isBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
 
-        String profileImage = isBlockedByMe ? null : targetUser.getProfileImage(); //
+        String profileImage = isBlockedByMe ? null : targetUser.getProfileImage();
 
         if (isBlockedByOther) {
             throw new GlobalException(ErrorCode.USER_NOT_FOUND);
         }
 
+        boolean isFollowing = !isBlockedByMe && checkIfFollowing(currentUser.getId(), targetUser.getId());
+
         return UserResponseDto.ProfileDto.builder()
                 .userId(targetUser.getId())
-                .nickname(targetUser.getDisplayNickname()) //
+                .nickname(targetUser.getDisplayNickname())
                 .profileImage(profileImage)
                 .level(targetUser.getUserLevel())
-                .followerCount(targetUser.getFollowerCount()) //
+                .followerCount(targetUser.getFollowerCount())
                 .followingCount(targetUser.getFollowingCount())
-                .isFollowing(false) // 차단 중이므로 무조건 false
+                .isFollowing(isFollowing)
                 .build();
     }
 
