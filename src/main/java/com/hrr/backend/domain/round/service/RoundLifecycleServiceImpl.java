@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.hrr.backend.domain.challenge.event.ChallengeParticipantsChangedEvent;
 import com.hrr.backend.domain.challenge.service.ChallengeStaticsService;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
@@ -50,7 +52,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
                 transactionTemplate.executeWithoutResult(status -> {
                     //트랜잭션 내부에서 Round를 다시 조회해서(detached 방지) 처리
                     Round managedEndedRound = roundRepository.findByIdWithChallengeAndCurrentRound(endedRoundId)
-                            .orElseThrow(() -> new IllegalStateException("Round not found. id=" + endedRoundId));
+                            .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
 
                     processSingleEndedRound(managedEndedRound);
                 });
