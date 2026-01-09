@@ -24,7 +24,4 @@ public class UpdateUserInfoRequestDto {
 
     @Schema(description = "프로필 이미지 변경 여부 (true: profileImageKey 처리, false: profileImageKey 무시)", example = "true")
     private Boolean isProfileImageChanged;
-
-    @Schema(description = "프로필 공개 여부", example = "false")
-    private Boolean isPublic;
 }
