@@ -362,11 +362,19 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // isNicknameChanged가 true이고 nickname이 null이 아닐 때만 처리
-        if (Boolean.TRUE.equals(requestDto.getIsNicknameChanged()) && requestDto.getNickname() != null) {
-            String nickname = normalize(requestDto.getNickname());
+        // 닉네임 수정
+        if (Boolean.TRUE.equals(requestDto.getIsNicknameChanged())) {
+            String rawNickname = requestDto.getNickname();
 
-            // 자기 닉네임과 다를 때만 중복 체크 및 업데이트
+            // 변경 플래그는 true인데 값이 null인 경우
+            if (rawNickname == null) {
+                throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+
+            // 2. 값이 있는 경우 업데이트 진행
+            String nickname = normalize(rawNickname);
+
+            // 본인의 기존 닉네임과 다른 경우에만 중복 체크 및 수정
             if (!nickname.equals(user.getNickname())) {
                 if (userRepository.existsByNickname(nickname)) {
                     throw new GlobalException(ErrorCode.NICKNAME_DUPLICATED);
