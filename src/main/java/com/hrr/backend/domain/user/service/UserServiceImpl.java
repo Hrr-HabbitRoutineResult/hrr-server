@@ -150,7 +150,7 @@ public class UserServiceImpl implements UserService {
             if (isRegistrationDay) {
                 // 유저-챌린지 매핑 (userChallengeId 필요)
                 Long userChallengeId = userChallengeRepository
-                        .findByUserIdAndChallengeId(userId, challengeId)
+                        .findByUserIdAndChallengeId(targetUser.getId(), challengeId)
                         .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
                         .getId();
 
