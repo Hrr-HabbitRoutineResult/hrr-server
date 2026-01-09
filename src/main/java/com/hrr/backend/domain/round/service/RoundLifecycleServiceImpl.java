@@ -3,6 +3,10 @@ package com.hrr.backend.domain.round.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.hrr.backend.domain.challenge.event.ChallengeParticipantsChangedEvent;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,6 +37,8 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final RoundConverter roundConverter;
     private final TransactionTemplate transactionTemplate;
 
+    private final ApplicationEventPublisher publisher;
+
     @Override
     public void processRoundsEndedAt(LocalDate endDate) {
 
@@ -45,7 +51,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
                 transactionTemplate.executeWithoutResult(status -> {
                     //트랜잭션 내부에서 Round를 다시 조회해서(detached 방지) 처리
                     Round managedEndedRound = roundRepository.findByIdWithChallengeAndCurrentRound(endedRoundId)
-                            .orElseThrow(() -> new IllegalStateException("Round not found. id=" + endedRoundId));
+                            .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
 
                     processSingleEndedRound(managedEndedRound);
                 });
@@ -108,6 +114,9 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
 
         // 7. 챌린지 currentRound 교체
         challenge.changeCurrentRound(nextRound);
+
+        // 8. 통계 최신화 1회
+        publisher.publishEvent(new ChallengeParticipantsChangedEvent(challenge.getId()));
 
         log.info("[RoundLifecycle] 라운드 전환 완료. challengeId={}, {}R -> {}R",
                 challenge.getId(), endedRound.getRoundNumber(), nextRound.getRoundNumber());
