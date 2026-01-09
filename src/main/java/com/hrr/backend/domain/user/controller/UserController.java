@@ -101,9 +101,9 @@ public class UserController {
             @Min(1) @Max(100)
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
-        Long userId = customUserDetails.getUser().getId();
+        User currentUser = customUserDetails.getUser();
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, page-1, size);
+                userService.getOngoingChallenges(currentUser.getId(), currentUser, page-1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -120,6 +120,8 @@ public class UserController {
             @PathVariable
             @Parameter(description = "조회할 사용자 ID", example = "999") Long userId,
 
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+
             @RequestParam(name = "page", defaultValue = "1")
             @Min(1)
             @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
@@ -129,7 +131,7 @@ public class UserController {
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         SliceResponseDto<UserResponseDto.OngoingChallengeDto> response =
-                userService.getOngoingChallenges(userId, page-1, size);
+                userService.getOngoingChallenges(userId, customUserDetails.getUser(), page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -184,54 +186,6 @@ public class UserController {
             summary = "내 챌린지 인증 기록 조회",
             description = "현재 로그인한 사용자가 참여한 모든 챌린지의 인증 기록을 최신순으로 조회합니다."
     )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "성공",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    value = """
-                                    {
-                                      "resultType": "SUCCESS",
-                                      "error": null,
-                                      "success": {
-                                        "content": [
-                                          {
-                                            "verificationId": 1,
-                                            "challengeId": 101,
-                                            "challengeTitle": "미라클 모닝",
-                                            "type": "TEXT",
-                                            "title": "해피뉴이어! 올해 마지막 인증 올립니다",
-                                            "content": "여기엔 상세내용이 들어가유~",
-                                            "photoUrl": null,
-                                            "textUrl": "https://blog.example.com/post/123",
-                                            "verifiedAt": "2025-09-18T08:00:00Z"
-                                          },
-                                          {
-                                            "verificationId": 2,
-                                            "challengeId": 102,
-                                            "challengeTitle": "매일 책 10페이지 읽기",
-                                            "type": "CAMERA",
-                                            "title": "오늘의 독서 인증",
-                                            "content": null,
-                                            "photoUrl": "https://example.com/verification_image_2.jpg",
-                                            "textUrl": null,
-                                            "verifiedAt": "2025-09-13T22:30:00Z"
-                                          }
-                                        ],
-                                        "currentPage": 0,
-                                        "size": 10,
-                                        "first": true,
-                                        "last": false,
-                                        "hasNext": true
-                                      }
-                                    }
-                                    """
-                            )
-                    )
-            )
-    })
     public ApiResponse<SliceResponseDto<VerificationResponseDto.HistoryDto>> getVerificationHistory(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
@@ -262,6 +216,8 @@ public class UserController {
             @Positive
             @Parameter(description = "조회할 사용자 ID", example = "5") Long userId,
 
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+
             @RequestParam(name = "page", defaultValue = "1")
             @Min(1)
             @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
@@ -271,7 +227,7 @@ public class UserController {
             @Parameter(description = "페이지당 데이터 개수", example = "10") int size
     ) {
         VerificationResponseDto.OtherUserHistoryResponse response =
-                verificationService.getOtherUserVerificationHistory(userId, page - 1, size);
+                verificationService.getOtherUserVerificationHistory(userId, customUserDetails.getUser(), page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }

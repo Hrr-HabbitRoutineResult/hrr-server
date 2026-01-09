@@ -49,12 +49,13 @@ public class UserResponseDto {
             return ProfileDto.builder()
                     .userId(user.getId())
                     .nickname(user.getDisplayNickname())
-                    .profileImage(user.getProfileImage())
+                    // 내가 차단한 유저라면 사진을 null로 마스킹
+                    .profileImage(isBlocked ? null : user.getProfileImage())
                     .level(user.getUserLevel())
-                    .followerCount(user.getFollowerCount())
-                    .followingCount(user.getFollowingCount())
+                    // 탈퇴 유저는 0, 그 외(차단 포함)는 실제 카운트 유지
+                    .followerCount(user.isNotActive() ? 0L : user.getFollowerCount())
+                    .followingCount(user.isNotActive() ? 0L : user.getFollowingCount())
                     .isFollowing(isFollowing)
-                    .isBlocked(isBlocked)
                     .build();
         }
     }

@@ -2,6 +2,7 @@ package com.hrr.backend.domain.user.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -75,12 +76,13 @@ public class UserServiceImpl implements UserService {
         boolean isBlockedByMe = userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser);
         boolean isBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
 
+        String profileImage = isBlockedByMe ? null : targetUser.getProfileImage();
+
         if (isBlockedByOther) {
             throw new GlobalException(ErrorCode.USER_NOT_FOUND);
         }
 
-        // 팔로잉 여부 확인
-        Boolean isFollowing = checkIfFollowing(currentUser.getId(), userId);
+        boolean isFollowing = !isBlockedByMe && checkIfFollowing(currentUser.getId(), targetUser.getId());
 
         return UserResponseDto.ProfileDto.from(targetUser, isFollowing, isBlockedByMe);
     }
@@ -88,19 +90,39 @@ public class UserServiceImpl implements UserService {
     @Override
     public SliceResponseDto<UserResponseDto.OngoingChallengeDto> getOngoingChallenges(
             Long userId,
+            User currentUser,
             int page,
             int size
     ) {
         // 사용자 조회
-        User user = userRepository.findById(userId)
+        User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        // 타인 프로필 조회 시에만 체크
+        if (!userId.equals(currentUser.getId())) {
+
+            // 탈퇴/비활성 사용자 체크
+            if (targetUser.isNotActive()) {
+                throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+            }
+
+            // 상대방이 나를 차단했는지 체크
+            if (userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser)) {
+                throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+            }
+
+            // 내가 상대방을 차단했는지 체크
+            if (userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser)) {
+                return new SliceResponseDto<>(new SliceImpl<>(java.util.Collections.emptyList(), PageRequest.of(page, size), false));
+            }
+        }
 
         // Pageable 객체 생성 (0-based index; 이미 controller에서 -1 처리 완료)
         Pageable pageable = PageRequest.of(page, size);
 
         // Repository에서 참가중인 챌린지 조회
         Slice<UserResponseDto.OngoingChallengeDto> slice =
-                userChallengeRepository.findOngoingChallengesByUser(user, pageable);
+                userChallengeRepository.findOngoingChallengesByUser(targetUser, pageable);
 
         // URL 변환 로직 교체
         slice.getContent().forEach(dto ->
@@ -128,7 +150,7 @@ public class UserServiceImpl implements UserService {
             if (isRegistrationDay) {
                 // 유저-챌린지 매핑 (userChallengeId 필요)
                 Long userChallengeId = userChallengeRepository
-                        .findByUserIdAndChallengeId(userId, challengeId)
+                        .findByUserIdAndChallengeId(targetUser.getId(), challengeId)
                         .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND))
                         .getId();
 

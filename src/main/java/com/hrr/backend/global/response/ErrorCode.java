@@ -156,6 +156,7 @@ public enum ErrorCode implements BaseCode{
     FOLLOW_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW4042", "팔로우 요청을 찾을 수 없습니다."),
     UNAUTHORIZED_FOLLOW_ACTION(HttpStatus.FORBIDDEN, "FOLLOW4031", "다른 사람의 팔로우 요청을 처리할 수 없습니다."),
     ALREADY_APPROVED_FOLLOW(HttpStatus.BAD_REQUEST, "FOLLOW4006", "이미 승인된 팔로우입니다."),
+    CANNOT_FOLLOW_BLOCKED_USER(HttpStatus.BAD_REQUEST, "FOLLOW4007", "차단한 유저는 팔로우할 수 없습니다."),
 
 
     // notification

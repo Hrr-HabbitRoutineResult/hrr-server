@@ -4,6 +4,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
@@ -17,13 +18,11 @@ import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.round.entity.Round;
@@ -610,30 +609,44 @@ public class VerificationServiceImpl implements VerificationService {
 
     @Override
     public VerificationResponseDto.OtherUserHistoryResponse getOtherUserVerificationHistory(
-            Long userId,
+            Long targetUserId,
+            User currentUser,
             int page,
             int size
     ) {
-        // 1. 사용자 조회
-        User user = userRepository.findById(userId)
+        // 사용자 조회
+        User targetUser = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // 2. 비공개 계정 체크
-        if (!user.getIsPublic()) {
-            log.info("User {} is private. Returning empty list.", userId);
+        if (targetUser.isNotActive() || userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser)) {
+            throw new GlobalException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 차단 관계 시 빈 리스트 반환
+        if (userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser)) {
+            return VerificationResponseDto.OtherUserHistoryResponse.builder()
+                    .isPublic(true)
+                    .nickname(targetUser.getDisplayNickname()) // (알 수 없음) 표시
+                    .verifications(new SliceResponseDto<>(new SliceImpl<>(Collections.emptyList(), PageRequest.of(page, size), false)))
+                    .build();
+        }
+
+        // 비공개 계정 체크
+        if (!targetUser.getIsPublic()) {
+            log.info("User {} is private. Returning empty list.", targetUserId);
             return VerificationResponseDto.OtherUserHistoryResponse.builder()
                     .isPublic(false)
-                    .nickname(user.getNickname())
+                    .nickname(targetUser.getNickname())
                     .verifications(new SliceResponseDto<>(Page.empty()))
                     .build();
         }
 
-        // 3. 공개 계정
+        // 공개 계정
         Pageable pageable = PageRequest.of(page, size);
 
         Slice<Verification> verificationSlice =
                 verificationRepository.findVerificationHistoryByUser(
-                        user,
+                        targetUser,
                         VerificationStatus.COMPLETED,
                         pageable);
 
@@ -642,7 +655,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         return VerificationResponseDto.OtherUserHistoryResponse.builder()
                 .isPublic(true)
-                .nickname(user.getNickname())
+                .nickname(targetUser.getNickname())
                 .verifications(new SliceResponseDto<>(dtoSlice))
                 .build();
     }

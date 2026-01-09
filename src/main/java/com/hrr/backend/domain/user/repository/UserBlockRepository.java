@@ -29,6 +29,15 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
 		"AND b.blocked.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.ACTIVE")
 	Slice<UserBlock> findByBlocker(@Param("blocker") User blocker, Pageable pageable);
 
+    /**
+     * 상호 차단 관계 확인 (둘 중 한 명이라도 차단했는지 여부)
+     */
+    default boolean isBlockedRelation(User userA, User userB) {
+        if (userA == null || userB == null) return false;
+        return existsByBlockerAndBlocked(userA, userB) ||
+                existsByBlockerAndBlocked(userB, userA);
+    }
+  
     // [최적화] 내가 차단한 사람들의 ID만 조회
     @Query("SELECT b.blocked.id FROM UserBlock b WHERE b.blocker.id = :blockerId")
     List<Long> findBlockedIdsByBlockerId(@Param("blockerId") Long blockerId);
