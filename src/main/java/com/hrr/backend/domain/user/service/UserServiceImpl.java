@@ -84,15 +84,7 @@ public class UserServiceImpl implements UserService {
 
         boolean isFollowing = !isBlockedByMe && checkIfFollowing(currentUser.getId(), targetUser.getId());
 
-        return UserResponseDto.ProfileDto.builder()
-                .userId(targetUser.getId())
-                .nickname(targetUser.getDisplayNickname())
-                .profileImage(profileImage)
-                .level(targetUser.getUserLevel())
-                .followerCount(targetUser.getFollowerCount())
-                .followingCount(targetUser.getFollowingCount())
-                .isFollowing(isFollowing)
-                .build();
+        return UserResponseDto.ProfileDto.from(targetUser, isFollowing, isBlockedByMe);
     }
 
     @Override

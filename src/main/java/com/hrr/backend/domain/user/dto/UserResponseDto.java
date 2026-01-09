@@ -48,7 +48,7 @@ public class UserResponseDto {
         public static ProfileDto from(User user, Boolean isFollowing, Boolean isBlocked) {
             return ProfileDto.builder()
                     .userId(user.getId())
-                    .nickname(user.getDisplayNickname()) // 탈퇴 유저 마스킹 로직 포함
+                    .nickname(user.getDisplayNickname())
                     // 내가 차단한 유저라면 사진을 null로 마스킹
                     .profileImage(isBlocked ? null : user.getProfileImage())
                     .level(user.getUserLevel())
