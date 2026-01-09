@@ -367,7 +367,7 @@ public class UserServiceImpl implements UserService {
             String rawNickname = requestDto.getNickname();
 
             // 변경 플래그는 true인데 값이 null인 경우
-            if (rawNickname == null) {
+            if (rawNickname == null || rawNickname.isBlank()) {
                 throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
