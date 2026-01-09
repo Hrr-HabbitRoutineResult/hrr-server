@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.event.ChallengeParticipantsChangedEvent;
-import com.hrr.backend.domain.challenge.service.ChallengeStaticsService;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import org.springframework.context.ApplicationEventPublisher;
