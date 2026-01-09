@@ -371,7 +371,7 @@ public class UserServiceImpl implements UserService {
                 throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
-            // 2. 값이 있는 경우 업데이트 진행
+            // 값이 있는 경우 업데이트 진행
             String nickname = normalize(rawNickname);
 
             // 본인의 기존 닉네임과 다른 경우에만 중복 체크 및 수정
