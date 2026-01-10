@@ -74,6 +74,8 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
 
+      MODEL_TAG: ${MODEL_TAG}
+
     restart: always
 
   # Redis 서비스
@@ -88,7 +90,7 @@ services:
 
   # 모델 서비스
   model-api:
-    image: ychan0/hrr-model:v1.0.0
+    image: ychan0/hrr-model:${MODEL_TAG:-latest}
     container_name: hrr_model_prod
     restart: always
     environment:
