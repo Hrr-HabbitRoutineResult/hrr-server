@@ -39,7 +39,7 @@ services:
 
   # Spring Boot 애플리케이션 서비스
   app:
-    image: ychan0/hrr-server:v1.0.0
+    image: ychan0/hrr-server:${IMAGE_TAG:-latest}
     container_name: hrr_app_prod
     environment:
       TZ: Asia/Seoul

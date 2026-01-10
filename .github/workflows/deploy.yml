@@ -1,9 +1,8 @@
-name: Deploy to AWS EC2 with Docker
+name: Deploy to AWS EC2 with Docker from main branch
 
 on:
-  push:
-    branches: [ "develop" ] # develop 브랜치에 푸시하면 자동으로 배포 시작
-  workflow_dispatch:    # 수동 가능하게
+  release:
+    types: [published] # 릴리즈가 발행(Publish)되었을 때만 실행
 
 jobs:
   build-and-deploy:
@@ -44,7 +43,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/hrr-server:v1.0.0
+          tags: ${{ secrets.DOCKER_USERNAME }}/hrr-server:${{ github.event.release.tag_name }}
           platforms: linux/amd64
 
       # 설정 파일(docker-compose, nginx, deploy) EC2로 전송 (SCP)
@@ -70,4 +69,5 @@ jobs:
           script: |
             cd /home/ubuntu
             chmod +x deploy.sh
-            ./deploy.sh
+            # 릴리즈 태그를 인자로 전달
+            ./deploy.sh ${{ github.event.release.tag_name }}
