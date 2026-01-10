@@ -9,6 +9,18 @@ COMPOSE_FILE="docker-compose_prod.yml"
 
 set +o histexpand       # 비밀번호의 특수문자 누락 방지
 
+# --- 배포 버전 인자값 확인 ---
+# 스크립트 실행 시 첫 번째 인자로 태그를 받습니다. (예: ./deploy.sh v1.0.1)
+RELEASE_TAG=$1
+
+if [ -z "$RELEASE_TAG" ]; then
+    echo "WARNING: 배포 태그가 지정되지 않았습니다. 기본값(latest)을 사용합니다."
+    export IMAGE_TAG="latest"
+else
+    echo "INFO: ${RELEASE_TAG} 버전을 배포합니다."
+    export IMAGE_TAG="${RELEASE_TAG}"
+fi
+
 # AWS CLI 설치 및 jq 확인
 if ! command -v aws &> /dev/null || ! command -v jq &> /dev/null; then
     echo "ERROR: AWS CLI 또는 jq가 설치되어 있지 않습니다." >&2
@@ -52,6 +64,7 @@ export APPLE_KEY_ID=$(echo "$SECRET_JSON" | jq -r '.APPLE_KEY_ID')
 export APPLE_P8_KEY=$(echo "$SECRET_JSON" | jq -r '.APPLE_P8_KEY')
 export NAVER_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_ID')
 export NAVER_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_SECRET')
+export MODEL_API_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_API_URL')
 
 echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
 

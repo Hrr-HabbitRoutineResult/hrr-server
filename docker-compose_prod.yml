@@ -19,7 +19,8 @@ services:
     environment:
       - TZ=Asia/Seoul
     depends_on:
-      - app
+      app:
+        condition: service_healthy # app이 healthy 상태가 된 이후에 nginx 실행
 
   # Certbot
   certbot:
@@ -39,7 +40,7 @@ services:
 
   # Spring Boot 애플리케이션 서비스
   app:
-    image: ychan0/hrr-server:v1.0.0
+    image: ychan0/hrr-server:${IMAGE_TAG:-latest}
     container_name: hrr_app_prod
     environment:
       TZ: Asia/Seoul
@@ -74,6 +75,15 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
 
+      MODEL_API_URL: ${MODEL_API_URL}
+
+    healthcheck:
+      # 스웨거 페이지에 접근해서 200 OK가 떨어지는지 확인 - nginx가 켜지기 전이기 때문에 localhost로 직접 체크
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/swagger-ui/index.html" ]
+      interval: 10s    # 10초마다 체크
+      timeout: 5s     # 5초 안에 응답 없으면 실패
+      retries: 10     # 10번 실패하면 unhealthy
+      start_period: 30s # 앱 실행 초기 30초는 실패해도 대기
     restart: always
 
   # Redis 서비스
@@ -85,14 +95,6 @@ services:
       - TZ=Asia/Seoul
     volumes:
       - redis_data:/data
-
-  # 모델 서비스
-  model-api:
-    image: ychan0/hrr-model:v1.0.0
-    container_name: hrr_model_prod
-    restart: always
-    environment:
-      - TZ=Asia/Seoul
 
 volumes:
   db-data:
