@@ -37,8 +37,8 @@ kakao:
 
 model:
   api:
-    url: ${MODEL_API_URL:http://model-api:8000}/recommend
-    embedding-url: ${MODEL_API_URL:http://model-api:8000}/embedding
+    url: ${MODEL_SERVER_URL:http://model-api:8000}/recommend
+    embedding-url: ${MODEL_SERVER_URL:http://model-api:8000}/embedding
 
 aws:
   s3:

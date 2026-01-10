@@ -64,7 +64,7 @@ export APPLE_KEY_ID=$(echo "$SECRET_JSON" | jq -r '.APPLE_KEY_ID')
 export APPLE_P8_KEY=$(echo "$SECRET_JSON" | jq -r '.APPLE_P8_KEY')
 export NAVER_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_ID')
 export NAVER_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_SECRET')
-export MODEL_API_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_API_URL')
+export MODEL_SERVER_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_SERVER_URL')
 
 echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
 
