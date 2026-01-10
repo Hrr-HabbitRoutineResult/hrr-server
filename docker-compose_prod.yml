@@ -74,7 +74,7 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
 
-      MODEL_TAG: ${MODEL_TAG}
+      MODEL_API_URL: ${MODEL_API_URL}
 
     restart: always
 
@@ -87,14 +87,6 @@ services:
       - TZ=Asia/Seoul
     volumes:
       - redis_data:/data
-
-  # 모델 서비스
-  model-api:
-    image: ychan0/hrr-model:${MODEL_TAG:-latest}
-    container_name: hrr_model_prod
-    restart: always
-    environment:
-      - TZ=Asia/Seoul
 
 volumes:
   db-data:
