@@ -3,6 +3,7 @@ name: Deploy to AWS EC2 with Docker from main branch
 on:
   release:
     types: [published] # 릴리즈가 발행(Publish)되었을 때만 실행
+  workflow_dispatch: # 수동 실행 버튼 활성화
 
 jobs:
   build-and-deploy:
@@ -44,7 +45,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/hrr-server:${{ github.event.release.tag_name }}
+            # 릴리즈 태그가 있으면 사용하고, 없으면 수동 실행 시 'latest'로 처리
+            ${{ secrets.DOCKER_USERNAME }}/hrr-server:${{ github.event.release.tag_name || 'latest' }}
             ${{ secrets.DOCKER_USERNAME }}/hrr-server:latest
           platforms: linux/amd64
 
@@ -71,5 +73,5 @@ jobs:
           script: |
             cd /home/ubuntu
             chmod +x deploy.sh
-            # 릴리즈 태그를 인자로 전달
-            ./deploy.sh ${{ github.event.release.tag_name }}
+            # 릴리즈 태그가 없으면(수동 배포 시) 'latest'를 인자로 전달
+            ./deploy.sh ${{ github.event.release.tag_name || 'latest' }}
