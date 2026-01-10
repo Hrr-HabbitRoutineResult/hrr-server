@@ -44,15 +44,15 @@ jobs:
         with:
           context: .
           push: true
+          # 릴리즈 태그가 있으면 사용하고, 없으면 수동 실행 시 'latest'로 처리
           tags: |
-            # 릴리즈 태그가 있으면 사용하고, 없으면 수동 실행 시 'latest'로 처리
             ${{ secrets.DOCKER_USERNAME }}/hrr-server:${{ github.event.release.tag_name || 'latest' }}
             ${{ secrets.DOCKER_USERNAME }}/hrr-server:latest
           platforms: linux/amd64
 
       # 설정 파일(docker-compose, nginx, deploy) EC2로 전송 (SCP)
       - name: Copy Configuration files to EC2
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
@@ -64,7 +64,7 @@ jobs:
 
       # EC2 접속해서 deploy.sh(베포 스크립트) 실행
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@1.2.4
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
