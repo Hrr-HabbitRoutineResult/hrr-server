@@ -179,6 +179,9 @@ public class ChallengeServiceImpl implements ChallengeService {
             isCertifiedToday = checkTodayVerification(ucOp.get().getId(), challenge);
         }
 
+		// 챌린지 참여 개수 조회
+		boolean isMaxJoined = challengeRepository.countByUserIdAndStatus(user.getId(), ChallengeJoinStatus.JOINED) >= 5;
+
 		// 좋아요 여부 조회
 		boolean isLiked = challengeLikeRepository.existsByUserAndChallenge(user, challenge);
 
@@ -191,7 +194,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isOwnerActive = (owner != null) && (owner.getUserStatus() == UserStatus.ACTIVE);
 
 		// 버튼 상태 결정
-		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday);
+		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined);
 
 		// DTO 변환 및 반환
 		return challengeConverter.toHeaderInfoDto(
@@ -730,7 +733,7 @@ public class ChallengeServiceImpl implements ChallengeService {
      * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
      * (기획 따라 변경 가능)
      */
-    private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday) {
+    private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined) {
 
         // 끝난 챌린지는 모두 DISABLED
         if (challenge.getStatus() == ChallengeStatus.FINISHED) {
@@ -766,6 +769,11 @@ public class ChallengeServiceImpl implements ChallengeService {
                 return ActionButtonStatus.CERTIFY_AVAILABLE;
             }
         }
+
+		// 미참여자 + 챌린지 최대 개수 초과
+		if (isMaxJoined) {
+			return ActionButtonStatus.DISABLED;
+		}
 
         // 미참여자 + 정원 초과 -> 빈자리 알림
         if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {

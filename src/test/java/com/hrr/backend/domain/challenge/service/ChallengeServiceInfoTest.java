@@ -357,6 +357,40 @@ class ChallengeServiceInfoTest {
     }
 
     /**
+     * 5. 참여 제한 관련 시나리오
+     */
+    @Test
+    @DisplayName("상황 12: 미참여자 + 현재 참여 중인 챌린지가 5개임 -> DISABLED (참가 불가)")
+    void guest_already_joined_five_challenges_returns_DISABLED() {
+        // Given
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        given(user.getId()).willReturn(1L);
+
+        Challenge challenge = mock(Challenge.class);
+        // 조건: 모집중이며 자리가 남아있음
+        setChallengeStatus(challenge, ChallengeStatus.RECRUITING, 5, 10);
+        setRoundDate(challenge, LocalDate.now());
+
+        // Mocking
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipant(user, challenge, false); // 이 챌린지에는 미참여 상태
+
+        // 핵심 조건: 이미 참여 중인 챌린지 개수가 5개임
+        given(challengeRepository.countByUserIdAndStatus(eq(user.getId()), any()))
+                .willReturn(5L);
+
+        // ActionButtonStatus.DISABLED가 반환될 것을 기대
+        mockConverter(ActionButtonStatus.DISABLED);
+
+        // When
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
+        // Then
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.DISABLED);
+    }
+
+    /**
      * Helper Methods (테스트 설정을 쉽게 하기 위한 도구들)
      */
 
