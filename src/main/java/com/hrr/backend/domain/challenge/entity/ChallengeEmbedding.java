@@ -9,7 +9,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 @Table(name = "challenge_embedding")
 public class ChallengeEmbedding extends BaseEntity {
     @Id
