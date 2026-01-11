@@ -201,6 +201,11 @@ public class VerificationServiceImpl implements VerificationService {
 
         RoundRecord roundRecord = roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, roundId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_RECORD_NOT_FOUND)); // 에러코드 확인 필요
+// 중복 인증 체크 로직 추가
+        Challenge challenge = round.getChallenge();
+        validateVerificationWindow(challenge, userChallenge.getId());
+
+
 
         Verification verification = Verification.createTextVerification(
                 userChallenge,
@@ -213,10 +218,16 @@ public class VerificationServiceImpl implements VerificationService {
                 roundId
         );
 
-        Verification savedVerification = verificationRepository.save(verification);
-        roundRecord.increaseVerificationCount();
-
-        return verificationConverter.toResponseDto(savedVerification);
+        //동시성 문제 해결을 위해 flush()와 예외 처리 추가
+        try {
+            Verification savedVerification = verificationRepository.save(verification);
+            verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
+            roundRecord.increaseVerificationCount();
+            return verificationConverter.toResponseDto(savedVerification);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 중복된 인증 생성이 시도될 경우 에러 반환
+            throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
     }
 
     @Override
@@ -242,6 +253,10 @@ public class VerificationServiceImpl implements VerificationService {
         RoundRecord roundRecord = roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, roundId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_RECORD_NOT_FOUND));
 
+        //중복 인증 체크 로직 추가
+        Challenge challenge = round.getChallenge();
+        validateVerificationWindow(challenge, userChallenge.getId());
+
         String photoUrl = s3Key;
 
         Verification verification = Verification.createPhotoVerification(
@@ -254,11 +269,67 @@ public class VerificationServiceImpl implements VerificationService {
                 roundId
         );
 
-        Verification saved = verificationRepository.save(verification);
-        roundRecord.increaseVerificationCount();
-
-        return verificationConverter.toResponseDto(saved);
+        //동시성 문제 해결을 위해 flush()와 예외 처리 추가
+        try {
+            Verification saved = verificationRepository.save(verification);
+            verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
+            roundRecord.increaseVerificationCount();
+            return verificationConverter.toResponseDto(saved);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 중복된 인증 생성이 시도될 경우 에러 반환
+            throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
     }
+
+    /**
+     * 인증 중복 방지 로직
+     * - 해당 챌린지의 인증 요일, 인증 시간대당 한 번만 인증 가능
+     * - 인증 시간 동안에는 삭제 후 재인증 가능
+     */
+    private void validateVerificationWindow(Challenge challenge, Long userChallengeId) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1) 오늘이 인증 요일인지 확인
+        if (!isVerificationDay(challenge, now.toLocalDate())) {
+            throw new GlobalException(ErrorCode.VERIFICATION_DAY_INVALID);
+        }
+
+        // 2) 현재 시간이 인증 시간대 내인지 확인
+        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+            throw new GlobalException(ErrorCode.VERIFICATION_TIME_INVALID);
+        }
+
+        // 3) 현재 인증 윈도우의 기준 날짜 계산
+        LocalDate currentWindowDate = getWindowAnchorDate(challenge, now);
+
+        // 4) 해당 윈도우 날짜의 시작/종료 시간 계산
+        LocalDateTime windowStart = LocalDateTime.of(currentWindowDate, challenge.getVerifyStartTime());
+        LocalDateTime windowEnd = LocalDateTime.of(currentWindowDate, challenge.getVerifyEndTime());
+
+        // 자정 넘어가는 케이스 처리
+        if (challenge.getVerifyStartTime().isAfter(challenge.getVerifyEndTime())) {
+            // 현재가 시작 시간 이후라면 (22:00~23:59)
+            if (!now.toLocalTime().isBefore(challenge.getVerifyStartTime())) {
+                windowEnd = LocalDateTime.of(currentWindowDate.plusDays(1), challenge.getVerifyEndTime());
+            } else {
+                // 현재가 종료 시간 이전이라면 (00:00~02:00)
+                windowStart = LocalDateTime.of(currentWindowDate.minusDays(1), challenge.getVerifyStartTime());
+            }
+        }
+
+        // 5) 해당 시간대에 이미 완료된 인증이 있는지 확인
+        boolean alreadyVerified = verificationRepository.existsTodayVerification(
+                userChallengeId,
+                VerificationStatus.COMPLETED,
+                windowStart,
+                windowEnd
+        );
+
+        if (alreadyVerified) {
+            throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
+    }
+
 
     private VerificationPostType mapToPostType(VerificationType verificationType) {
         if (verificationType == VerificationType.TEXT) {
