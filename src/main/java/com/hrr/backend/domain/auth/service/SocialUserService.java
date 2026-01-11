@@ -6,7 +6,6 @@ import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.notification.entity.NotificationSetting;
-import com.hrr.backend.domain.notification.repository.NotificationRepository;
 import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
@@ -59,8 +58,15 @@ public class SocialUserService {
 			.orElseGet(() -> {
 				// [신규 유저] User 생성 후 SocialAuth와 연결하여 저장
 
-				// User 생성
-				User newUser = User.signUp(name, profileImage);
+				// --- User 생성
+				// 카카오 고유 ID(Long)의 뒤 4자리를 추출하여 기본 닉네임 생성
+				String suffix = socialId.substring(Math.max(0, socialId.length() - 4));
+				String defaultNickname = "흐르르_카카오유저" + suffix;
+				while (userRepository.existsByNickname(defaultNickname)) {
+					// 중복 발생할 경우 랜덤 숫자 하나 더 붙이기
+					defaultNickname = "흐르르_카카오유저" + suffix + (int)(Math.random() * 100);
+				}
+				User newUser = User.signUp(name, defaultNickname, profileImage);
 				userRepository.save(newUser);
 
 				// 알림 설정 생성
@@ -105,7 +111,16 @@ public class SocialUserService {
 
 				// User 생성 (애플은 프로필 이미지가 없으므로 null 전달)
 				String userName = (name != null) ? name : "애플 유저";	// 혹시 모를 이름 누락 대비
-				User newUser = User.signUp(userName, null);
+
+				// 애플 고유 ID(Long)의 뒤 4자리를 추출하여 기본 닉네임 생성
+				String suffix = appleSub.substring(Math.max(0, appleSub.length() - 4));
+				String defaultNickname = "흐르르_애플유저" + suffix;
+				while (userRepository.existsByNickname(defaultNickname)) {
+					// 중복 발생할 경우 랜덤 숫자 하나 더 붙이기
+					defaultNickname = "흐르르_애플유저" + suffix + (int)(Math.random() * 100);
+				}
+
+				User newUser = User.signUp(userName, defaultNickname, null);
 
 				userRepository.save(newUser);
 
@@ -172,7 +187,16 @@ public class SocialUserService {
 
 				// User 생성
 				String userName = (name != null) ? name : "네이버 유저";
-				User newUser = User.signUp(userName, profileImage);
+
+				// 네이버 고유 ID(Long)의 뒤 4자리를 추출하여 기본 닉네임 생성
+				String suffix = naverSocialId.substring(Math.max(0, naverSocialId.length() - 4));
+				String defaultNickname = "흐르르_네이버유저" + suffix;
+				while (userRepository.existsByNickname(defaultNickname)) {
+					// 중복 발생할 경우 랜덤 숫자 하나 더 붙이기
+					defaultNickname = "흐르르_네이버유저" + suffix + (int)(Math.random() * 100);
+				}
+
+				User newUser = User.signUp(userName, defaultNickname, profileImage);
 
 				if (email != null) {
 					newUser.updateEmail(email);
