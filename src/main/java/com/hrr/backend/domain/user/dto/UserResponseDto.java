@@ -145,7 +145,7 @@ public class UserResponseDto {
         @Schema(description = "수정일시", example = "2025-10-09T15:30:00Z")
         private LocalDateTime updatedAt;
 
-        public static MyInfoDto from(User user) {
+        public static MyInfoDto from(User user, Long alarmId) {
             return MyInfoDto.builder()
                     .userId(user.getId())
                     .nickname(user.getDisplayNickname())
@@ -159,7 +159,7 @@ public class UserResponseDto {
                     .isPublic(user.getIsPublic())
                     .role(user.getUserRole())
                     .status(user.getUserStatus())
-                    .alarmId(null) // NotificationSetting에서 가져와야 함. 임시
+                    .alarmId(alarmId)
                     .createdAt(user.getCreatedAt())
                     .updatedAt(user.getUpdatedAt())
                     .build();
