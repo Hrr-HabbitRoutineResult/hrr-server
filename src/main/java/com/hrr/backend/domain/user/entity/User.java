@@ -113,6 +113,10 @@ public class User extends BaseEntity {
 	 * 로그인/회원가입용 팩토리 메서드
 	 */
 	public static User signUp(String name, String defaultNickname, String profileImage) {
+		if (defaultNickname == null || defaultNickname.trim().isEmpty()) {
+				defaultNickname = "";
+		}
+
 		return User.builder()
 			.name(name)
 			.nickname(defaultNickname)
