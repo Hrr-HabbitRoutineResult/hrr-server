@@ -47,9 +47,9 @@ public enum ErrorCode implements BaseCode{
     CHALLENGE_NOT_RECRUITING(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "모집 중인 챌린지가 아닙니다."),
     EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
     EMBEDDING_LENGTH_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4009", "임베딩 길이가 올바르지 않습니다. (expected: 768)"),
-    CHALLENGE_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "진행 중인 챌린지가 아닙니다."), // feat/90
-    USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."), // develop
-    CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."), // develop
+    CHALLENGE_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "진행 중인 챌린지가 아닙니다."),
+    USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."),
+    CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜가 올바르지 않습니다."),
 	MAX_CHALLENGE_EXCEEDED(HttpStatus.BAD_REQUEST, "CHALLENGE40012", "참가할 수 있는 챌린지는 최대 5개입니다."),
 	STATICS_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE4042", "통계 데이터 생성에 실패했거나 존재하지 않습니다."),
     STATICS_NEGATIVE_VALUE(HttpStatus.BAD_REQUEST, "CHALLENGE40013", "통계 수치는 음수일 수 없습니다."),
