@@ -57,7 +57,6 @@ public class UserServiceImpl implements UserService {
 
     private final ChallengeRepository challengeRepository;
     private final VerificationRepository verificationRepository;
-    private final NotificationSettingRepository notificationSettingRepository;
 
     private final S3UrlUtil s3UrlUtil;
     private final ApplicationEventPublisher eventPublisher;
@@ -204,13 +203,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        // 해당 사용자의 NotificationSetting ID 조회
-        Long alarmId = notificationSettingRepository.findByUser(user)
-                .map(NotificationSetting::getId)
-                .orElse(null); // 설정이 없을 경우 null (일반적으로 가입 시 자동생성됨)
-
-        // 3. alarmId가 포함된 DTO 반환
-        return UserResponseDto.MyInfoDto.from(user, alarmId);
+        return UserResponseDto.MyInfoDto.from(user);
     }
 
     // 닉네임 설정

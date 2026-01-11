@@ -136,16 +136,13 @@ public class UserResponseDto {
         @Schema(description = "상태", example = "ACTIVE")
         private UserStatus status;
 
-        @Schema(description = "알림 설정 ID", example = "1")
-        private Long alarmId;
-
         @Schema(description = "생성일시", example = "2025-01-01T10:00:00Z")
         private LocalDateTime createdAt;
 
         @Schema(description = "수정일시", example = "2025-10-09T15:30:00Z")
         private LocalDateTime updatedAt;
 
-        public static MyInfoDto from(User user, Long alarmId) {
+        public static MyInfoDto from(User user) {
             return MyInfoDto.builder()
                     .userId(user.getId())
                     .nickname(user.getDisplayNickname())
@@ -159,7 +156,6 @@ public class UserResponseDto {
                     .isPublic(user.getIsPublic())
                     .role(user.getUserRole())
                     .status(user.getUserStatus())
-                    .alarmId(alarmId)
                     .createdAt(user.getCreatedAt())
                     .updatedAt(user.getUpdatedAt())
                     .build();
