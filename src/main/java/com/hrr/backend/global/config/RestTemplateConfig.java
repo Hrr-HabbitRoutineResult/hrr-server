@@ -20,7 +20,7 @@ public class RestTemplateConfig {
         factory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
 
 		// 읽기 제한 시간: 60초 (모델 로딩 및 연산 대기 시간)
-        factory.setReadTimeout((int) Duration.ofSeconds(30).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(60).toMillis());
 
         return builder
                 .requestFactory(() -> factory)
