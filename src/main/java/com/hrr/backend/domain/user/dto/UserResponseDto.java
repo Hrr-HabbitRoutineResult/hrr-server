@@ -56,6 +56,7 @@ public class UserResponseDto {
                     .followerCount(user.isNotActive() ? 0L : user.getFollowerCount())
                     .followingCount(user.isNotActive() ? 0L : user.getFollowingCount())
                     .isFollowing(isFollowing)
+                    .isBlocked(isBlocked)
                     .build();
         }
     }
@@ -135,9 +136,6 @@ public class UserResponseDto {
         @Schema(description = "상태", example = "ACTIVE")
         private UserStatus status;
 
-        @Schema(description = "알림 설정 ID", example = "1")
-        private Long alarmId;
-
         @Schema(description = "생성일시", example = "2025-01-01T10:00:00Z")
         private LocalDateTime createdAt;
 
@@ -158,7 +156,6 @@ public class UserResponseDto {
                     .isPublic(user.getIsPublic())
                     .role(user.getUserRole())
                     .status(user.getUserStatus())
-                    .alarmId(null) // NotificationSetting에서 가져와야 함. 임시
                     .createdAt(user.getCreatedAt())
                     .updatedAt(user.getUpdatedAt())
                     .build();
