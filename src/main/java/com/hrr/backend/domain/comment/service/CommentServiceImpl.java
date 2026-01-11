@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.comment.service;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.comment.converter.CommentConverter;
 import com.hrr.backend.domain.comment.dto.CommentCreateRequestDto;
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
@@ -7,8 +8,13 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
@@ -20,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,6 +40,8 @@ public class CommentServiceImpl implements CommentService {
     private final UserRepository userRepository;
     private final CommentConverter commentConverter;
     private final UserBlockRepository userBlockRepository;
+    private final UserChallengeRepository userChallengeRepository;
+    private final RoundRepository roundRepository;
 
     /** 댓글 작성 */
     @Override
@@ -44,6 +53,23 @@ public class CommentServiceImpl implements CommentService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        //1. 해당 챌린지 참여 여부 및 상태 검증
+        Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
+        UserChallenge userChallenge = userChallengeRepository.findByUserIdAndChallengeId(userId, challenge.getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        if (userChallenge.getStatus() != ChallengeJoinStatus.JOINED) {
+            throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
+        }
+
+        // 2. 현재 라운드인지 검증 (라운드가 바뀌면 이전 라운드 글에 댓글 작성 불가)
+        Round currentRound = roundRepository.findCurrentRoundByChallengeId(challenge.getId(), LocalDate.now())
+                .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
+
+        if (!verification.getRoundId().equals(currentRound.getId())) {
+            throw new GlobalException(ErrorCode.ROUND_NOT_CURRENT);
+        }
 
         Comment parent = null;
 
