@@ -63,10 +63,15 @@ public class CommentServiceImpl implements CommentService {
             throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
         }
 
-        // 2. 현재 라운드인지 검증 (라운드가 바뀌면 이전 라운드 글에 댓글 작성 불가)
-        Round currentRound = roundRepository.findCurrentRoundByChallengeId(challenge.getId(), LocalDate.now())
-                .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
+        // 2. 현재 라운드 여부 검증
+        // 날짜 기반 쿼리 대신 챌린지가 들고 있는 '공식 현재 라운드'와 비교하여 중복 데이터 에러 원천 차단
+        Round currentRound = challenge.getCurrentRound();
 
+        if (currentRound == null) {
+            throw new GlobalException(ErrorCode.ROUND_NOT_FOUND);
+        }
+
+        // 라운드가 다를 경우
         if (!verification.getRoundId().equals(currentRound.getId())) {
             throw new GlobalException(ErrorCode.ROUND_NOT_CURRENT);
         }
