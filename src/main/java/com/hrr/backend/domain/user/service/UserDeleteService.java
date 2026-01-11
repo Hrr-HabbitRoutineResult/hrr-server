@@ -2,6 +2,9 @@ package com.hrr.backend.domain.user.service;
 
 import java.util.List;
 
+import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,7 @@ public class UserDeleteService {
 	private final UserChallengeRepository userChallengeRepository;
 	private final ChallengeRepository challengeRepository;
 	private final SocialAuthRepository socialAuthRepository;
+    private final FollowRepository followRepository;
 
 	private final S3Service s3Service;
 	private final AuthService authService;
@@ -41,7 +45,6 @@ public class UserDeleteService {
 		} catch (Exception e) {
 			log.warn("소셜 연동 해제 실패. 내부 데이터 정리는 계속 진행합니다. userId: {}", user.getId(), e);
 		}
-
 
 		// Social Auth 정보 삭제
 		socialAuthRepository.deleteByUser(user);
@@ -64,6 +67,22 @@ public class UserDeleteService {
 				log.error("일부 챌린지의 현재 참가 인원에 대한 업데이트가 진행되지 않았습니다. UserChallengeId: {}", uc.getId());
 			}
 		}
+
+        Long userId = user.getId();
+
+        // 팔로우 관계 정리 및 상대방 카운트 감소
+        List<Follow> followings = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED);
+        followings.forEach(f -> f.getFollowing().decrementFollowerCount());
+
+        List<Follow> followers = followRepository.findAllByFollowingIdAndStatus(userId, FollowStatus.APPROVED);
+        followers.forEach(f -> f.getFollower().decrementFollowingCount());
+
+        // 팔로우 데이터 삭제
+        followRepository.deleteAllInBatch(followings);
+        followRepository.deleteAllInBatch(followers);
+
+        // 유저 정보 마스킹 및 상태 변경
+        user.completeWithdrawal();
 
 		userRepository.save(user);
 	}

@@ -95,10 +95,13 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "ORDER BY f.createdAt DESC")
     Slice<Follow> findPendingFollowRequests(@Param("userId") Long userId, @Param("status") FollowStatus status, Pageable pageable);
 
-	/**
-	 * 차단으로 인해 팔로우 관계를 삭제
-	 * @param blocker 차단 하는 사람 = follower
-	 * @param blocked 차단 당하는 사람 = following
-	 */
-	void deleteByFollowerAndFollowing(User blocker, User blocked);
+    /**
+     * 내가 팔로우하는 모든 관계 조회 (탈퇴 처리 시 사용)
+     */
+    List<Follow> findAllByFollowerIdAndStatus(Long followerId, FollowStatus status);
+
+    /**
+     * 나를 팔로우하는 모든 관계 조회 (탈퇴 처리 시 사용)
+     */
+    List<Follow> findAllByFollowingIdAndStatus(Long followingId, FollowStatus status);
 }
