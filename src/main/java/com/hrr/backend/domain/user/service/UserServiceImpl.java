@@ -2,14 +2,11 @@ package com.hrr.backend.domain.user.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.hrr.backend.domain.notification.entity.NotificationSetting;
-import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
 import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.event.ProfileImageDeletedEvent;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
