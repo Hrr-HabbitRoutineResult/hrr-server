@@ -51,7 +51,6 @@ public class ChallengeEmbeddingAsyncService {
 
         } catch (Exception e) {
             log.error("임베딩 계산 실패. challengeId={}, error={}", challengeId, e.getMessage(), e);
-            // ✅ 반드시 다시 던져야 @Retryable이 재시도함
             throw e;
         }
     }
@@ -64,11 +63,13 @@ public class ChallengeEmbeddingAsyncService {
         float[] zeros = new float[EMBEDDING_DIM]; // 기본 0.0f로 채워짐
         byte[] embeddingBytes = floatArrayToByteArray(zeros);
 
-        Challenge challengeRef = challengeRepository.getReferenceById(challengeId);
+        Challenge challengeRef = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
         // 기존 row가 있으면 업데이트 / 없으면 생성
         ChallengeEmbedding entity = challengeEmbeddingRepository.findByChallengeId(challengeId)
                 .map(existing -> existing.toBuilder()
+                        .challenge(existing.getChallenge())
                         .challengeText(challengeText)
                         .challengeEmbedding(embeddingBytes)
                         .build()
@@ -82,7 +83,7 @@ public class ChallengeEmbeddingAsyncService {
 
         challengeEmbeddingRepository.save(entity);
 
-        log.error(
+        log.warn(
                 "[Fallback Saved] 768 길이 0벡터로 저장했습니다. 수동으로 임베딩 값을 수정해주세요. challengeId={}",
                 challengeId
         );
