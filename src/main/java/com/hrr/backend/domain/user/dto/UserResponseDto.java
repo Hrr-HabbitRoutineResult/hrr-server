@@ -56,6 +56,7 @@ public class UserResponseDto {
                     .followerCount(user.isNotActive() ? 0L : user.getFollowerCount())
                     .followingCount(user.isNotActive() ? 0L : user.getFollowingCount())
                     .isFollowing(isFollowing)
+                    .isBlocked(isBlocked)
                     .build();
         }
     }

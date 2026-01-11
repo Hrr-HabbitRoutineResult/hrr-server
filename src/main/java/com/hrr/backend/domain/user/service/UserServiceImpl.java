@@ -76,8 +76,6 @@ public class UserServiceImpl implements UserService {
         boolean isBlockedByMe = userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser);
         boolean isBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
 
-        String profileImage = isBlockedByMe ? null : targetUser.getProfileImage();
-
         if (isBlockedByOther) {
             throw new GlobalException(ErrorCode.USER_NOT_FOUND);
         }
