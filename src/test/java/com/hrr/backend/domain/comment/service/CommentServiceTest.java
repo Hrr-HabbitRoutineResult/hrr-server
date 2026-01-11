@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class CommentServiceTest {
     @Mock private CommentRepository commentRepository;
     @Mock private UserRepository userRepository;
     @Mock private UserBlockRepository userBlockRepository;
+    @Mock private UserChallengeRepository userChallengeRepository;
     @Mock private S3UrlUtil s3UrlUtil;
 
     @BeforeEach
@@ -57,7 +59,8 @@ class CommentServiceTest {
                 commentRepository,
                 userRepository,
                 commentConverter,
-                userBlockRepository
+                userBlockRepository,
+                userChallengeRepository
         );
     }
 

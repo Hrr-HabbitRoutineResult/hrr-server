@@ -54,7 +54,7 @@ public class CommentServiceImpl implements CommentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        //1. 해당 챌린지 참여 여부 및 상태 검증
+        // 1. 해당 챌린지 참여 여부 및 JOINED 상태 검증
         Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
         UserChallenge userChallenge = userChallengeRepository.findByUserIdAndChallengeId(userId, challenge.getId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
@@ -63,16 +63,14 @@ public class CommentServiceImpl implements CommentService {
             throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
         }
 
-        // 2. 현재 라운드 여부 검증 최적화
-        // roundRepository 조회를 제거하고 challenge 연관관계를 직접 사용합니다.
+        // 2. 현재 라운드 여부 검증
+        // roundRepository 조회 대신 챌린지의 currentRound를 직접 사용해 500 에러(중복 결과) 방지
         Round currentRound = challenge.getCurrentRound();
-
         if (currentRound == null) {
             throw new GlobalException(ErrorCode.ROUND_NOT_FOUND);
         }
 
-        // Objects.equals를 사용하여 verification.getRoundId()의 NPE 위험을 제거.
-        // 이제 라운드가 다를 경우 ROUND_NOT_CURRENT 에러가 정상적으로 발생.
+        // Objects.equals를 사용하여 verification.getRoundId()의 null 체크와 비교를 안전하게 수행
         if (!Objects.equals(verification.getRoundId(), currentRound.getId())) {
             throw new GlobalException(ErrorCode.ROUND_NOT_CURRENT);
         }
@@ -84,7 +82,7 @@ public class CommentServiceImpl implements CommentService {
             parent = commentRepository.findByIdAndIsDeletedFalse(requestDto.getParentId())
                     .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_INVALID_PARENT));
 
-            //부모 댓글의 dpth가 1이상 존재해서 대댓글인 경우에 더 이상 답글을 달 수 없도록 진행
+            // 부모 댓글의 depth가 1 이상이면 더 이상 답글 불가
             if (parent.getDepth() >= 1) {
                 throw new GlobalException(ErrorCode.COMMENT_DEPTH_EXCEEDED);
             }
