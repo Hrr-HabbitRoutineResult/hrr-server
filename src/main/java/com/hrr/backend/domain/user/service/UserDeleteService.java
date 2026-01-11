@@ -52,9 +52,6 @@ public class UserDeleteService {
 		// S3에서 프로필 이미지 파일 삭제 - 소셜 플랫폼에서 제공된 이미지는 대상에서 제외
 		s3Service.deleteFileByKey(user.getProfileImage());
 
-		// 개인정보 마스킹 및 삭제
-		user.completeWithdrawal();
-
 		// 참여 중인 챌린지 인원수 감소 및 상태 변경
 		List<UserChallenge> activeChallenges = userChallengeRepository
 			.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
@@ -70,16 +67,25 @@ public class UserDeleteService {
 
         Long userId = user.getId();
 
-        // 팔로우 관계 정리 및 상대방 카운트 감소
+        // 내가 팔로우하던 사람들의 팔로워 카운트 벌크 감소
         List<Follow> followings = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED);
-        followings.forEach(f -> f.getFollowing().decrementFollowerCount());
+        if (!followings.isEmpty()) {
+            List<Long> followingIds = followings.stream()
+                    .map(f -> f.getFollowing().getId())
+                    .toList();
+            userRepository.decrementFollowerCounts(followingIds);
+            followRepository.deleteAllInBatch(followings);
+        }
 
+        // 나를 팔로우하던 사람들의 팔로잉 카운트 벌크 감소
         List<Follow> followers = followRepository.findAllByFollowingIdAndStatus(userId, FollowStatus.APPROVED);
-        followers.forEach(f -> f.getFollower().decrementFollowingCount());
-
-        // 팔로우 데이터 삭제
-        followRepository.deleteAllInBatch(followings);
-        followRepository.deleteAllInBatch(followers);
+        if (!followers.isEmpty()) {
+            List<Long> followerIds = followers.stream()
+                    .map(f -> f.getFollower().getId())
+                    .toList();
+            userRepository.decrementFollowingCounts(followerIds);
+            followRepository.deleteAllInBatch(followers);
+        }
 
         // 유저 정보 마스킹 및 상태 변경
         user.completeWithdrawal();
