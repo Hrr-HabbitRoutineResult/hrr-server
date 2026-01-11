@@ -2,6 +2,7 @@ package com.hrr.backend.domain.user.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -121,13 +122,28 @@ public class UserServiceImpl implements UserService {
         Slice<UserResponseDto.OngoingChallengeDto> slice =
                 userChallengeRepository.findOngoingChallengesByUser(targetUser, pageable);
 
-        // URL 변환 로직 교체
-        slice.getContent().forEach(dto ->
-                dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()))
-        );
-
-        // 인증 완료 여부 추가
         slice.getContent().forEach(dto -> {
+            // S3 URL 변환
+                dto.setThumbnailUrl(s3UrlUtil.toFullUrl(dto.getThumbnailUrl()));
+
+            // 시작 여부 및 d-day, round
+            LocalDate today = LocalDate.now();
+            LocalDate startDate = dto.getStartDate().toLocalDate();
+
+            boolean isStarted = !today.isBefore(startDate);
+            dto.setIsStarted(isStarted);
+
+            if (isStarted) {
+                // 시작했으면: dday는 null, round는 현재 회차
+                dto.setDday(null);
+            } else {
+                // 시작 전이면: round는 null, dday는 남은 일수 계산
+                dto.setCurrentRound(null);
+                int daysUntil = (int) ChronoUnit.DAYS.between(today, startDate);
+                dto.setDday(daysUntil);
+            }
+
+        // 인증 완료 여부 체크
             Long challengeId = dto.getChallengeId();
 
             // 챌린지 요일/인증 시간 로딩
@@ -135,7 +151,7 @@ public class UserServiceImpl implements UserService {
                     .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
             // java의 DayOfWeek를 ChallengeDays로 변환
-            DayOfWeek todayDayOfWeek = LocalDate.now().getDayOfWeek();
+            DayOfWeek todayDayOfWeek = today.getDayOfWeek();
             ChallengeDays todayChallengeDay = ChallengeDays.from(todayDayOfWeek);
 
             // 오늘이 인증하는 날인지 체크
@@ -152,8 +168,8 @@ public class UserServiceImpl implements UserService {
                         .getId();
 
                 // 오늘 00:00 ~ 23:59 범위 설정
-                LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-                LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+                LocalDateTime startOfDay = today.atStartOfDay();
+                LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
 
 
                 verified = verificationRepository.existsTodayVerification(	// 오늘이 인증날이고, 인증을 완료했을 떄에만 true
