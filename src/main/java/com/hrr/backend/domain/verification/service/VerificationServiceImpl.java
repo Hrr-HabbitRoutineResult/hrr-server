@@ -218,10 +218,16 @@ public class VerificationServiceImpl implements VerificationService {
                 roundId
         );
 
-        Verification savedVerification = verificationRepository.save(verification);
-        roundRecord.increaseVerificationCount();
-
-        return verificationConverter.toResponseDto(savedVerification);
+        //동시성 문제 해결을 위해 flush()와 예외 처리 추가
+        try {
+            Verification savedVerification = verificationRepository.save(verification);
+            verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
+            roundRecord.increaseVerificationCount();
+            return verificationConverter.toResponseDto(savedVerification);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 중복된 인증 생성이 시도될 경우 에러 반환
+            throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
     }
 
     @Override
@@ -263,10 +269,16 @@ public class VerificationServiceImpl implements VerificationService {
                 roundId
         );
 
-        Verification saved = verificationRepository.save(verification);
-        roundRecord.increaseVerificationCount();
-
-        return verificationConverter.toResponseDto(saved);
+        //동시성 문제 해결을 위해 flush()와 예외 처리 추가
+        try {
+            Verification saved = verificationRepository.save(verification);
+            verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
+            roundRecord.increaseVerificationCount();
+            return verificationConverter.toResponseDto(saved);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 중복된 인증 생성이 시도될 경우 에러 반환
+            throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
     }
 
     /**
@@ -279,12 +291,12 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 1) 오늘이 인증 요일인지 확인
         if (!isVerificationDay(challenge, now.toLocalDate())) {
-            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+            throw new GlobalException(ErrorCode.VERIFICATION_DAY_INVALID);
         }
 
         // 2) 현재 시간이 인증 시간대 내인지 확인
         if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
-            throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
+            throw new GlobalException(ErrorCode.VERIFICATION_TIME_INVALID);
         }
 
         // 3) 현재 인증 윈도우의 기준 날짜 계산
