@@ -610,14 +610,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateCreateRequest(User owner, ChallengeRequestDto.CreateChallengeDto req) {
+		// 현재 날짜 선언
+		LocalDate today = LocalDate.now();
+		LocalDate startDate = req.getStartDate();
+
 		// 참가 중인 챌린지가 5개일 경우 요청 거절
 		if (challengeRepository.countByUserIdAndStatus(owner.getId(), ChallengeJoinStatus.JOINED) >= 5) {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
 
+		// 시작일 검증: 오늘 이후여야 함
 		if (!req.getStartDate().isAfter(LocalDate.now())) {
-			// ErrorCode에 CHALLENGE_INVALID_START_DATE가 없다면 추가 필요,
-			// 혹은 BAD_REQUEST 등을 임시로 사용
+			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
+		}
+
+		// 시작일 검증: 오늘로부터 한 달 이내여야 함
+		LocalDate maxAllowedDate = today.plusMonths(1);
+		if (startDate.isAfter(maxAllowedDate)) {
+			// ErrorCode에 CHALLENGE_START_DATE_TOO_FAR 등을 추가하여 사용 권장
 			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
 		}
 

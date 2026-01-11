@@ -268,8 +268,8 @@ public class AuthService {
 			// 연관된 챌린지의 현재 인원수 필드 감소
 			uc.getChallenge().decreaseCurrentParticipants();
 
-			// 유저의 참여 상태를 '하차(DROPPED)'로 업데이트
-			uc.updateStatus(ChallengeJoinStatus.DROPPED);
+			// 유저의 참여 상태를 '비정상 종료(KICKED)'로 업데이트
+			uc.updateStatus(ChallengeJoinStatus.KICKED);
 		}
 
 		// TODO: 리프레시 토큰 등 세션 정보 삭제

@@ -57,7 +57,7 @@ public class UserDeleteService {
 			.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
 
 		for (UserChallenge uc : activeChallenges) {
-			uc.updateStatus(ChallengeJoinStatus.DROPPED);
+			uc.updateStatus(ChallengeJoinStatus.KICKED);
 
 			int updatedRowNumber = challengeRepository.decreaseCurrentParticipantCount(uc.getChallenge().getId()); // 인원수 -1
 			if (updatedRowNumber == 0) {
