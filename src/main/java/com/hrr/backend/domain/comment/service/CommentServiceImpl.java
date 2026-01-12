@@ -41,7 +41,6 @@ public class CommentServiceImpl implements CommentService {
     private final CommentConverter commentConverter;
     private final UserBlockRepository userBlockRepository;
     private final UserChallengeRepository userChallengeRepository;
-    private final RoundRepository roundRepository;
 
     /** 댓글 작성 */
     @Override
