@@ -147,6 +147,9 @@ public class CommentServiceImpl implements CommentService {
                 .findByVerificationAndDepthOrderByCreatedAtAsc(verification, 0, pageable);
         List<Comment> parents = new ArrayList<>(parentPage.getContent());
 
+        // 전체 댓글 수(대댓글 포함) 조회
+        long totalCount = commentRepository.countByVerification(verification);
+
         Optional<Comment> adoptedOpt =
                 commentRepository.findAdoptedCommentsByVerificationId(verificationId);
 
@@ -209,6 +212,7 @@ public class CommentServiceImpl implements CommentService {
                 .currentPage(parentPage.getNumber() + 1)
                 .totalPages(parentPage.getTotalPages())
                 .totalParentElements(parentPage.getTotalElements())
+                .totalCount(totalCount) // 대댓글 포함 전체 개수
                 .size(parentPage.getSize())
                 .isFirst(parentPage.isFirst())
                 .isLast(parentPage.isLast())

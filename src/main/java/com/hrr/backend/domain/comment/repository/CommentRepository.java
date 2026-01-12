@@ -64,4 +64,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 	 */
 	@Query("SELECT MAX(c.anonymousNumber) FROM Comment c WHERE c.verification = :verification")
 	Integer findMaxAnonymousNumberByVerification(Verification verification);
+
+    long countByVerification(Verification verification);
 }

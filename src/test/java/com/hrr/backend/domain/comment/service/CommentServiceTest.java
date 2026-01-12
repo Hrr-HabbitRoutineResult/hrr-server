@@ -9,7 +9,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.comment.dto.CommentCreateRequestDto;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +68,8 @@ class CommentServiceTest {
                 userRepository,
                 commentConverter,
                 userBlockRepository,
-                userChallengeRepository
+                userChallengeRepository,
+                null // RoundRepository는 createComment에서 직접 사용하지 않음 (Challenge를 통해 접근)
         );
     }
 
@@ -103,7 +112,7 @@ class CommentServiceTest {
         return comment;
     }
 
-    // --- 테스트 케이스 ---
+    // --- 테스트 케이스 (조회) ---
 
     @Test
     @DisplayName("정상 조회: 차단/삭제/탈퇴 없는 클린한 댓글")
@@ -135,6 +144,9 @@ class CommentServiceTest {
 
         given(s3UrlUtil.toFullUrl(anyString())).willReturn("http://full-url.com/profile.jpg");
 
+        // [추가] 전체 카운트 Mock
+        given(commentRepository.countByVerification(verification)).willReturn(1L);
+
         // when
         CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
 
@@ -144,6 +156,7 @@ class CommentServiceTest {
         assertThat(dto.getUserName()).isEqualTo("작성자");
         assertThat(dto.getMaskingType()).isEqualTo(CommentMaskingType.NONE);
         assertThat(dto.getUserProfileUrl()).isEqualTo("http://full-url.com/profile.jpg");
+        assertThat(result.getTotalCount()).isEqualTo(1L); // 전체 개수 검증
     }
 
     @Test
@@ -326,5 +339,123 @@ class CommentServiceTest {
         assertThat(dto.getUserName()).isEqualTo("익명3");
         assertThat(dto.getUserId()).isNull();
         assertThat(dto.isAnonymous()).isTrue();
+    }
+
+    // --- [추가된 테스트] 댓글 작성 검증 (Review 반영) ---
+
+    @Test
+    @DisplayName("댓글 작성 실패: 챌린지 미참여 유저 (USER_CHALLENGE_NOT_FOUND)")
+    void createComment_UserChallengeNotFound() {
+        // given
+        Long verificationId = 100L;
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        // Mock 객체 체이닝을 위한 설정
+        Verification verification = mock(Verification.class);
+        RoundRecord roundRecord = mock(RoundRecord.class);
+        Round round = mock(Round.class);
+        Challenge challenge = mock(Challenge.class);
+        User user = createUser(userId, "참여자", UserStatus.ACTIVE);
+
+        // 체이닝 연결
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(verification.getRoundRecord()).willReturn(roundRecord);
+        given(roundRecord.getRound()).willReturn(round);
+        given(round.getChallenge()).willReturn(challenge);
+        given(challenge.getId()).willReturn(challengeId);
+
+        // [핵심] 유저 챌린지 정보가 없음 (미참여)
+        given(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId))
+                .willReturn(Optional.empty());
+
+        CommentCreateRequestDto request = new CommentCreateRequestDto();
+
+        // when & then
+        assertThatThrownBy(() -> commentService.createComment(verificationId, userId, request))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_CHALLENGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("댓글 작성 실패: 참여는 했으나 상태가 JOINED가 아님 (DROP/QUIT 등)")
+    void createComment_UserChallengeNotJoined() {
+        // given
+        Long verificationId = 100L;
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        Verification verification = mock(Verification.class);
+        RoundRecord roundRecord = mock(RoundRecord.class);
+        Round round = mock(Round.class);
+        Challenge challenge = mock(Challenge.class);
+        User user = createUser(userId, "중도포기자", UserStatus.ACTIVE);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(verification.getRoundRecord()).willReturn(roundRecord);
+        given(roundRecord.getRound()).willReturn(round);
+        given(round.getChallenge()).willReturn(challenge);
+        given(challenge.getId()).willReturn(challengeId);
+
+        // [핵심] 참여 상태가 DROP (중도 포기)
+        UserChallenge userChallenge = mock(UserChallenge.class);
+        given(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(userChallenge.getStatus()).willReturn(ChallengeJoinStatus.DROPPED);
+
+        CommentCreateRequestDto request = new CommentCreateRequestDto();
+
+        // when & then
+        assertThatThrownBy(() -> commentService.createComment(verificationId, userId, request))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_CHALLENGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("댓글 작성 실패: 현재 진행 중인 라운드가 아닌 인증글 (ROUND_NOT_CURRENT)")
+    void createComment_RoundNotCurrent() {
+        // given
+        Long verificationId = 100L;
+        Long userId = 1L;
+        Long challengeId = 10L;
+        Long currentRoundId = 50L;
+        Long pastRoundId = 49L;
+
+        Verification verification = mock(Verification.class);
+        RoundRecord roundRecord = mock(RoundRecord.class);
+        Round round = mock(Round.class);
+        Challenge challenge = mock(Challenge.class);
+        Round currentRound = mock(Round.class); // 현재 진행중인 라운드 객체
+        User user = createUser(userId, "참여자", UserStatus.ACTIVE);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+        // 체이닝 & 상태 설정
+        given(verification.getRoundRecord()).willReturn(roundRecord);
+        given(roundRecord.getRound()).willReturn(round);
+        given(round.getChallenge()).willReturn(challenge);
+        given(challenge.getId()).willReturn(challengeId);
+
+        // 유저는 정상 참여 상태
+        UserChallenge userChallenge = mock(UserChallenge.class);
+        given(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(userChallenge.getStatus()).willReturn(ChallengeJoinStatus.JOINED);
+
+        // 챌린지의 현재 라운드 vs 인증글의 라운드 불일치
+        given(challenge.getCurrentRound()).willReturn(currentRound);
+        given(currentRound.getId()).willReturn(currentRoundId);
+        given(verification.getRoundId()).willReturn(pastRoundId); // 과거 라운드
+
+        CommentCreateRequestDto request = new CommentCreateRequestDto();
+
+        // when & then
+        assertThatThrownBy(() -> commentService.createComment(verificationId, userId, request))
+                .isInstanceOf(GlobalException.class)
+                // ErrorCode가 업데이트 되었는지 확인 (ROUND4006)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ROUND_NOT_CURRENT);
     }
 }
