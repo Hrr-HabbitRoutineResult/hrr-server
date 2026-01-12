@@ -9,7 +9,6 @@ import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.round.entity.Round;
-import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
@@ -147,7 +146,7 @@ public class CommentServiceImpl implements CommentService {
         List<Comment> parents = new ArrayList<>(parentPage.getContent());
 
         // 전체 댓글 수(대댓글 포함) 조회
-        long totalCount = commentRepository.countByVerification(verification);
+        long totalCount = commentRepository.countByVerificationAndIsDeletedFalse(verification);
 
         Optional<Comment> adoptedOpt =
                 commentRepository.findAdoptedCommentsByVerificationId(verificationId);
