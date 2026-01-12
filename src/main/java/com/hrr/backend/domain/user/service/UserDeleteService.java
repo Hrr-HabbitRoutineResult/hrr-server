@@ -33,6 +33,10 @@ public class UserDeleteService {
 	private final S3Service s3Service;
 	private final AuthService authService;
 
+	/**
+	 * 탈퇴 30일 후 완전한 탈퇴 처리
+	 * @param user 탈퇴 대상 유저
+	 */
 	@Transactional
 	public void processPermanentWithdrawal(User user) {
 		// 소셜 로그인 연결 해제
@@ -41,7 +45,6 @@ public class UserDeleteService {
 		} catch (Exception e) {
 			log.warn("소셜 연동 해제 실패. 내부 데이터 정리는 계속 진행합니다. userId: {}", user.getId(), e);
 		}
-
 
 		// Social Auth 정보 삭제
 		socialAuthRepository.deleteByUser(user);
@@ -57,6 +60,7 @@ public class UserDeleteService {
 			.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
 
 		for (UserChallenge uc : activeChallenges) {
+			// 유저의 참여 상태를 '비정상 종료(KICKED)'로 업데이트
 			uc.updateStatus(ChallengeJoinStatus.KICKED);
 
 			int updatedRowNumber = challengeRepository.decreaseCurrentParticipantCount(uc.getChallenge().getId()); // 인원수 -1
