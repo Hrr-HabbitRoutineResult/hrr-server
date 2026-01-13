@@ -108,16 +108,31 @@ if ! docker compose -f "${COMPOSE_FILE}" up -d "$TARGET_SERVICE"; then
 fi
 
 echo "새 컨테이너($TARGET_SERVICE) 헬스 체크 중..."
+
+# 컨테이너 ID를 직접 가져와서 체크
+TARGET_CID="$(docker compose -f "${COMPOSE_FILE}" ps -q "$TARGET_SERVICE" || true)"
+if [ -z "$TARGET_CID" ]; then
+  echo "ERROR: $TARGET_SERVICE 컨테이너 ID를 찾지 못했습니다." >&2
+  exit 1
+fi
+
 for i in {1..25}; do
-    STATUS=$(docker inspect --format='{{.State.Health.Status}}' "hrr_app_$TARGET_COLOR" 2>/dev/null)
+    # 컨테이너 ID를 사용하여 상태 검사
+    STATUS="$(docker inspect --format='{{.State.Health.Status}}' "$TARGET_CID" 2>/dev/null || true)"
+
     if [ "$STATUS" == "healthy" ]; then
         echo "SUCCESS: 새 컨테이너가 정상 실행되었습니다."
         break
     fi
+
     echo "대기 중... ($i/25)"
     sleep 5
+
     if [ $i -eq 25 ]; then
-        echo "ERROR: 헬스 체크 실패. 배포를 중단합니다."
+        echo "ERROR: 헬스 체크 실패. 배포를 중단하고 로그를 출력합니다." >&2
+        # 실패 시 로그 출력 및 컨테이너 중지
+        docker compose -f "${COMPOSE_FILE}" logs --tail=200 "$TARGET_SERVICE" || true
+        docker compose -f "${COMPOSE_FILE}" stop "$TARGET_SERVICE" || true
         exit 1
     fi
 done
