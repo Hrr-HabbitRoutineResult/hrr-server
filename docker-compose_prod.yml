@@ -13,14 +13,16 @@ services:
       # 호스트의 /etc/letsencrypt 대신 프로젝트 폴더 내 데이터 사용
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
+      # 트래픽 전환을 위한 파일 마운트 추가
+      - ./service-env.inc:/etc/nginx/conf.d/service-env.inc:ro
     # 6시간마다 Nginx 설정을 재로드하여 갱신된 인증서 반영
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     restart: always
     environment:
       - TZ=Asia/Seoul
     depends_on:
-      app:
-        condition: service_healthy # app이 healthy 상태가 된 이후에 nginx 실행
+      - app-blue
+      - app-green
 
   # Certbot
   certbot:
@@ -39,11 +41,14 @@ services:
 # ---- nginx 외 다른 서비스들은 외부 포트 사용 x ---
 
   # Spring Boot 애플리케이션 서비스
-  app:
+  app-blue:
     image: ychan0/hrr-server:${IMAGE_TAG:-latest}
-    container_name: hrr_app_prod
+    container_name: hrr_app_blue
     environment:
       TZ: Asia/Seoul
+
+      # 프리티어 메모리 부족 방지를 위한 제한
+      JAVA_OPTS: "-Xmx350M -Xms350M"
 
       # Secrets Manager에서 가져온 환경 변수 사용
       SPRING_PROFILES_ACTIVE: prod
@@ -85,6 +90,57 @@ services:
       retries: 10     # 10번 실패하면 unhealthy
       start_period: 30s # 앱 실행 초기 30초는 실패해도 대기
     restart: always
+
+  app-green:
+    image: ychan0/hrr-server:${IMAGE_TAG:-latest}
+    container_name: hrr_app_green
+    environment:
+      TZ: Asia/Seoul
+
+      # 프리티어 메모리 부족 방지를 위한 제한
+      JAVA_OPTS: "-Xmx350M -Xms350M"
+
+      # Secrets Manager에서 가져온 환경 변수 사용
+      SPRING_PROFILES_ACTIVE: prod
+
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://${RDS_URL}:3306/hrr_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=REQUIRED'
+      SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis-server
+      SPRING_DATA_REDIS_PORT: 6379
+
+      JWT_SECRET: ${JWT_SECRET}
+
+      PROD_BASE_URL: ${PROD_BASE_URL}
+
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      PROD_KAKAO_REDIRECT_URI: ${PROD_KAKAO_REDIRECT_URI}
+      KAKAO_APP_REDIRECT_URI: ${KAKAO_APP_REDIRECT_URI}
+      KAKAO_ADMIN_KEY: ${KAKAO_ADMIN_KEY}
+
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+      APPLE_KEY_ID: ${APPLE_KEY_ID}
+      APPLE_P8_KEY: ${APPLE_P8_KEY}
+
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
+
+      MODEL_SERVER_URL: ${MODEL_SERVER_URL}
+
+    healthcheck:
+      # 스웨거 페이지에 접근해서 200 OK가 떨어지는지 확인 - nginx가 켜지기 전이기 때문에 localhost로 직접 체크
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/swagger-ui/index.html" ]
+      interval: 10s    # 10초마다 체크
+      timeout: 5s     # 5초 안에 응답 없으면 실패
+      retries: 10     # 10번 실패하면 unhealthy
+      start_period: 30s # 앱 실행 초기 30초는 실패해도 대기
+    restart: always
+
 
   # Redis 서비스
   redis-server:
