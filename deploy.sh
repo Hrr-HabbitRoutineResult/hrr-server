@@ -145,6 +145,8 @@ if ! docker exec hrr_nginx_prod nginx -s reload; then
     echo "ERROR: nginx reload 실패. 트래픽 전환이 완료되지 않았습니다." >&2
     # 실패 시 이전 서비스로 되돌리기
     echo "set \$service_url http://$OLD_SERVICE:8080;" > "$ENV_INC_FILE"
+    # 실패한 신규 컨테이너 정리
+    docker compose -f "${COMPOSE_FILE}" stop "$TARGET_SERVICE" || true
     exit 1
 fi
 
