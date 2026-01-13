@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.comment.service;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.comment.converter.CommentConverter;
 import com.hrr.backend.domain.comment.dto.CommentCreateRequestDto;
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
@@ -7,8 +8,12 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
+import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
@@ -20,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,6 +39,7 @@ public class CommentServiceImpl implements CommentService {
     private final UserRepository userRepository;
     private final CommentConverter commentConverter;
     private final UserBlockRepository userBlockRepository;
+    private final UserChallengeRepository userChallengeRepository;
 
     /** 댓글 작성 */
     @Override
@@ -45,6 +52,27 @@ public class CommentServiceImpl implements CommentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+        // 1. 해당 챌린지 참여 여부 및 JOINED 상태 검증
+        Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
+        UserChallenge userChallenge = userChallengeRepository.findByUserIdAndChallengeId(userId, challenge.getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        if (userChallenge.getStatus() != ChallengeJoinStatus.JOINED) {
+            throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
+        }
+
+        // 2. 현재 라운드 여부 검증
+        // roundRepository 조회 대신 챌린지의 currentRound를 직접 사용해 500 에러(중복 결과) 방지
+        Round currentRound = challenge.getCurrentRound();
+        if (currentRound == null) {
+            throw new GlobalException(ErrorCode.ROUND_NOT_FOUND);
+        }
+
+        // Objects.equals를 사용하여 verification.getRoundId()의 null 체크와 비교를 안전하게 수행
+        if (!Objects.equals(verification.getRoundId(), currentRound.getId())) {
+            throw new GlobalException(ErrorCode.ROUND_NOT_CURRENT);
+        }
+
         Comment parent = null;
 
         // parentId 가 있으면 대댓글
@@ -52,7 +80,7 @@ public class CommentServiceImpl implements CommentService {
             parent = commentRepository.findByIdAndIsDeletedFalse(requestDto.getParentId())
                     .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_INVALID_PARENT));
 
-            //부모 댓글의 dpth가 1이상 존재해서 대댓글인 경우에 더 이상 답글을 달 수 없도록 진행
+            // 부모 댓글의 depth가 1 이상이면 더 이상 답글 불가
             if (parent.getDepth() >= 1) {
                 throw new GlobalException(ErrorCode.COMMENT_DEPTH_EXCEEDED);
             }
@@ -117,6 +145,9 @@ public class CommentServiceImpl implements CommentService {
                 .findByVerificationAndDepthOrderByCreatedAtAsc(verification, 0, pageable);
         List<Comment> parents = new ArrayList<>(parentPage.getContent());
 
+        // 전체 댓글 수(대댓글 포함) 조회
+        long totalCount = commentRepository.countByVerificationAndIsDeletedFalse(verification);
+
         Optional<Comment> adoptedOpt =
                 commentRepository.findAdoptedCommentsByVerificationId(verificationId);
 
@@ -179,6 +210,7 @@ public class CommentServiceImpl implements CommentService {
                 .currentPage(parentPage.getNumber() + 1)
                 .totalPages(parentPage.getTotalPages())
                 .totalParentElements(parentPage.getTotalElements())
+                .totalCount(totalCount) // 대댓글 포함 전체 개수
                 .size(parentPage.getSize())
                 .isFirst(parentPage.isFirst())
                 .isLast(parentPage.isLast())

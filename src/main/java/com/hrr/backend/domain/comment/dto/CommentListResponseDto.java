@@ -20,6 +20,7 @@ public class CommentListResponseDto {
     private int currentPage;
     private int totalPages;
     private long totalParentElements; // 전체 부모 댓글 수
+    private long totalCount; //전체 댓글 수 (부모 + 자식)
     private int size;
     private boolean isFirst;
     private boolean isLast;
