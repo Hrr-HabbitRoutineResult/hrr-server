@@ -459,4 +459,163 @@ class CommentServiceTest {
                 // ErrorCode가 업데이트 되었는지 확인 (ROUND4006)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ROUND_NOT_CURRENT);
     }
+
+    @Test
+    @DisplayName("익명 댓글 조회 시 프로필과 작성 시간 포함 확인")
+    void getComments_AnonymousWithProfileAndTime() {
+        // given
+        Long verificationId = 100L;
+        Long myId = 1L;
+        Long otherId = 2L;
+
+        User me = createUser(myId, "나", UserStatus.ACTIVE);
+        User other = createUser(otherId, "타인", UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId);
+
+        // 익명 댓글 생성
+        Comment comment = createComment(14L, verification, other, "익명 댓글입니다", false, true, 1);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(myId)).willReturn(Optional.of(me));
+        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
+
+        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(comment)));
+        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+                .willReturn(Collections.emptyList());
+        given(commentRepository.countByVerificationAndIsDeletedFalse(verification)).willReturn(1L);
+
+        // when
+        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
+
+        // then
+        CommentResponseDto dto = result.getComments().get(0);
+        assertThat(dto.getUserName()).isEqualTo("익명1");
+        assertThat(dto.getUserProfileUrl()).isNull(); // 익명은 마스킹된 프로필 (null 또는 기본 이미지)
+        assertThat(dto.getCreatedAt()).isNotNull(); // 작성 시간 포함 확인
+        assertThat(dto.isAnonymous()).isTrue();
+    }
+
+    @Test
+    @DisplayName("대댓글 익명 작성 시 프로필과 작성 시간 포함 확인")
+    void createComment_AnonymousReplyWithProfileAndTime() {
+        // given
+        Long verificationId = 100L;
+        Long userId = 1L;
+        Long challengeId = 10L;
+        Long parentId = 50L;
+
+        Verification verification = mock(Verification.class);
+        RoundRecord roundRecord = mock(RoundRecord.class);
+        Round round = mock(Round.class);
+        Round currentRound = mock(Round.class);
+        Challenge challenge = mock(Challenge.class);
+        User user = createUser(userId, "참여자", UserStatus.ACTIVE);
+
+        Comment parentComment = createComment(parentId, verification, user, "부모 댓글", false, false, null);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(verification.getRoundRecord()).willReturn(roundRecord);
+        given(roundRecord.getRound()).willReturn(round);
+        given(round.getChallenge()).willReturn(challenge);
+        given(challenge.getId()).willReturn(challengeId);
+        given(challenge.getCurrentRound()).willReturn(currentRound);
+        given(currentRound.getId()).willReturn(1L);
+        given(verification.getRoundId()).willReturn(1L);
+
+        UserChallenge userChallenge = mock(UserChallenge.class);
+        given(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(userChallenge.getStatus()).willReturn(ChallengeJoinStatus.JOINED);
+
+        given(commentRepository.findByIdAndIsDeletedFalse(parentId))
+                .willReturn(Optional.of(parentComment));
+        given(commentRepository.findFirstByVerificationAndUserAndIsAnonymousTrue(verification, user))
+                .willReturn(Optional.empty());
+        given(commentRepository.findMaxAnonymousNumberByVerification(verification))
+                .willReturn(null);
+
+        CommentCreateRequestDto request = new CommentCreateRequestDto();
+        ReflectionTestUtils.setField(request, "parentId", parentId);
+        ReflectionTestUtils.setField(request, "anonymous", true);
+        ReflectionTestUtils.setField(request, "content", "익명 대댓글");
+
+        Comment savedComment = createComment(100L, verification, user, "익명 대댓글", false, true, 1);
+        given(commentRepository.save(any(Comment.class))).willReturn(savedComment);
+
+        // when
+        CommentResponseDto result = commentService.createComment(verificationId, userId, request);
+
+        // then
+        assertThat(result.isAnonymous()).isTrue();
+        assertThat(result.getCreatedAt()).isNotNull();
+        assertThat(result.getUserProfileUrl()).isNull(); // 익명은 마스킹된 프로필
+    }
+
+    @Test
+    @DisplayName("댓글 삭제 실패: 채택된 댓글은 삭제할 수 없음 (COMMENT_ADOPTED_CANNOT_DELETE)")
+    void deleteComment_AdoptedCommentCannotDelete() {
+        // given
+        Long commentId = 10L;
+        Long userId = 1L;
+
+        User user = createUser(userId, "작성자", UserStatus.ACTIVE);
+        Verification verification = createVerification(100L);
+
+        Comment comment = Comment.builder()
+                .id(commentId)
+                .verification(verification)
+                .user(user)
+                .content("채택된 댓글")
+                .isDeleted(false)
+                .isAnonymous(false)
+                .likesCount(0)
+                .depth(0)
+                .isAdopted(true) // 채택된 댓글
+                .build();
+
+        given(commentRepository.findByIdAndIsDeletedFalse(commentId))
+                .willReturn(Optional.of(comment));
+
+        // when & then
+        assertThatThrownBy(() -> commentService.deleteComment(commentId, userId))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.COMMENT_ADOPTED_CANNOT_DELETE);
+
+        // 삭제 메서드가 호출되지 않았는지 확인
+        verify(commentRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("댓글 삭제 성공: 채택되지 않은 일반 댓글")
+    void deleteComment_NotAdoptedCommentSuccess() {
+        // given
+        Long commentId = 10L;
+        Long userId = 1L;
+
+        User user = createUser(userId, "작성자", UserStatus.ACTIVE);
+        Verification verification = createVerification(100L);
+
+        Comment comment = Comment.builder()
+                .id(commentId)
+                .verification(verification)
+                .user(user)
+                .content("일반 댓글")
+                .isDeleted(false)
+                .isAnonymous(false)
+                .likesCount(0)
+                .depth(0)
+                .isAdopted(false) // 채택되지 않은 댓글
+                .build();
+
+        given(commentRepository.findByIdAndIsDeletedFalse(commentId))
+                .willReturn(Optional.of(comment));
+
+        // when
+        commentService.deleteComment(commentId, userId);
+
+        // then
+        verify(commentRepository, times(1)).delete(comment);
+    }
 }
