@@ -6,6 +6,8 @@ SECRET_ID="hrr-official"
 REGION="ap-northeast-2"
 # Docker Compose 파일 경로
 COMPOSE_FILE="docker-compose_prod.yml"
+# 프록시 할 포트 정보 담긴 파일
+ENV_INC_FILE="./service-env.inc"
 
 set +o histexpand       # 비밀번호의 특수문자 누락 방지
 
@@ -29,7 +31,7 @@ if ! command -v aws &> /dev/null || ! command -v jq &> /dev/null; then
 fi
 
 # --- AWS Secrets Manager에서 Secrets 가져오기 ---
-echo "--- 1/4: Secrets Manager에서 정보 가져오기 ---"
+echo "--- 1/6: Secrets Manager에서 정보 가져오기 ---"
 SECRET_JSON=$(aws secretsmanager get-secret-value \
     --secret-id "${SECRET_ID}" \
     --region "${REGION}" \
@@ -42,7 +44,7 @@ if [ $? -ne 0 ] || [ -z "$SECRET_JSON" ]; then
 fi
 
 # --- 환경 변수 설정 (쉘에 Export) ---
-echo "--- 2/4: 환경 변수 설정 ---"
+echo "--- 2/6: 환경 변수 설정하기 ---"
 
 # 쉘 환경 변수로 export (jq로 JSON 값 추출)
 # 모든 ${변수명}을 Secrets Manager의 JSON 키와 매칭하여 정의해야 함
@@ -66,24 +68,61 @@ export NAVER_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_ID')
 export NAVER_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_SECRET')
 export MODEL_SERVER_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_SERVER_URL')
 
-echo "--- 3/4: Docker Hub에서 이미지 Pull 및 베포 준비  ---"
+# --- 3/6: 배포 대상(Blue/Green) 결정 ---
+echo "--- 3/6: 배포 대상 확인 ---"
+if ! [ -f "$ENV_INC_FILE" ]; then
+    echo "set \$service_url http://app-blue:8080;" > "$ENV_INC_FILE"
+fi
 
-echo "--- 4/4: Docker Compose 실행 및 배포 ---"
+CURRENT_SERVICE=$(grep -o 'app-blue\|app-green' "$ENV_INC_FILE")
 
-# 최신 이미지 가져오기
-docker compose -f "${COMPOSE_FILE}" pull || {
-  echo "ERROR: docker compose pull 실패. 로그를 확인하세요." >&2
-  exit 1
-}
+if [ "$CURRENT_SERVICE" == "app-blue" ]; then
+    TARGET_COLOR="green"
+    TARGET_SERVICE="app-green"
+    OLD_SERVICE="app-blue"
+else
+    TARGET_COLOR="blue"
+    TARGET_SERVICE="app-blue"
+    OLD_SERVICE="app-green"
+fi
 
-# 컨테이너 실행 (재생성 강제)
-if ! docker compose -f "${COMPOSE_FILE}" up -d; then
+echo "현재 서비스: $OLD_SERVICE -> 신규 배포 대상: $TARGET_SERVICE"
+
+# --- 4/6: 신규 버전 배포 및 헬스 체크 ---
+echo "--- 4/6: $TARGET_SERVICE 이미지 Pull 및 실행 ---"
+docker compose -f "${COMPOSE_FILE}" pull "$TARGET_SERVICE" || {
+       echo "ERROR: docker compose pull 실패. 로그를 확인하세요." >&2
+       exit 1
+     }
+if ! docker compose -f "${COMPOSE_FILE}" up -d "$TARGET_SERVICE"; then
   echo "ERROR: docker compose up 실패. 로그를 확인하세요." >&2
   exit 1
 fi
 
-# 미사용 이미지 정리 (디스크 공간 확보; 실패해도 배포 자체는 성공으로 간주)
+echo "새 컨테이너($TARGET_SERVICE) 헬스 체크 중..."
+for i in {1..25}; do
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' "hrr_app_$TARGET_COLOR" 2>/dev/null)
+    if [ "$STATUS" == "healthy" ]; then
+        echo "SUCCESS: 새 컨테이너가 정상 실행되었습니다."
+        break
+    fi
+    echo "대기 중... ($i/25)"
+    sleep 5
+    if [ $i -eq 25 ]; then
+        echo "ERROR: 헬스 체크 실패. 배포를 중단합니다."
+        exit 1
+    fi
+done
+
+# --- 5/6: 트래픽 전환 (Nginx Reload) ---
+echo "--- 5/6: 트래픽 전환 ---"
+echo "set \$service_url http://$TARGET_SERVICE:8080;" > "$ENV_INC_FILE"
+docker exec hrr_nginx_prod nginx -s reload
+
+# --- 6/6: 이전 컨테이너 정리 (디스크 공간 확보; 실패해도 배포 자체는 성공으로 간주) ---
+echo "--- 6/6: 이전 버전($OLD_SERVICE) 종료 및 정리 ---"
+docker compose -f "${COMPOSE_FILE}" stop "$OLD_SERVICE"
 docker image prune -f || echo "WARN: docker image prune 실패(디스크 정리만 실패)."
 
-echo "배포 완료! 서비스가 백그라운드에서 실행되었습니다."
+echo "배포 완료! 현재 활성 서비스: $TARGET_SERVICE (Tag: $IMAGE_TAG)"
 echo "상태 확인: sudo docker ps"
