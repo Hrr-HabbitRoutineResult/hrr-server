@@ -70,11 +70,19 @@ export MODEL_SERVER_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_SERVER_URL')
 
 # --- 3/6: 배포 대상(Blue/Green) 결정 ---
 echo "--- 3/6: 배포 대상 확인 ---"
+# 파일이 없으면 기본값으로 생성
 if ! [ -f "$ENV_INC_FILE" ]; then
     echo "set \$service_url http://app-blue:8080;" > "$ENV_INC_FILE"
 fi
 
-CURRENT_SERVICE=$(grep -o 'app-blue\|app-green' "$ENV_INC_FILE")
+# 안전하게 현재 서비스 판별
+CURRENT_SERVICE="$(grep -o -m1 'app-blue\|app-green' "$ENV_INC_FILE" || true)"
+
+if [ -z "$CURRENT_SERVICE" ]; then
+  echo "ERROR: $ENV_INC_FILE 에서 현재 서비스(app-blue/app-green)를 판별하지 못했습니다." >&2
+  echo "       파일 내용: $(sed -n '1,5p' "$ENV_INC_FILE")" >&2
+  exit 1
+fi
 
 if [ "$CURRENT_SERVICE" == "app-blue" ]; then
     TARGET_COLOR="green"
