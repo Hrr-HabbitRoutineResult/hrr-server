@@ -140,7 +140,13 @@ done
 # --- 5/6: 트래픽 전환 (Nginx Reload) ---
 echo "--- 5/6: 트래픽 전환 ---"
 echo "set \$service_url http://$TARGET_SERVICE:8080;" > "$ENV_INC_FILE"
-docker exec hrr_nginx_prod nginx -s reload
+
+if ! docker exec hrr_nginx_prod nginx -s reload; then
+    echo "ERROR: nginx reload 실패. 트래픽 전환이 완료되지 않았습니다." >&2
+    # 실패 시 이전 서비스로 되돌리기
+    echo "set \$service_url http://$OLD_SERVICE:8080;" > "$ENV_INC_FILE"
+    exit 1
+fi
 
 # --- 6/6: 이전 컨테이너 정리 (디스크 공간 확보; 실패해도 배포 자체는 성공으로 간주) ---
 echo "--- 6/6: 이전 버전($OLD_SERVICE) 종료 및 정리 ---"

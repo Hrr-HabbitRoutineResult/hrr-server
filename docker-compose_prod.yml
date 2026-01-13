@@ -14,7 +14,7 @@ services:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
       # 트래픽 전환을 위한 파일 마운트 추가
-      - ./service-env.inc:/etc/nginx/conf.d/service-env.inc:ro
+      - ./service-env.inc:/etc/nginx/conf.d/service-env.inc
     # 6시간마다 Nginx 설정을 재로드하여 갱신된 인증서 반영
     command: >
       /bin/sh -c "
