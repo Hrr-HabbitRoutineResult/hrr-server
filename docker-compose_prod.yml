@@ -20,9 +20,6 @@ services:
     restart: always
     environment:
       - TZ=Asia/Seoul
-    depends_on:
-      - app-blue
-      - app-green
 
   # Certbot
   certbot:
