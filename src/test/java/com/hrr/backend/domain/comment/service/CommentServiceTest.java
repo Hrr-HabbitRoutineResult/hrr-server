@@ -459,4 +459,171 @@ class CommentServiceTest {
                 // ErrorCode가 업데이트 되었는지 확인 (ROUND4006)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ROUND_NOT_CURRENT);
     }
+// 기존 CommentServiceTest 클래스에 추가할 테스트 메서드들
+
+    @Test
+    @DisplayName("익명 댓글 조회 시 프로필과 작성 시간 포함 확인")
+    void getComments_AnonymousWithProfileAndTime() {
+        // given
+        Long verificationId = 100L;
+        Long myId = 1L;
+        Long otherId = 2L;
+
+        User me = createUser(myId, "나", UserStatus.ACTIVE);
+        User other = createUser(otherId, "타인", UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId);
+
+        // 익명 댓글 생성
+        Comment comment = createComment(14L, verification, other, "익명 댓글입니다", false, true, 1);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(myId)).willReturn(Optional.of(me));
+        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
+
+        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(comment)));
+        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+                .willReturn(Collections.emptyList());
+        given(commentRepository.countByVerificationAndIsDeletedFalse(verification)).willReturn(1L);
+
+        // when
+        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
+
+        // then
+        CommentResponseDto dto = result.getComments().get(0);
+        assertThat(dto.getUserName()).isEqualTo("익명1");
+        assertThat(dto.getUserProfileUrl()).isNull(); // 익명은 마스킹된 프로필 (null 또는 기본 이미지)
+        assertThat(dto.getCreatedAt()).isNotNull(); // 작성 시간 포함 확인
+        assertThat(dto.isAnonymous()).isTrue();
+    }
+
+    @Test
+    @DisplayName("익명 댓글 조회: 프로필은 가려지고(null), 작성 시간은 노출되어야 한다.")
+    void getComments_Anonymous_ProfileMasked_TimeVisible() {
+        // given
+        Long verificationId = 100L;
+        Long myId = 1L;
+        Long otherId = 2L;
+
+        User me = createUser(myId, "나", UserStatus.ACTIVE);
+        User other = createUser(otherId, "타인", UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId);
+
+        // 익명 댓글 생성 (익명 번호 1)
+        Comment comment = createComment(14L, verification, other, "익명 댓글입니다", false, true, 1);
+
+        // Mocking
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userRepository.findById(myId)).willReturn(Optional.of(me));
+
+        // 차단 목록 없음 (마스킹 로직 간소화)
+        given(userBlockRepository.findBlockedIdsByBlockerId(myId)).willReturn(Collections.emptyList());
+
+        // 댓글 조회 결과 반환
+        given(commentRepository.findByVerificationAndDepthOrderByCreatedAtAsc(any(), anyInt(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(comment)));
+        given(commentRepository.findByParentInOrderByCreatedAtAsc(anyList()))
+                .willReturn(Collections.emptyList());
+        // 전체 카운트 조회
+        given(commentRepository.countByVerificationAndIsDeletedFalse(verification)).willReturn(1L);
+
+        // when
+        CommentListResponseDto result = commentService.getComments(verificationId, myId, PageRequest.of(0, 10));
+        CommentResponseDto dto = result.getComments().get(0);
+
+        // then
+        // 1. 익명 여부 확인
+        assertThat(dto.isAnonymous()).isTrue();
+
+        // 2. [핵심] 프로필 이미지는 마스킹 되어야 함 (null)
+        assertThat(dto.getUserProfileUrl())
+                .as("익명 댓글의 프로필 이미지는 null이어야 합니다.")
+                .isNull();
+
+        // 3. [핵심] 작성 시간은 노출되어야 함
+        assertThat(dto.getCreatedAt())
+                .as("익명 댓글이어도 작성 시간은 보여야 합니다.")
+                .isNotNull()
+                .isEqualTo(comment.getCreatedAt());
+
+        // 4. 닉네임 형식 확인
+        assertThat(dto.getUserName()).isEqualTo("익명1");
+    }
+
+    /**
+     * [테스트 2] 채택된 댓글 삭제 시도 검증
+     * - isAdopted = true 인 댓글을 삭제하려고 하면
+     * - GlobalException(COMMENT_ADOPTED_CANNOT_DELETE) 예외가 발생해야 함
+     * - 실제 delete 메서드는 호출되지 않아야 함
+     */
+    @Test
+    @DisplayName("댓글 삭제 실패: 채택된 댓글은 절대 삭제할 수 없다.")
+    void deleteComment_Fail_IfAdopted() {
+        // given
+        Long commentId = 50L;
+        Long userId = 1L;
+
+        User user = createUser(userId, "작성자", UserStatus.ACTIVE);
+        Verification verification = createVerification(100L);
+
+        // 채택된(isAdopted = true) 댓글 생성
+        Comment adoptedComment = Comment.builder()
+                .id(commentId)
+                .verification(verification)
+                .user(user)
+                .content("채택된 답변")
+                .isDeleted(false)
+                .isAnonymous(false)
+                .likesCount(0)
+                .depth(0)
+                .isAdopted(true) // [중요] 채택 상태
+                .build();
+
+        // Mocking: 댓글 조회 시 채택된 댓글 반환
+        given(commentRepository.findByIdAndIsDeletedFalse(commentId))
+                .willReturn(Optional.of(adoptedComment));
+
+        // when & then
+        assertThatThrownBy(() -> commentService.deleteComment(commentId, userId))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.COMMENT_ADOPTED_CANNOT_DELETE);
+
+        // Verify: 실제 삭제(delete) 로직은 호출되지 않았는지 검증
+        verify(commentRepository, never()).delete(any(Comment.class));
+    }
+
+    /**
+     * [테스트 3] 일반 댓글 삭제 성공 검증 (대조군)
+     * - 채택되지 않은 댓글은 정상적으로 삭제 메서드가 호출되어야 함
+     */
+    @Test
+    @DisplayName("댓글 삭제 성공: 채택되지 않은 댓글은 정상 삭제된다.")
+    void deleteComment_Success_IfNotAdopted() {
+        // given
+        Long commentId = 51L;
+        Long userId = 1L;
+
+        User user = createUser(userId, "작성자", UserStatus.ACTIVE);
+        Verification verification = createVerification(100L);
+
+        // 일반 댓글 생성 (isAdopted = false)
+        Comment normalComment = Comment.builder()
+                .id(commentId)
+                .verification(verification)
+                .user(user)
+                .content("일반 댓글")
+                .isDeleted(false)
+                .isAdopted(false) // [중요] 미채택 상태
+                .build();
+
+        given(commentRepository.findByIdAndIsDeletedFalse(commentId))
+                .willReturn(Optional.of(normalComment));
+
+        // when
+        commentService.deleteComment(commentId, userId);
+
+        // then
+        // delete() 메서드가 정확히 1번 호출되었는지 검증
+        verify(commentRepository, times(1)).delete(normalComment);
+    }
 }

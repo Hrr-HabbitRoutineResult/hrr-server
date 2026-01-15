@@ -258,6 +258,11 @@ public class CommentServiceImpl implements CommentService {
             throw new GlobalException(ErrorCode.COMMENT_UNAUTHORIZED);
         }
 
+        // 채택된 댓글인지 확인
+        if (comment.isAdopted()) {
+            throw new GlobalException(ErrorCode.COMMENT_ADOPTED_CANNOT_DELETE);
+        }
+
         // 엔티티에 @SQLDelete가 적용되어 있으므로 repository.delete를 호출하면 update 쿼리가 실행
         commentRepository.delete(comment);
     }

@@ -150,6 +150,7 @@ public enum ErrorCode implements BaseCode{
     COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다."),
     COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "COMMENT4037", "댓글에 접근할 수 없습니다."),
     COMMENT_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4008", "유효하지 않은 댓글입니다."),
+COMMENT_ADOPTED_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "COMMENT4009", "채택된 댓글은 삭제할 수 없습니다."),
 
     // follow
     CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),
