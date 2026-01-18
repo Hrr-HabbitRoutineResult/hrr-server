@@ -120,8 +120,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 		if (isUpcoming != null && isUpcoming) {
 			LocalDate today = LocalDate.now();
 
-			// 시작일
-			upcomingStartDate = today.atStartOfDay();
+			// 시작일 ; 오늘 + 1일
+			upcomingStartDate = today.atStartOfDay().plusDays(1);
 
 			// 종료일 ; 오늘 + 5일
 			upcomingEndDate = today.plusDays(UPCOMING_DAYS_CRITERIA)

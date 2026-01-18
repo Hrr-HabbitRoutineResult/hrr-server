@@ -165,7 +165,7 @@ class ChallengeRepositoryTest {
 		saveChallenge(today.plusDays(6));  // 01.21(D-6) = 제외 대상
 
 		// When: 서비스에서 계산하는 것과 동일한 범위로 조회
-		LocalDateTime start = today.atStartOfDay();
+		LocalDateTime start = today.atStartOfDay().plusDays(1);
 		LocalDateTime end = today.plusDays(5).atTime(23, 59, 59);
 
 		Slice<ChallengeResponseDto.InfoDto> result = challengeRepository.findChallengesWithFilters(
