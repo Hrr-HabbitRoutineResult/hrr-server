@@ -120,8 +120,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 		if (isUpcoming != null && isUpcoming) {
 			LocalDate today = LocalDate.now();
 
-			// 시작일
-			upcomingStartDate = today.atStartOfDay();
+			// 시작일 ; 오늘 + 1일
+			upcomingStartDate = today.atStartOfDay().plusDays(1);
 
 			// 종료일 ; 오늘 + 5일
 			upcomingEndDate = today.plusDays(UPCOMING_DAYS_CRITERIA)
@@ -364,13 +364,25 @@ public class ChallengeServiceImpl implements ChallengeService {
 					LocalDate challengeStartDate = infoDto.getStartDate().toLocalDate();
 					LocalDate today = LocalDate.now();
 
+					if (challengeStartDate == null) {
+						// 시작일 없는 챌린지는 Upcoming 대상 아님
+						infoDto.setIsUpcoming(false);
+						infoDto.setDDayUntilStart(0);
+					} else {
+						long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
+						boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
+
+						// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart)
+						infoDto.setIsUpcoming(isUpcomingResult);
+						infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
+					}
+
+
 					long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
 					boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
-					// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
+					// dto 나머지 필드 채우기 (ThumbnailUrl, dayOfWeek)
 					infoDto.setThumbnailUrl(s3UrlUtil.toFullUrl(infoDto.getThumbnailUrl()));
-					infoDto.setIsUpcoming(isUpcomingResult);
-					infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
 					infoDto.setDaysOfWeek(daysMap.getOrDefault(infoDto.getChallengeId(), List.of()));
 
 					return infoDto;

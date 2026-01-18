@@ -5,6 +5,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.domain.challenge.repository.ChallengeDayJoinRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.round.entity.Round;
@@ -16,14 +17,21 @@ import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.global.s3.S3UrlUtil;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.SliceImpl;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -31,8 +39,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChallengeServiceInfoTest {
@@ -45,6 +52,8 @@ class ChallengeServiceInfoTest {
     @Mock private VerificationRepository verificationRepository;
     @Mock private ChallengeLikeRepository challengeLikeRepository;
     @Mock private ChallengeConverter challengeConverter;
+	@Mock private ChallengeDayJoinRepository challengeDayJoinRepository;
+	@Mock private S3UrlUtil s3UrlUtil;
 
     /**
      * 1. 참여자(Participant) 관련 시나리오
@@ -291,6 +300,51 @@ class ChallengeServiceInfoTest {
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
     }
+
+	@Test
+	@DisplayName("곧 시작하는 챌린지 필터 적용 시 날짜 계산 및 D-Day 가공 로직 검증")
+	void getChallengeList_UpcomingLogic_Test() {
+		LocalDateTime startTime0 = LocalDateTime.of(2026, 1, 15, 10, 0, 0);	// 오늘 시작하는 챌린지 생성용
+		LocalDateTime startTime5 = LocalDateTime.of(2026, 1, 20, 23, 59, 59);	// 5일 뒤 시작하는 챌린지 생성용
+		LocalDate mockToday = LocalDate.of(2026, 1, 15);	// 오늘을 26.01.15로 고정
+
+		// 테스트용 DTO 구성 - 실제 로직에서는 Repository에서 조회해옴
+		ChallengeResponseDto.InfoDto day0 = ChallengeResponseDto.InfoDto.builder()
+			.challengeId(1L)
+			.startDate(startTime0)
+			.thumbnailUrl("test.png")
+			.build();
+
+		ChallengeResponseDto.InfoDto day5 = ChallengeResponseDto.InfoDto.builder()
+			.challengeId(2L)
+			.startDate(startTime5)
+			.thumbnailUrl("test.png")
+			.build();
+
+		// Mock 설정 - 실제 DB를 거치지 않고 아래처럼 반환되었다고 가정
+		given(challengeRepository.findChallengesWithFilters(any(), any(), any(), any(), any(), any(), any()))
+			.willReturn(new SliceImpl<>(List.of(day0, day5)));
+		given(challengeDayJoinRepository.findByChallengeIdIn(anyList())).willReturn(List.of());	// 요일 정보는 테스트 대상이 아니라 빈 값 반환
+		lenient().when(s3UrlUtil.toFullUrl(anyString())).thenReturn("http://image.url");
+
+		try (MockedStatic<LocalDate> mockedLocalDate =
+				 mockStatic(LocalDate.class, CALLS_REAL_METHODS)) {
+			// LocalDate의 static 메서드를 MockedStatic으로 전부 mock 하면 LocalDate.of() 등이 모두 null을 반환해 NPE 가능
+			// 그래서 LocalDate.now()만 mock되도록 CALLS_REAL_METHODS 설정
+
+			mockedLocalDate.when(LocalDate::now).thenReturn(mockToday);
+
+			SliceResponseDto<ChallengeResponseDto.InfoDto> result =
+				challengeService.getChallengeList(null, true, null, null, null, 0, 10);
+
+			// 테스트 결과 검증
+			assertThat(result.getContent().get(0).getIsUpcoming()).isTrue();
+			assertThat(result.getContent().get(1).getIsUpcoming()).isTrue();
+			assertThat(result.getContent().get(0).getDDayUntilStart()).isEqualTo(0);	// D-DAY
+			assertThat(result.getContent().get(1).getDDayUntilStart()).isEqualTo(5);	// D-5
+		}
+
+	}
 
     /**
      * Helper Methods

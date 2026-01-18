@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.challenge.repository;
 
+import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
@@ -14,6 +15,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -147,4 +150,62 @@ class ChallengeRepositoryTest {
                 .verifyEndTime(LocalTime.of(18, 0))
                 .build();
     }
+
+	@Test
+	@DisplayName("Repository는 지정된 날짜 범위를 벗어난 데이터를 조회하지 않아야 한다")
+	void repository_Filtering_Test() {
+		// Given: 15일, 20일, 21일 시작하는 챌린지를 실제로 DB에 저장
+		LocalDate today = LocalDate.of(2026, 1, 15);
+		saveChallenge(today);              			  // 01.15 (D-DAY) = 제외 대상
+		saveChallenge(today.plusDays(1));  // 01.16(D-1) = 포함
+		saveChallenge(today.plusDays(2));  // 01.17(D-2) = 포함
+		saveChallenge(today.plusDays(3));  // 01.18(D-3) = 포함
+		saveChallenge(today.plusDays(4));  // 01.19(D-4) = 포함
+		saveChallenge(today.plusDays(5));  // 01.20(D-5) = 포함 (경계)
+		saveChallenge(today.plusDays(6));  // 01.21(D-6) = 제외 대상
+
+		// When: 서비스에서 계산하는 것과 동일한 범위로 조회
+		LocalDateTime start = today.atStartOfDay().plusDays(1);
+		LocalDateTime end = today.plusDays(5).atTime(23, 59, 59);
+
+		Slice<ChallengeResponseDto.InfoDto> result = challengeRepository.findChallengesWithFilters(
+			null, start, end, null, null, null, PageRequest.of(0, 10));
+
+        // Then: 01.16~01.20만 포함되어야 함
+        List<LocalDate> startDates = result.getContent().stream()
+                .map(ChallengeResponseDto.InfoDto::getStartDate)
+                .map(LocalDateTime::toLocalDate)
+                .toList();
+
+        assertThat(startDates).containsExactlyInAnyOrder(
+                LocalDate.of(2026, 1, 16),
+                LocalDate.of(2026, 1, 17),
+                LocalDate.of(2026, 1, 18),
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 20)
+        );
+	}
+
+	/**
+	 * 헬퍼 메소드
+	 */
+
+	private void saveChallenge(LocalDate startDate) {
+		Challenge challenge = Challenge.builder()
+			.title("테스트 챌린지")
+			.description("내용")
+			.startDate(startDate.atStartOfDay())
+			.status(ChallengeStatus.RECRUITING)
+			.category(Category.HABIT)
+			.verificationType(VerificationType.PHOTO)
+			.isPublic(true)
+			.isViewerMode(false)
+			.maxParticipants(10)
+			.currentParticipants(0)
+			.verifyStartTime(LocalTime.of(9, 0))
+			.verifyEndTime(LocalTime.of(18, 0))
+			.build();
+
+		challengeRepository.save(challenge);
+	}
 }
