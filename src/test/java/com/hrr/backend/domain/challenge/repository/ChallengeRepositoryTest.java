@@ -157,10 +157,10 @@ class ChallengeRepositoryTest {
 		// Given: 15일, 20일, 21일 시작하는 챌린지를 실제로 DB에 저장
 		LocalDate today = LocalDate.of(2026, 1, 15);
 		saveChallenge(today);              			  // 01.15 (D-DAY) = 제외 대상
-		saveChallenge(today.plusDays(5));  // 01.16(D-1) = 포함
-		saveChallenge(today.plusDays(5));  // 01.17(D-2) = 포함
-		saveChallenge(today.plusDays(5));  // 01.18(D-3) = 포함
-		saveChallenge(today.plusDays(5));  // 01.19(D-4) = 포함
+		saveChallenge(today.plusDays(1));  // 01.16(D-1) = 포함
+		saveChallenge(today.plusDays(2));  // 01.17(D-2) = 포함
+		saveChallenge(today.plusDays(3));  // 01.18(D-3) = 포함
+		saveChallenge(today.plusDays(4));  // 01.19(D-4) = 포함
 		saveChallenge(today.plusDays(5));  // 01.20(D-5) = 포함 (경계)
 		saveChallenge(today.plusDays(6));  // 01.21(D-6) = 제외 대상
 
