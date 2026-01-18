@@ -171,8 +171,19 @@ class ChallengeRepositoryTest {
 		Slice<ChallengeResponseDto.InfoDto> result = challengeRepository.findChallengesWithFilters(
 			null, start, end, null, null, null, PageRequest.of(0, 10));
 
-		// Then: 5개만 조회되어야 함 - 01.16~20
-		assertThat(result.getContent()).hasSize(5);
+        // Then: 01.16~01.20만 포함되어야 함
+        List<LocalDate> startDates = result.getContent().stream()
+                .map(ChallengeResponseDto.InfoDto::getStartDate)
+                .map(LocalDateTime::toLocalDate)
+                .toList();
+
+        assertThat(startDates).containsExactlyInAnyOrder(
+                LocalDate.of(2026, 1, 16),
+                LocalDate.of(2026, 1, 17),
+                LocalDate.of(2026, 1, 18),
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 20)
+        );
 	}
 
 	/**
