@@ -22,4 +22,5 @@ public class ChallengeItemResponseDto {
     private LocalTime verifyEndTime;
     @JsonProperty("image_key")
     private String imageKey;
+    private Boolean likedByMe;
 }

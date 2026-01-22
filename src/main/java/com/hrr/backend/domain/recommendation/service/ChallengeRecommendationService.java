@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.recommendation.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.challenge.service.ChallengeStaticsService;
 import com.hrr.backend.domain.recommendation.dto.request.ChallengeRecommendRequest;
@@ -37,6 +38,7 @@ public class ChallengeRecommendationService {
     private final RecommendationResultRepository recommendationResultRepository;
     private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
     private final ChallengeStaticsService challengeStaticsService;
+    private final ChallengeLikeRepository challengeLikeRepository;
 
     private final UserFavorService userFavorService;
 
@@ -175,6 +177,13 @@ public class ChallengeRecommendationService {
                     .recommendations(List.of())
                     .build();
         }
+        List<Long> recIds = modelApiResponse.getRecommendations().stream()
+                .map(ModelApiResponse.ModelRecommendItem::getChallengeId)
+                .toList();
+
+        Set<Long> likedIdSet = recIds.isEmpty()
+                ? Set.of()
+                : new HashSet<>(challengeLikeRepository.findLikedChallengeIds(userId, recIds));
 
         Map<Long, ChallengeItemDto> challengeMap = allChallenges.stream()
                 .collect(Collectors.toMap(
@@ -187,6 +196,7 @@ public class ChallengeRecommendationService {
                         .map(rec -> {
                             ChallengeItemDto base = challengeMap.get(rec.getChallengeId());
                             if (base == null) return null;
+                            boolean likedByMe = likedIdSet.contains(base.getChallengeId());
 
                             return ChallengeItemResponseDto.builder()
                                     .challengeId(base.getChallengeId())
@@ -198,6 +208,7 @@ public class ChallengeRecommendationService {
                                     .verifyStartTime(base.getVerifyStartTime())
                                     .verifyEndTime(base.getVerifyEndTime())
                                     .imageKey(s3UrlUtil.toFullUrl(base.getImageKey()))
+                                    .likedByMe(likedByMe)
                                     .build();
                         })
                         .filter(Objects::nonNull)
