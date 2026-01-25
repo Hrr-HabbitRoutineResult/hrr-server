@@ -53,6 +53,7 @@ public class JwtService {
                 .setSubject(String.valueOf(userId))
                 .setIssuedAt(now)
                 .setExpiration(new Date(now.getTime() + refreshTokenValidity))
+                .setId(java.util.UUID.randomUUID().toString())
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
 
