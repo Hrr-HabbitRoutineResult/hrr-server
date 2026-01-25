@@ -130,15 +130,6 @@ class JwtServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_INVALID_TOKEN);
     }
 
-    @Test
-    @DisplayName("만료된 토큰 검증 시 예외 발생")
-    void validateExpiredToken() throws InterruptedException {
-        // given - 1초 만료 토큰 생성 (테스트용으로 설정 변경 필요)
-        // 실제로는 application-test.yml에서 jwt.access-token-validity=1000 설정
-
-        // 이 테스트는 실제 만료를 기다려야 하므로 주석 처리
-        // 대신 통합 테스트나 수동 테스트로 확인 권장
-    }
 
     @Test
     @DisplayName("남은 만료 시간 계산 정확성")
