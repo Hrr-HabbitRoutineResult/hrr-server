@@ -134,7 +134,15 @@ public class ChallengeConverter {
         // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환
         List<ChallengeDays> targetDays = challenge.getChallengeDays().stream()
                 .map(ChallengeDayJoin::getDay)
+                .sorted()
                 .toList();
+
+        List<ChallengeDays> sortedVerifiedDays = null;
+        if (verifiedDays != null) {
+            sortedVerifiedDays = verifiedDays.stream()
+                    .sorted()
+                    .toList();
+        }
 
         return ChallengeResponseDto.ChallengeProfileDto.builder()
                 .challengeId(challenge.getId())
@@ -143,7 +151,7 @@ public class ChallengeConverter {
                 .targetDays(targetDays)
                 .verifyStartTime(challenge.getVerifyStartTime())
                 .verifyEndTime(challenge.getVerifyEndTime())
-                .verifiedDaysThisWeek(verifiedDays) // 미참여시 null
+                .verifiedDaysThisWeek(sortedVerifiedDays)// 미참여시 null
                 .build();
     }
 
