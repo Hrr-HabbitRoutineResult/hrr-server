@@ -10,7 +10,7 @@ public class AuthResponseDto {
             Long userId,
             String accessToken,
             String refreshToken,
-			String name,
+            String name,
             String nickname,
             LoginStatus loginStatus,
             String nextStep
@@ -18,8 +18,8 @@ public class AuthResponseDto {
 
     @Builder
     public record TokenReissueResponse(
-            String accessToken
+            String accessToken,
+            String refreshToken  // 추가: 새로운 Refresh Token도 함께 반환
     ) {}
-
 
 }
