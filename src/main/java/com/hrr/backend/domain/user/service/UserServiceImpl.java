@@ -336,7 +336,7 @@ public class UserServiceImpl implements UserService {
 
         // Repository에서 찜한 챌린지 조회
         Slice<UserResponseDto.LikedChallengeDto> slice =
-                userChallengeRepository.findMarkedChallengesByUser(user, pageable);
+                userChallengeRepository.findMarkedChallengesByUser(user, blockedIds, pageable);
 
         // S3 URL 변환
         slice.getContent().forEach(dto ->

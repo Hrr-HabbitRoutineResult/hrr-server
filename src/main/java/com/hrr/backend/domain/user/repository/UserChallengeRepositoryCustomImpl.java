@@ -8,6 +8,7 @@ import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.QUserChallenge;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -68,9 +69,10 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
     }
 
     @Override
-    public Slice<UserResponseDto.LikedChallengeDto> findMarkedChallengesByUser(User user, Pageable pageable) {
+    public Slice<UserResponseDto.LikedChallengeDto> findMarkedChallengesByUser(User user, List<Long> blockedUserIds, Pageable pageable) {
         QChallengeLike qChallengeLike = QChallengeLike.challengeLike;
         QChallenge qChallenge = QChallenge.challenge;
+        QUserChallenge qUserChallenge = QUserChallenge.userChallenge;
 
         // 찜한 챌린지 정보 조회
         List<UserResponseDto.LikedChallengeDto> content = jpaQueryFactory
@@ -82,7 +84,13 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 ))
                 .from(qChallengeLike)
                 .join(qChallengeLike.challenge, qChallenge)
-                .where(qChallengeLike.user.eq(user))
+                .join(qUserChallenge).on(qUserChallenge.challenge.eq(qChallenge)
+                        .and(qUserChallenge.role.eq(UserChallengeRole.OWNER)))
+                .where(
+                        qChallengeLike.user.eq(user),
+                        // 차단한 유저 ID 목록이 비어있지 않을 때만 notIn 조건 적용
+                        blockedUserIds.isEmpty() ? null : qUserChallenge.user.id.notIn(blockedUserIds)
+                )
                 .orderBy(qChallengeLike.createdAt.desc()) // 찜한 순서 (최신순)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)

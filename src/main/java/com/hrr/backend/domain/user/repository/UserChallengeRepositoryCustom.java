@@ -5,6 +5,8 @@ import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
+import java.util.List;
+
 public interface UserChallengeRepositoryCustom {
 
     /**
@@ -16,12 +18,12 @@ public interface UserChallengeRepositoryCustom {
     Slice<UserResponseDto.OngoingChallengeDto> findOngoingChallengesByUser(User user, Pageable pageable);
 
     /**
-     * 사용자가 찜한 챌린지 목록 조회 (페이징)
+     * 사용자가 찜한 챌린지 목록 조회 (차단한 방장 제외 필터링 추가)
      * @param user 조회 대상 사용자
      * @param pageable 페이징 정보
      * @return 찜한 챌린지 정보 Slice
      */
-    Slice<UserResponseDto.LikedChallengeDto> findMarkedChallengesByUser(User user, Pageable pageable);
+    Slice<UserResponseDto.LikedChallengeDto> findMarkedChallengesByUser(User user, List<Long> blockedUserIds, Pageable pageable);
 
     /**
      * 사용자가 종료한 챌린지 목록 조회 (페이징)
