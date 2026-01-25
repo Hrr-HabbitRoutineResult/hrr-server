@@ -19,7 +19,7 @@ public class AuthResponseDto {
     @Builder
     public record TokenReissueResponse(
             String accessToken,
-            String refreshToken  // 추가: 새로운 Refresh Token도 함께 반환
+            String refreshToken
     ) {}
 
 }

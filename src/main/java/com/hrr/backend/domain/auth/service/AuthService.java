@@ -68,7 +68,7 @@ public class AuthService {
         }
     }
 
-    /** Refresh Token 기반 Access Token 재발급 (수정됨) */
+    /** Refresh Token 기반 Access Token 재발급 */
     public AuthResponseDto.TokenReissueResponse reissueToken(String refreshHeader) {
         String refreshToken = refreshHeader.startsWith("Bearer ")
                 ? refreshHeader.substring(7)
@@ -193,7 +193,7 @@ public class AuthService {
         }
     }
 
-    /** 로그아웃 (수정됨) */
+    /** 로그아웃 */
     public void logout(String tokenHeader) {
         String token = tokenHeader.startsWith("Bearer ")
                 ? tokenHeader.substring(7)
