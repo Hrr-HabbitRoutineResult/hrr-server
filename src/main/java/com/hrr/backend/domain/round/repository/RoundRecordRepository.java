@@ -5,6 +5,8 @@ import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -79,4 +81,11 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
             @Param("user") User user,
             @Param("roundId") Long roundId
     );
+
+	// 챌린지의 특정 라운드의 현재 참가 인원을 조회하는데, 유저의 특정 상태로 필터링 - 인증 통계 조회를 위함
+	// 다음 라운드 연장을 하지 않더라도(ChallengeJoinStatus=DROPPED) 인증 통계의 총인원에는 포함되어야 하기에 해당 enum은 쿼리에 포함시키지 않음
+	@Query("SELECT COUNT(rr) FROM RoundRecord rr " +
+		"WHERE rr.round.id = :roundId " +
+		"AND rr.userChallenge.user.userStatus = :status")
+	int countParticipantsByRoundAndUserStatus(@Param("roundId") Long roundId, @Param("status") UserStatus status);
 }

@@ -113,13 +113,15 @@ public class VerificationServiceImpl implements VerificationService {
             throw new GlobalException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
         }
 
-        Integer totalParticipantCount = challenge.getCurrentParticipants();
         Round currentRound = challenge.getCurrentRound();
 
         // 라운드 미시작 시 0명 반환
         if (currentRound == null) {
-            return verificationConverter.toStatDto(0, totalParticipantCount, null);
+            return verificationConverter.toStatDto(0, 0, null);
         }
+
+		// 인증 통계에서의 총인원은 '인증을 해야할 인원'을 의미하므로, 현재 라운드에 참가 중이면서 비활성이나 탈퇴 상태가 아닌 유저만 조회
+		Integer totalParticipantCount = roundRecordRepository.countParticipantsByRoundAndUserStatus(currentRound.getId(), UserStatus.ACTIVE);
 
         // [수정] 실시간 현황 체크: 인증 요일/시간대가 아니면 null 반환
         LocalDateTime targetDateTime = determineTargetDateTime(challenge);
@@ -131,7 +133,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         LocalDate targetDate = targetDateTime.toLocalDate();
 
-        // 인증자 중 현재 ACTIVE 상태인 유저만 집계
+        // 인증자 중 현재 ACTIVE 상태인 유저만 집계 - 자동으로 비활성화 유저는 집계에서 제외됨
         Long certifiedCount = verificationRepository.countDistinctCertifiers(
                 currentRound.getId(),
                 VerificationStatus.COMPLETED,

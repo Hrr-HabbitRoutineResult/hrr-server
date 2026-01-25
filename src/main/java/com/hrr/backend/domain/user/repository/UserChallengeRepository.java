@@ -5,6 +5,7 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -75,6 +76,8 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
             "WHERE uc.challenge.id = :challengeId " +
             "AND uc.status = com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus.JOINED")
     List<UserChallenge> findAllJoinedWithUserFavorByChallengeId(@Param("challengeId") Long challengeId);
-	  // 특정 사용자가 참가 중인 챌린지 정보를 상태에 따라 조회
-	  List<UserChallenge> findByUserAndStatus(User user, ChallengeJoinStatus challengeJoinStatus);
+
+	// 특정 사용자가 참가 중인 챌린지 정보를 상태에 따라 조회
+	List<UserChallenge> findByUserAndStatus(User user, ChallengeJoinStatus challengeJoinStatus);
+
 }

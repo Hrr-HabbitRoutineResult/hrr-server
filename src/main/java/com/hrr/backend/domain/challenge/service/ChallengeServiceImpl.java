@@ -120,8 +120,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 		if (isUpcoming != null && isUpcoming) {
 			LocalDate today = LocalDate.now();
 
-			// 시작일
-			upcomingStartDate = today.atStartOfDay();
+			// 시작일 ; 오늘 + 1일
+			upcomingStartDate = today.atStartOfDay().plusDays(1);
 
 			// 종료일 ; 오늘 + 5일
 			upcomingEndDate = today.plusDays(UPCOMING_DAYS_CRITERIA)
@@ -364,13 +364,25 @@ public class ChallengeServiceImpl implements ChallengeService {
 					LocalDate challengeStartDate = infoDto.getStartDate().toLocalDate();
 					LocalDate today = LocalDate.now();
 
+					if (challengeStartDate == null) {
+						// 시작일 없는 챌린지는 Upcoming 대상 아님
+						infoDto.setIsUpcoming(false);
+						infoDto.setDDayUntilStart(0);
+					} else {
+						long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
+						boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
+
+						// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart)
+						infoDto.setIsUpcoming(isUpcomingResult);
+						infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
+					}
+
+
 					long dDay = ChronoUnit.DAYS.between(today, challengeStartDate);
 					boolean isUpcomingResult = (dDay >= 0) && (dDay <= UPCOMING_DAYS_CRITERIA);
 
-					// dto 나머지 필드 채우기 (isUpcoming, dDayUntilStart, dayOfWeek)
+					// dto 나머지 필드 채우기 (ThumbnailUrl, dayOfWeek)
 					infoDto.setThumbnailUrl(s3UrlUtil.toFullUrl(infoDto.getThumbnailUrl()));
-					infoDto.setIsUpcoming(isUpcomingResult);
-					infoDto.setDDayUntilStart((int)Math.max(0, dDay)); // 시작 전일 경우에만 남은 날짜를 set, else 0
 					infoDto.setDaysOfWeek(daysMap.getOrDefault(infoDto.getChallengeId(), List.of()));
 
 					return infoDto;
@@ -610,14 +622,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateCreateRequest(User owner, ChallengeRequestDto.CreateChallengeDto req) {
+
 		// 참가 중인 챌린지가 5개일 경우 요청 거절
 		if (challengeRepository.countByUserIdAndStatus(owner.getId(), ChallengeJoinStatus.JOINED) >= 5) {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
 
+		// 시작일 검증: 오늘 이후여야 함
 		if (!req.getStartDate().isAfter(LocalDate.now())) {
-			// ErrorCode에 CHALLENGE_INVALID_START_DATE가 없다면 추가 필요,
-			// 혹은 BAD_REQUEST 등을 임시로 사용
 			throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
 		}
 
@@ -733,56 +745,45 @@ public class ChallengeServiceImpl implements ChallengeService {
      * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
      * (기획 따라 변경 가능)
      */
-    private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined) {
+	private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined) {
 
-        // 끝난 챌린지는 모두 DISABLED
-        if (challenge.getStatus() == ChallengeStatus.FINISHED) {
-            return ActionButtonStatus.DISABLED;
-        }
-
-        // 참여자인 경우: 요일/시간대/인증 여부로 분기
-        if (isParticipant) {
-			// 아직 라운드 시작 전(UPCOMING 상태 등)이라면 무조건 D-Day(CERTIFIED) 처리
-			Round currentRound = challenge.getCurrentRound();
-			if (currentRound != null && LocalDate.now().isBefore(currentRound.getStartDate())) {
-				return ActionButtonStatus.CERTIFIED;
-			}
-
-			// 오늘이 인증 요일이 아니라면 → 항상 D-DAY 형식
-            boolean isTodayVerificationDay = isTodayVerificationDay(challenge);
-            if (!isTodayVerificationDay) {
-                return ActionButtonStatus.CERTIFIED;
-            }
-
-			// 오늘이 인증 요일이지만, 지금은 인증 시간대가 아님 → D-DAY 형식
-            boolean inVerificationTime = isNowWithinVerificationTime(challenge);
-            if (!inVerificationTime) {
-                return ActionButtonStatus.CERTIFIED;
-            }
-
-            // 오늘이 인증 요일 + 인증 시간대 안일 때만
-            //  - 인증 O → D-DAY
-            //  - 인증 X → 인증하기
-            if (isCertifiedToday) {
-                return ActionButtonStatus.CERTIFIED;
-            } else {
-                return ActionButtonStatus.CERTIFY_AVAILABLE;
-            }
-        }
-
-		// 미참여자 + 챌린지 최대 개수 초과
-		if (isMaxJoined) {
-			return ActionButtonStatus.DISABLED;
+		// 1. 챌린지 자체가 종료된 경우 (가장 먼저 체크)
+		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
+			return ActionButtonStatus.FINISHED;
 		}
 
-        // 미참여자 + 정원 초과 -> 빈자리 알림
-        if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
-            return ActionButtonStatus.WAITLIST;
-        }
+		// 2. 참여자인 경우 (인증 관련 분기)
+		if (isParticipant) {
+			Round currentRound = challenge.getCurrentRound();
 
-        // 그 외 -> 참가하기
+			if (currentRound != null && LocalDate.now().isBefore(currentRound.getStartDate())) {
+				return ActionButtonStatus.UPCOMING;
+			}
+
+			if (!isTodayVerificationDay(challenge)) {
+				return ActionButtonStatus.NOT_DAY;
+			}
+
+			if (!isNowWithinVerificationTime(challenge)) {
+				return ActionButtonStatus.NOT_TIME;
+			}
+
+			return isCertifiedToday ? ActionButtonStatus.DONE : ActionButtonStatus.AVAILABLE;
+		}
+
+		// 3. 미참여자이면서 참여가 제한되는 경우
+		if (isMaxJoined) {
+			return ActionButtonStatus.MAX_LIMIT_EXCEEDED;
+		}
+
+		// 4. 미참여자 정원 체크
+		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
+			return ActionButtonStatus.WAITLIST;
+		}
+
+		// 5. 그 외 참여 가능
 		return ActionButtonStatus.JOIN;
-    }
+	}
 
     /**
      * 오늘이 챌린지 인증 요일(DaysOfWeek)에 포함되는지 확인
