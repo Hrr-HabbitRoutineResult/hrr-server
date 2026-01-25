@@ -331,6 +331,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+        List<Long> blockedIds = userBlockRepository.findBlockedIdsByBlockerId(userId);
+
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size);
 
