@@ -15,8 +15,12 @@ public class RestTemplateConfig {
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout((int) Duration.ofSeconds(5).toMillis());
-        factory.setReadTimeout((int) Duration.ofSeconds(30).toMillis());
+
+		// 연결 제한 시간: 10초 (네트워크 연결 시도 시간)
+        factory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
+
+		// 읽기 제한 시간: 60초 (모델 로딩 및 연산 대기 시간)
+        factory.setReadTimeout((int) Duration.ofSeconds(60).toMillis());
 
         return builder
                 .requestFactory(() -> factory)

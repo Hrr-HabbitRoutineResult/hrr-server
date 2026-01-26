@@ -45,18 +45,17 @@ public enum ErrorCode implements BaseCode{
     CHALLENGE_FULL(HttpStatus.CONFLICT, "CHALLENGE4092", "챌린지 정원이 초과되었습니다."),
     CHALLENGE_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "CHALLENGE4006", "비밀번호가 일치하지 않습니다."),
     CHALLENGE_NOT_RECRUITING(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "모집 중인 챌린지가 아닙니다."),
-    CHALLENGE_CALCULATE_EMBEDDING(HttpStatus.BAD_REQUEST, "CHALLENGE4006", "챌린지 임베딩 계산 중 오류가 발생했습니다."),
-    EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4007", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
     EMBEDDING_INVALID_INPUT(HttpStatus.BAD_REQUEST, "CHALLENGE4008", "임베딩을 위한 텍스트는 필수입니다."),
     EMBEDDING_LENGTH_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE4009", "임베딩 길이가 올바르지 않습니다. (expected: 768)"),
-    CHALLENGE_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "진행 중인 챌린지가 아닙니다."), // feat/90
-    USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."), // develop
-    CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜는 내일 이후여야 합니다."), // develop
+    CHALLENGE_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "CHALLENGE40010", "진행 중인 챌린지가 아닙니다."),
+    USER_CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE40410", "해당 챌린지에 참가하지 않았습니다."),
+    CHALLENGE_INVALID_START_DATE(HttpStatus.BAD_REQUEST, "CHALLENGE40011", "챌린지 시작 날짜가 올바르지 않습니다."),
 	MAX_CHALLENGE_EXCEEDED(HttpStatus.BAD_REQUEST, "CHALLENGE40012", "참가할 수 있는 챌린지는 최대 5개입니다."),
 	STATICS_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE4042", "통계 데이터 생성에 실패했거나 존재하지 않습니다."),
     STATICS_NEGATIVE_VALUE(HttpStatus.BAD_REQUEST, "CHALLENGE40013", "통계 수치는 음수일 수 없습니다."),
     USER_FAVOR_REQUIRED_FIELD_MISSING(HttpStatus.BAD_REQUEST, "CHALLENGE40014", "필수 선호 정보가 누락되었습니다."),
-
+    CHALLENGE_CALCULATE_EMBEDDING(HttpStatus.BAD_REQUEST, "CHALLENGE40015", "챌린지 임베딩 계산 중 오류가 발생했습니다."),
+    EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE40016", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
 
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
@@ -97,7 +96,7 @@ public enum ErrorCode implements BaseCode{
     ROUND_NOT_STARTED(HttpStatus.BAD_REQUEST, "ROUND4003", "아직 시작되지 않은 라운드입니다."),
     ROUND_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ROUND4004", "이미 종료된 라운드입니다."),
     ROUND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUND4045", "라운드 기록을 찾을 수 없습니다."),
-    ROUND_NOT_CURRENT(HttpStatus.BAD_REQUEST, "ROUND4006", "현재 진행 중인 라운드에 대해서만 처리할 수 있습니다."),
+    ROUND_NOT_CURRENT(HttpStatus.BAD_REQUEST, "ROUND4006", "현재 진행 중인 라운드의 인증글에만 댓글을 작성할 수 있습니다."),
     ROUND_DECISION_PERIOD_NOT_OPEN(HttpStatus.BAD_REQUEST, "ROUND4007", "아직 라운드 연장/하차 결정 기간이 아닙니다."),
     ROUND_DECISION_INTENT_INVALID(HttpStatus.BAD_REQUEST, "ROUND4008", "연장/하차 의사결정 값이 올바르지 않습니다."),
     ROUND_DECISION_PERIOD_CLOSED(HttpStatus.BAD_REQUEST, "ROUND4009", "라운드 연장/하차 결정 기간이 지났습니다."),
@@ -134,6 +133,9 @@ public enum ErrorCode implements BaseCode{
 	ALREADY_REPORTED(HttpStatus.CONFLICT, "VERIFICATION40919", "이미 신고한 게시글입니다."),
     VERIFICATION_EDIT_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "VERIFICATION40020", "인증 요일 및 인증 시간 내에만 수정/삭제할 수 있습니다."),
     VERIFICATION_INVALID_IMAGE_KEY(HttpStatus.BAD_REQUEST, "VERIFICATION40021", "이미지 키는 null 또는 공백이 아닌 값이어야 합니다."),
+    VERIFICATION_DAY_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40022", "인증 가능한 요일이 아닙니다."),
+    VERIFICATION_TIME_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40023", "인증 가능한 시간대가 아닙니다."),
+
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FILE4002", "파일 크기가 제한을 초과했습니다."),
@@ -148,6 +150,7 @@ public enum ErrorCode implements BaseCode{
     COMMENT_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "COMMENT4006", "대댓글에는 답글을 달 수 없습니다."),
     COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "COMMENT4037", "댓글에 접근할 수 없습니다."),
     COMMENT_INVALID(HttpStatus.BAD_REQUEST, "COMMENT4008", "유효하지 않은 댓글입니다."),
+COMMENT_ADOPTED_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "COMMENT4009", "채택된 댓글은 삭제할 수 없습니다."),
 
     // follow
     CANNOT_FOLLOW_SELF(HttpStatus.BAD_REQUEST, "FOLLOW4001", "자기 자신을 팔로우할 수 없습니다."),

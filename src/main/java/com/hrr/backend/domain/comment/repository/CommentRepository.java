@@ -64,4 +64,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 	 */
 	@Query("SELECT MAX(c.anonymousNumber) FROM Comment c WHERE c.verification = :verification")
 	Integer findMaxAnonymousNumberByVerification(Verification verification);
+
+    /**
+     * 특정 인증글의 전체 댓글 수 조회 (대댓글 포함, 삭제된 댓글 제외)
+     * IsDeletedFalse 추가
+     */
+    long countByVerificationAndIsDeletedFalse(Verification verification);
 }

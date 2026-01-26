@@ -2,7 +2,6 @@ package com.hrr.backend.domain.user.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -75,8 +74,6 @@ public class UserServiceImpl implements UserService {
         // 차단 여부 확인 (양방향)
         boolean isBlockedByMe = userBlockRepository.existsByBlockerAndBlocked(currentUser, targetUser);
         boolean isBlockedByOther = userBlockRepository.existsByBlockerAndBlocked(targetUser, currentUser);
-
-        String profileImage = isBlockedByMe ? null : targetUser.getProfileImage();
 
         if (isBlockedByOther) {
             throw new GlobalException(ErrorCode.USER_NOT_FOUND);

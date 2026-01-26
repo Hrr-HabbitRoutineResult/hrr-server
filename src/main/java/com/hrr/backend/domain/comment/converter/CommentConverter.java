@@ -73,10 +73,14 @@ public class CommentConverter {
 
         // 프로필 이미지
         String userProfileUrl = null;
-        if (!needsMasking && !isAnonymous) {
-            // 소셜 플랫폼의 프로필: 이미 full URL이라 그대로 반환
-            // 직접 업로드한 이미지: AWS S3의 image Key만 저장되기에 prefix 추가 필요
-            userProfileUrl = s3UrlUtil.toFullUrl(commentOwner.getProfileImage());
+        if (!needsMasking) {
+            if (isAnonymous) {
+                // 익명 댓글: 마스킹된 기본 프로필 이미지 사용
+                userProfileUrl = null; // 또는 기본 익명 프로필 URL
+            } else {
+                // 실명 댓글: 실제 프로필 이미지
+                userProfileUrl = s3UrlUtil.toFullUrl(commentOwner.getProfileImage());
+            }
         }
 
         // 댓글 작성자가 해당 인증글(게시글)의 작성자인지 여부
