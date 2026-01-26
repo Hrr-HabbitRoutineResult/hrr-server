@@ -104,4 +104,26 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
      * 나를 팔로우하는 모든 관계 조회 (탈퇴 처리 시 사용)
      */
     List<Follow> findAllByFollowingIdAndStatus(Long followingId, FollowStatus status);
+
+    /**
+     * 나를 팔로우하는 '활동 중인' 사용자 수 조회
+     * @param userId 사용자 ID
+     * @return 활동 중인 팔로워 수
+     */
+    @Query("SELECT COUNT(f) FROM Follow f " +
+            "WHERE f.following.id = :userId " +
+            "AND f.status = 'APPROVED' " +
+            "AND f.follower.userStatus = 'ACTIVE'")
+    long countActiveFollowers(@Param("userId") Long userId);
+
+    /**
+     * 내가 팔로우하는 '활동 중인' 사용자 수 조회
+     * @param userId 사용자 ID
+     * @return 활동 중인 팔로잉 수
+     */
+    @Query("SELECT COUNT(f) FROM Follow f " +
+            "WHERE f.follower.id = :userId " +
+            "AND f.status = 'APPROVED' " +
+            "AND f.following.userStatus = 'ACTIVE'")
+    long countActiveFollowings(@Param("userId") Long userId);
 }

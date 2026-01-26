@@ -212,6 +212,11 @@ public class User extends BaseEntity {
         }
     }
 
+    public void updateFollowCounts(long followerCount, long followingCount) {
+        this.followerCount = followerCount;
+        this.followingCount = followingCount;
+    }
+
 	public void completeWithdrawal() {
 		this.name = "탈퇴한 사용자";
 		this.nickname = null; // 중복 방지 및 마스킹
