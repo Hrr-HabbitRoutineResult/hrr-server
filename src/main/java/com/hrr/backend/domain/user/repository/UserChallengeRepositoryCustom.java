@@ -20,6 +20,7 @@ public interface UserChallengeRepositoryCustom {
     /**
      * 사용자가 찜한 챌린지 목록 조회 (차단한 방장 제외 필터링 추가)
      * @param user 조회 대상 사용자
+     * @param blockedUserIds 조회 주체가 차단한 사용자 ID 목록 (추가)
      * @param pageable 페이징 정보
      * @return 찜한 챌린지 정보 Slice
      */
