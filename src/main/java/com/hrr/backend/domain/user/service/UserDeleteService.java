@@ -5,6 +5,7 @@ import java.util.List;
 import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
+import com.hrr.backend.domain.follow.service.FollowCountService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class UserDeleteService {
 
 	private final S3Service s3Service;
 	private final AuthService authService;
+	private final FollowCountService followCountService;
 
 	/**
 	 * 탈퇴 30일 후 완전한 탈퇴 처리
@@ -72,25 +74,20 @@ public class UserDeleteService {
 
         Long userId = user.getId();
 
-        // 내가 팔로우하던 사람들의 팔로워 카운트 벌크 감소
-        List<Follow> followings = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED);
-        if (!followings.isEmpty()) {
-            List<Long> followingIds = followings.stream()
-                    .map(f -> f.getFollowing().getId())
-                    .toList();
-            userRepository.decrementFollowerCounts(followingIds);
-            followRepository.deleteAllInBatch(followings);
-        }
+		// 1. 내가 팔로우하던 사람들의 ID를 가져옴
+		List<Long> followingIds = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED)
+				.stream().map(f -> f.getFollowing().getId()).toList();
 
-        // 나를 팔로우하던 사람들의 팔로잉 카운트 벌크 감소
-        List<Follow> followers = followRepository.findAllByFollowingIdAndStatus(userId, FollowStatus.APPROVED);
-        if (!followers.isEmpty()) {
-            List<Long> followerIds = followers.stream()
-                    .map(f -> f.getFollower().getId())
-                    .toList();
-            userRepository.decrementFollowingCounts(followerIds);
-            followRepository.deleteAllInBatch(followers);
-        }
+		// 2. 나를 팔로우하던 사람들의 ID를 가져옴
+		List<Long> followerIds = followRepository.findAllByFollowingIdAndStatus(userId, FollowStatus.APPROVED)
+				.stream().map(f -> f.getFollower().getId()).toList();
+
+		// 3. 관계 삭제 (이걸 먼저 해야 sync할 때 정확한 숫자가 나옴)
+		followRepository.deleteAllByUserId(userId);
+
+		// 4. 영향을 받은 모든 유저의 카운트 재계산 (벌크 -1보다 훨씬 안전!)
+		followingIds.forEach(followCountService::syncCounts);
+		followerIds.forEach(followCountService::syncCounts);
 
         // 유저 정보 마스킹 및 상태 변경
         user.completeWithdrawal();

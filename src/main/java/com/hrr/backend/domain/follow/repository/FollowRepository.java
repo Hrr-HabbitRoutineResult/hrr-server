@@ -6,6 +6,7 @@ import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -126,4 +127,10 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "AND f.status = 'APPROVED' " +
             "AND f.following.userStatus = 'ACTIVE'")
     long countActiveFollowings(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM Follow f " +
+            "WHERE f.follower.id = :userId " +
+            "OR f.following.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }
