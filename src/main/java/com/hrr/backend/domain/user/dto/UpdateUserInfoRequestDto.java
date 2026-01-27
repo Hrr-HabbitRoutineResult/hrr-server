@@ -12,8 +12,8 @@ import lombok.NoArgsConstructor;
 @Schema(description = "사용자 정보 수정 요청")
 public class UpdateUserInfoRequestDto {
 
-    @Schema(description = "닉네임 (1-20자)", example = "흐르르")
-    @Size(min = 1, max = 20, message = "닉네임은 1자 이상 20자 이하여야 합니다")
+    @Schema(description = "닉네임 (1-10자)", example = "흐르르")
+    @Size(min = 1, max = 10, message = "닉네임은 1자 이상 10자 이하여야 합니다")
     private String nickname;
 
     @Schema(description = "닉네임 변경 여부 (true: nickname 처리, false: nickname 무시)", example = "true")

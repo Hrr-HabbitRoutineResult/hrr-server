@@ -390,6 +390,11 @@ public class UserServiceImpl implements UserService {
                 throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
+            // 닉네임 10자 제한 체크
+            if (rawNickname.length() > 10) {
+                throw new GlobalException(ErrorCode.NICKNAME_TOO_LONG);
+            }
+
             // 값이 있는 경우 업데이트 진행
             String nickname = normalize(rawNickname);
 
