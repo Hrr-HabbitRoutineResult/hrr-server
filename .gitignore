@@ -48,3 +48,6 @@ logs/
 # macOS files
 .DS_Store
 **/.*DS_Store
+
+### Build / Generated ###
+src/main/generated/
