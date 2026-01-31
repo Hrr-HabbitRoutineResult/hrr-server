@@ -347,12 +347,14 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+        List<Long> blockedIds = userBlockRepository.findBlockedIdsByBlockerId(userId);
+
         // Pageable 객체 생성
         Pageable pageable = PageRequest.of(page, size);
 
         // Repository에서 찜한 챌린지 조회
         Slice<UserResponseDto.LikedChallengeDto> slice =
-                userChallengeRepository.findMarkedChallengesByUser(user, pageable);
+                userChallengeRepository.findMarkedChallengesByUser(user, blockedIds, pageable);
 
         // S3 URL 변환
         slice.getContent().forEach(dto ->
