@@ -82,8 +82,14 @@ public class UserResponseDto {
         @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
         private String thumbnailUrl;
 
-        @Schema(description = "현재 회차 (인증 성공 횟수)", example = "6")
+        @Schema(description = "챌린지 시작 여부", example = "true")
+        private Boolean isStarted;
+
+        @Schema(description = "현재 회차 (시작 전이면 null)", example = "3")
         private Integer currentRound;
+
+        @Schema(description = "시작까지 남은 일수 (시작했으면 null)", example = "5")
+        private Integer dday;
 
 		@Setter
 		@Schema(description = "인증 완료 여부", example = "false")

@@ -30,9 +30,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
         QUserChallenge qUserChallenge = QUserChallenge.userChallenge;
         QChallenge qChallenge = QChallenge.challenge;
         QRound qRound = QRound.round;
-        QRoundRecord qRoundRecord = QRoundRecord.roundRecord;
 
-        // 챌린지 기본 정보와 UserChallenge 정보 조회
         List<UserResponseDto.OngoingChallengeDto> content = jpaQueryFactory
                 .select(Projections.fields(UserResponseDto.OngoingChallengeDto.class,
                         qChallenge.id.as("challengeId"),
@@ -44,11 +42,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                 ))
                 .from(qUserChallenge)
                 .join(qUserChallenge.challenge, qChallenge)
-                .join(qChallenge.currentRound, qRound)
-                .join(qRoundRecord).on(
-                        qRoundRecord.round.eq(qRound)
-                                .and(qRoundRecord.userChallenge.eq(qUserChallenge))
-                )
+                .leftJoin(qChallenge.currentRound, qRound)
                 .where(
                         qUserChallenge.user.eq(user),
                         qUserChallenge.status.eq(ChallengeJoinStatus.JOINED)
