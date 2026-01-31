@@ -6,6 +6,7 @@ import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -95,10 +96,41 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "ORDER BY f.createdAt DESC")
     Slice<Follow> findPendingFollowRequests(@Param("userId") Long userId, @Param("status") FollowStatus status, Pageable pageable);
 
-	/**
-	 * 차단으로 인해 팔로우 관계를 삭제
-	 * @param blocker 차단 하는 사람 = follower
-	 * @param blocked 차단 당하는 사람 = following
-	 */
-	void deleteByFollowerAndFollowing(User blocker, User blocked);
+    /**
+     * 내가 팔로우하는 모든 관계 조회 (탈퇴 처리 시 사용)
+     */
+    List<Follow> findAllByFollowerIdAndStatus(Long followerId, FollowStatus status);
+
+    /**
+     * 나를 팔로우하는 모든 관계 조회 (탈퇴 처리 시 사용)
+     */
+    List<Follow> findAllByFollowingIdAndStatus(Long followingId, FollowStatus status);
+
+    /**
+     * 나를 팔로우하는 '활동 중인' 사용자 수 조회
+     * @param userId 사용자 ID
+     * @return 활동 중인 팔로워 수
+     */
+    @Query("SELECT COUNT(f) FROM Follow f " +
+            "WHERE f.following.id = :userId " +
+            "AND f.status = 'APPROVED' " +
+            "AND f.follower.userStatus = 'ACTIVE'")
+    long countActiveFollowers(@Param("userId") Long userId);
+
+    /**
+     * 내가 팔로우하는 '활동 중인' 사용자 수 조회
+     * @param userId 사용자 ID
+     * @return 활동 중인 팔로잉 수
+     */
+    @Query("SELECT COUNT(f) FROM Follow f " +
+            "WHERE f.follower.id = :userId " +
+            "AND f.status = 'APPROVED' " +
+            "AND f.following.userStatus = 'ACTIVE'")
+    long countActiveFollowings(@Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("DELETE FROM Follow f " +
+            "WHERE f.follower.id = :userId " +
+            "OR f.following.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

@@ -5,6 +5,7 @@ import com.hrr.backend.domain.follow.dto.FollowResponseDto;
 import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
+import com.hrr.backend.domain.follow.service.FollowCountService;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -30,6 +31,7 @@ public class FollowService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
+    private final FollowCountService followCountService;
 
     /**
      * 사용자 팔로우 (공개 계정: 즉시 승인, 비공개 계정: 요청)
@@ -91,18 +93,15 @@ public class FollowService {
 
         followRepository.save(follow);
 
-        // APPROVED 상태일 때만 카운트 증가 (공개 계정)
-        if (status == FollowStatus.APPROVED) {
-            currentUser.incrementFollowingCount();
-            followedUser.incrementFollowerCount();
-        }
-
         String message = status == FollowStatus.APPROVED
                 ? "User followed successfully"
                 : "Follow request sent successfully";
 
         log.info("사용자 팔로우 완료 - followerId: {}, followingId: {}, status: {}",
                 currentUserId, followedUserId, status);
+
+        followCountService.syncCounts(currentUserId);
+        followCountService.syncCounts(followedUserId);
 
         return FollowResponseDto.of(message, followedUserId, status);
     }
@@ -140,15 +139,12 @@ public class FollowService {
                     return new GlobalException(ErrorCode.FOLLOW_NOT_FOUND);
                 });
 
-        // APPROVED 상태였을 때만 카운트 감소
-        if (follow.getStatus() == FollowStatus.APPROVED) {
-            currentUser.decrementFollowingCount();
-            unfollowedUser.decrementFollowerCount();
-        }
-
         // 팔로우 관계 삭제
         followRepository.delete(follow);
         log.info("사용자 팔로우 취소 완료 - followerId: {}, followingId: {}", currentUserId, unfollowedUserId);
+
+        followCountService.syncCounts(currentUserId);
+        followCountService.syncCounts(unfollowedUserId);
 
         return FollowResponseDto.of("User unfollowed successfully", unfollowedUserId, null);
     }
@@ -190,11 +186,10 @@ public class FollowService {
         // 승인 처리
         follow.approve();
 
-        // 승인 시점에 카운트 증가
-        requester.incrementFollowingCount();
-        currentUser.incrementFollowerCount();
-
         log.info("팔로우 요청 승인 완료 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
+
+        followCountService.syncCounts(currentUserId);
+        followCountService.syncCounts(requesterId);
 
         return FollowResponseDto.of("Follow request approved successfully", requesterId, FollowStatus.APPROVED);
     }
@@ -227,6 +222,9 @@ public class FollowService {
         // 요청 삭제
         followRepository.delete(follow);
         log.info("팔로우 요청 거절 완료 - requesterId: {}, currentUserId: {}", requesterId, currentUserId);
+
+        followCountService.syncCounts(currentUserId);
+        followCountService.syncCounts(requesterId);
 
         return FollowResponseDto.of("Follow request rejected successfully", requesterId, null);
     }

@@ -2,6 +2,10 @@ package com.hrr.backend.domain.user.service;
 
 import java.util.List;
 
+import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
+import com.hrr.backend.domain.follow.service.FollowCountService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +33,11 @@ public class UserDeleteService {
 	private final UserChallengeRepository userChallengeRepository;
 	private final ChallengeRepository challengeRepository;
 	private final SocialAuthRepository socialAuthRepository;
+    private final FollowRepository followRepository;
 
 	private final S3Service s3Service;
 	private final AuthService authService;
+	private final FollowCountService followCountService;
 
 	/**
 	 * 탈퇴 30일 후 완전한 탈퇴 처리
@@ -52,9 +58,6 @@ public class UserDeleteService {
 		// S3에서 프로필 이미지 파일 삭제 - 소셜 플랫폼에서 제공된 이미지는 대상에서 제외
 		s3Service.deleteFileByKey(user.getProfileImage());
 
-		// 개인정보 마스킹 및 삭제
-		user.completeWithdrawal();
-
 		// 참여 중인 챌린지 인원수 감소 및 상태 변경
 		List<UserChallenge> activeChallenges = userChallengeRepository
 			.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
@@ -68,6 +71,26 @@ public class UserDeleteService {
 				log.error("일부 챌린지의 현재 참가 인원에 대한 업데이트가 진행되지 않았습니다. UserChallengeId: {}", uc.getId());
 			}
 		}
+
+        Long userId = user.getId();
+
+		// 1. 내가 팔로우하던 사람들의 ID를 가져옴
+		List<Long> followingIds = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED)
+				.stream().map(f -> f.getFollowing().getId()).toList();
+
+		// 2. 나를 팔로우하던 사람들의 ID를 가져옴
+		List<Long> followerIds = followRepository.findAllByFollowingIdAndStatus(userId, FollowStatus.APPROVED)
+				.stream().map(f -> f.getFollower().getId()).toList();
+
+		// 3. 관계 삭제 (이걸 먼저 해야 sync할 때 정확한 숫자가 나옴)
+		followRepository.deleteAllByUserId(userId);
+
+		// 4. 영향을 받은 모든 유저의 카운트 재계산 (벌크 -1보다 훨씬 안전!)
+		followingIds.forEach(followCountService::syncCounts);
+		followerIds.forEach(followCountService::syncCounts);
+
+        // 유저 정보 마스킹 및 상태 변경
+        user.completeWithdrawal();
 
 		userRepository.save(user);
 	}
