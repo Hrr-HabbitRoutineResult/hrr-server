@@ -1,13 +1,15 @@
 package com.hrr.backend.domain.challenge.repository;
 
-import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeLike;
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface ChallengeLikeRepository extends JpaRepository<ChallengeLike, Long> {
@@ -23,4 +25,15 @@ public interface ChallengeLikeRepository extends JpaRepository<ChallengeLike, Lo
     @Query("DELETE FROM ChallengeLike cl WHERE cl.user = :user AND cl.challenge = :challenge")
     int deleteByUserAndChallenge(@Param("user") User user,
                                  @Param("challenge") Challenge challenge);
+
+    @Query("""
+        select cl.challenge.id
+        from ChallengeLike cl
+        where cl.user.id = :userId
+          and cl.challenge.id in :challengeIds
+    """)
+    List<Long> findLikedChallengeIds(
+            @Param("userId") Long userId,
+            @Param("challengeIds") Collection<Long> challengeIds
+    );
 }
