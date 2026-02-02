@@ -66,20 +66,15 @@ public class ChallengeEmbeddingAsyncService {
         Challenge challengeRef = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
-        // 기존 row가 있으면 업데이트 / 없으면 생성
+        // 기존 row 업데이트
         ChallengeEmbedding entity = challengeEmbeddingRepository.findByChallengeId(challengeId)
-                .map(existing -> existing.toBuilder()
-                        .challenge(existing.getChallenge())
-                        .challengeText(challengeText)
-                        .challengeEmbedding(embeddingBytes)
-                        .build()
-                )
                 .orElseGet(() -> ChallengeEmbedding.builder()
                         .challenge(challengeRef)
-                        .challengeText(challengeText)
-                        .challengeEmbedding(embeddingBytes)
                         .build()
                 );
+
+        entity.setChallengeText(challengeText);
+        entity.setChallengeEmbedding(embeddingBytes);
 
         challengeEmbeddingRepository.save(entity);
 
