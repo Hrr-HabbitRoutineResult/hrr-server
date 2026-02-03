@@ -408,8 +408,13 @@ public class UserServiceImpl implements UserService {
                 throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
-            // 값이 있는 경우 업데이트 진행
+            // 공백 제거 후 정규화
             String nickname = normalize(rawNickname);
+
+            // 닉네임 10자 제한 체크
+            if (rawNickname.length() > 10) {
+                throw new GlobalException(ErrorCode.NICKNAME_TOO_LONG);
+            }
 
             // 본인의 기존 닉네임과 다른 경우에만 중복 체크 및 수정
             if (!nickname.equals(user.getNickname())) {
