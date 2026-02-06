@@ -3,6 +3,7 @@ package com.hrr.backend.domain.challenge.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.hrr.backend.global.common.enums.ChallengeStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
@@ -61,6 +62,7 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 				categoryEq(category),
 				startDateBetween(upcomingStartDate, upcomingEndDate),
 				titleContains(title),
+				qChallenge.status.ne(ChallengeStatus.FINISHED),
 				dayInExists(days)
 			)
 			.orderBy(getOrderSpecifier(sortType))
