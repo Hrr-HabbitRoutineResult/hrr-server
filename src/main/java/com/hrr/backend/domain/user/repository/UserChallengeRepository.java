@@ -80,4 +80,20 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
 	// 특정 사용자가 참가 중인 챌린지 정보를 상태에 따라 조회
 	List<UserChallenge> findByUserAndStatus(User user, ChallengeJoinStatus challengeJoinStatus);
 
+    // 내가 차단한 유저 목록에 포함된 유저가 OWNER로 들어가 있는 챌린지 id 조회
+    @Query("""
+    select uc.challenge.id
+    from UserChallenge uc
+    where uc.role = :role
+      and uc.user.id in (
+          select ub.blocked.id
+          from UserBlock ub
+          where ub.blocker.id = :userId
+      )
+    """)
+    List<Long> findChallengeIdsWhereOwnerIsBlockedByUser(
+            @Param("userId") Long userId,
+            @Param("role") UserChallengeRole role
+    );
+
 }

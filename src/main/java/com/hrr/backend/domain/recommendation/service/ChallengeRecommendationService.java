@@ -14,6 +14,8 @@ import com.hrr.backend.domain.recommendation.repository.RecommendationRepository
 import com.hrr.backend.domain.recommendation.repository.RecommendationResultRepository;
 import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
 import com.hrr.backend.domain.user.entity.UserFavor;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.service.UserFavorService;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.exception.GlobalException;
@@ -39,6 +41,7 @@ public class ChallengeRecommendationService {
     private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
     private final ChallengeStaticsService challengeStaticsService;
     private final ChallengeLikeRepository challengeLikeRepository;
+    private final UserChallengeRepository UserChallengeRepository;
 
     private final UserFavorService userFavorService;
 
@@ -56,6 +59,27 @@ public class ChallengeRecommendationService {
         List<ChallengeItemDto> allChallenges = recommendationRepository.findAllChallengeMeta();
         if (allChallenges.isEmpty()) {
             log.warn("[Recommend] No challenges found in DB. Returning empty result.");
+            return ChallengeRecommendResult.builder()
+                    .userId(request.getUserId())
+                    .recommendations(List.of())
+                    .build();
+        }
+        // 1.5) 차단한 사용자가 방장(OWNER)인 챌린지 제외
+        List<Long> excludedChallengeIds =
+                UserChallengeRepository.findChallengeIdsWhereOwnerIsBlockedByUser(
+                        request.getUserId(),
+                        UserChallengeRole.OWNER
+                );
+
+        if (!excludedChallengeIds.isEmpty()) {
+            Set<Long> excludedSet = new HashSet<>(excludedChallengeIds);
+            allChallenges = allChallenges.stream()
+                    .filter(ch -> !excludedSet.contains(ch.getChallengeId()))
+                    .toList();
+        }
+
+        if (allChallenges.isEmpty()) {
+            log.warn("[Recommend] All challenges excluded due to blocked owners. Returning empty result. userId={}", request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
