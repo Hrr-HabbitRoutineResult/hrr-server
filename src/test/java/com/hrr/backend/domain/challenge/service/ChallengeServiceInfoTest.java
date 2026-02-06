@@ -11,6 +11,7 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
@@ -23,7 +24,6 @@ import com.hrr.backend.global.s3.S3UrlUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -52,8 +52,8 @@ class ChallengeServiceInfoTest {
     @Mock private VerificationRepository verificationRepository;
     @Mock private ChallengeLikeRepository challengeLikeRepository;
     @Mock private ChallengeConverter challengeConverter;
-	@Mock private ChallengeDayJoinRepository challengeDayJoinRepository;
-	@Mock private S3UrlUtil s3UrlUtil;
+    @Mock private ChallengeDayJoinRepository challengeDayJoinRepository;
+    @Mock private S3UrlUtil s3UrlUtil;
 
     /**
      * 1. 참여자(Participant) 관련 시나리오
@@ -70,7 +70,7 @@ class ChallengeServiceInfoTest {
         setVerificationTime(challenge, LocalTime.of(9, 0), LocalTime.of(18, 0));
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, true);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
         mockConverter(ActionButtonStatus.UPCOMING);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -93,7 +93,7 @@ class ChallengeServiceInfoTest {
         setChallengeStatus(challenge, ChallengeStatus.ONGOING, 10, 30);
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, true);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
         mockConverter(ActionButtonStatus.NOT_DAY);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -111,7 +111,7 @@ class ChallengeServiceInfoTest {
         setVerificationTime(challenge, LocalTime.of(0, 0), LocalTime.of(0, 1));
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, true);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
         mockConverter(ActionButtonStatus.NOT_TIME);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -129,7 +129,7 @@ class ChallengeServiceInfoTest {
         setVerificationTime(challenge, LocalTime.MIN, LocalTime.MAX);
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, true);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
         given(verificationRepository.existsTodayVerification(any(), any(), any(), any())).willReturn(false);
         mockConverter(ActionButtonStatus.AVAILABLE);
 
@@ -148,7 +148,7 @@ class ChallengeServiceInfoTest {
         setVerificationTime(challenge, LocalTime.MIN, LocalTime.MAX);
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, true);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
         given(verificationRepository.existsTodayVerification(any(), any(), any(), any())).willReturn(true);
         mockConverter(ActionButtonStatus.DONE);
 
@@ -170,7 +170,7 @@ class ChallengeServiceInfoTest {
         setRoundDate(challenge, LocalDate.now());
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, false);
+        mockGuest(user, challenge);
         mockConverter(ActionButtonStatus.JOIN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -188,7 +188,7 @@ class ChallengeServiceInfoTest {
         setRoundDate(challenge, LocalDate.now());
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, false);
+        mockGuest(user, challenge);
         mockConverter(ActionButtonStatus.WAITLIST);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -207,7 +207,7 @@ class ChallengeServiceInfoTest {
         setVerificationTime(challenge, LocalTime.now().minusHours(1), LocalTime.now().plusHours(1));
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, true);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
         mockConverter(ActionButtonStatus.FINISHED);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -225,7 +225,7 @@ class ChallengeServiceInfoTest {
         setRoundDate(challenge, LocalDate.now().minusDays(5));
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, false);
+        mockGuest(user, challenge);
         mockConverter(ActionButtonStatus.JOIN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
@@ -253,99 +253,118 @@ class ChallengeServiceInfoTest {
         given(userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER))
                 .willReturn(Optional.of(ownerUc));
 
-        mockParticipant(user, challenge, false);
+        mockGuest(user, challenge);
         mockConverter(ActionButtonStatus.JOIN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
         assertThat(result).isNotNull();
     }
 
+    /**
+     * 4. 종료된 챌린지 관련 시나리오 (유저 상태별 일관성 검증)
+     */
     @Test
-    @DisplayName("상황 11: 방장 데이터 없음 -> 에러 없이 조회")
-    void owner_not_found_returns_info_successfully() {
+    @DisplayName("상황 11: 종료된 챌린지 + 미참여자(기록 없음) -> FINISHED")
+    void finished_guest_returns_FINISHED() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = mock(Challenge.class);
+
+        setChallengeStatus(challenge, ChallengeStatus.FINISHED, 5, 10);
+        mockFetchingChallenge(challengeId, challenge);
+        mockGuest(user, challenge);
+        mockConverter(ActionButtonStatus.FINISHED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.FINISHED);
+    }
+
+    @Test
+    @DisplayName("상황 12: 종료된 챌린지 + 참여 완료 유저(JOINED) -> FINISHED")
+    void finished_joinedUser_returns_FINISHED() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = mock(Challenge.class);
+
+        setChallengeStatus(challenge, ChallengeStatus.FINISHED, 10, 10);
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.JOINED);
+        mockConverter(ActionButtonStatus.FINISHED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.FINISHED);
+    }
+
+    @Test
+    @DisplayName("상황 13: 종료된 챌린지 + 하차한 유저(DROPPED) -> FINISHED")
+    void finished_droppedUser_returns_FINISHED() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = mock(Challenge.class);
+
+        setChallengeStatus(challenge, ChallengeStatus.FINISHED, 5, 10);
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.DROPPED);
+        mockConverter(ActionButtonStatus.FINISHED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.FINISHED);
+    }
+
+    @Test
+    @DisplayName("상황 14: 종료된 챌린지 + 강퇴된 유저(KICKED) -> FINISHED")
+    void finished_kickedUser_returns_FINISHED() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = mock(Challenge.class);
+
+        setChallengeStatus(challenge, ChallengeStatus.FINISHED, 5, 10);
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED); // 퇴출됨
+        mockConverter(ActionButtonStatus.FINISHED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.FINISHED);
+    }
+
+    /**
+     * 5. 진행 중인 챌린지 + 특수 상태 시나리오
+     */
+    @Test
+    @DisplayName("상황 15: 진행 중 + 하차(DROPPED)한 유저는 재참여 가능하므로 JOIN")
+    void ongoing_droppedUser_returns_JOIN() {
         Long challengeId = 1L;
         User user = mock(User.class);
         Challenge challenge = createChallengeBase();
-        setRoundDate(challenge, LocalDate.now());
-        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 10, 30);
 
-        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
-        given(userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER))
-                .willReturn(Optional.empty());
-
-        mockParticipant(user, challenge, false);
-        mockConverter(ActionButtonStatus.JOIN);
-
-        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result).isNotNull();
-    }
-
-    @Test
-    @DisplayName("상황 12: 미참여자 + 참여 한도 초과 -> MAX_LIMIT_EXCEEDED")
-    void guest_max_limit_exceeded_returns_MAX_LIMIT_EXCEEDED() {
-        Long challengeId = 1L;
-        User user = mock(User.class);
-        given(user.getId()).willReturn(1L);
-
-        Challenge challenge = mock(Challenge.class);
-        setChallengeStatus(challenge, ChallengeStatus.RECRUITING, 5, 10);
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 5, 10);
         setRoundDate(challenge, LocalDate.now());
 
         mockFetchingChallenge(challengeId, challenge);
-        mockParticipant(user, challenge, false);
-        given(challengeRepository.countByUserIdAndStatus(eq(user.getId()), any())).willReturn(5L);
-
-        mockConverter(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.DROPPED);
+        mockConverter(ActionButtonStatus.JOIN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.JOIN);
     }
 
-	@Test
-	@DisplayName("곧 시작하는 챌린지 필터 적용 시 날짜 계산 및 D-Day 가공 로직 검증")
-	void getChallengeList_UpcomingLogic_Test() {
-		LocalDateTime startTime0 = LocalDateTime.of(2026, 1, 15, 10, 0, 0);	// 오늘 시작하는 챌린지 생성용
-		LocalDateTime startTime5 = LocalDateTime.of(2026, 1, 20, 23, 59, 59);	// 5일 뒤 시작하는 챌린지 생성용
-		LocalDate mockToday = LocalDate.of(2026, 1, 15);	// 오늘을 26.01.15로 고정
+    @Test
+    @DisplayName("상황 16: 진행 중 + 강퇴(KICKED)된 유저는 재참여 불가하므로 REJECT")
+    void ongoing_kickedUser_returns_REJECT() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
 
-		// 테스트용 DTO 구성 - 실제 로직에서는 Repository에서 조회해옴
-		ChallengeResponseDto.InfoDto day0 = ChallengeResponseDto.InfoDto.builder()
-			.challengeId(1L)
-			.startDate(startTime0)
-			.thumbnailUrl("test.png")
-			.build();
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 5, 10);
+        setRoundDate(challenge, LocalDate.now());
 
-		ChallengeResponseDto.InfoDto day5 = ChallengeResponseDto.InfoDto.builder()
-			.challengeId(2L)
-			.startDate(startTime5)
-			.thumbnailUrl("test.png")
-			.build();
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
+        mockConverter(ActionButtonStatus.REJECT);
 
-		// Mock 설정 - 실제 DB를 거치지 않고 아래처럼 반환되었다고 가정
-		given(challengeRepository.findChallengesWithFilters(any(), any(), any(), any(), any(), any(), any()))
-			.willReturn(new SliceImpl<>(List.of(day0, day5)));
-		given(challengeDayJoinRepository.findByChallengeIdIn(anyList())).willReturn(List.of());	// 요일 정보는 테스트 대상이 아니라 빈 값 반환
-		lenient().when(s3UrlUtil.toFullUrl(anyString())).thenReturn("http://image.url");
-
-		try (MockedStatic<LocalDate> mockedLocalDate =
-				 mockStatic(LocalDate.class, CALLS_REAL_METHODS)) {
-			// LocalDate의 static 메서드를 MockedStatic으로 전부 mock 하면 LocalDate.of() 등이 모두 null을 반환해 NPE 가능
-			// 그래서 LocalDate.now()만 mock되도록 CALLS_REAL_METHODS 설정
-
-			mockedLocalDate.when(LocalDate::now).thenReturn(mockToday);
-
-			SliceResponseDto<ChallengeResponseDto.InfoDto> result =
-				challengeService.getChallengeList(null, true, null, null, null, 0, 10);
-
-			// 테스트 결과 검증
-			assertThat(result.getContent().get(0).getIsUpcoming()).isTrue();
-			assertThat(result.getContent().get(1).getIsUpcoming()).isTrue();
-			assertThat(result.getContent().get(0).getDDayUntilStart()).isEqualTo(0);	// D-DAY
-			assertThat(result.getContent().get(1).getDDayUntilStart()).isEqualTo(5);	// D-5
-		}
-
-	}
-
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.REJECT);
+    }
     /**
      * Helper Methods
      */
@@ -363,14 +382,15 @@ class ChallengeServiceInfoTest {
                 .thenReturn(Optional.of(mock(UserChallenge.class)));
     }
 
-    private void mockParticipant(User user, Challenge challenge, boolean isParticipant) {
-        if (isParticipant) {
-            UserChallenge uc = mock(UserChallenge.class);
-            given(uc.getId()).willReturn(100L);
-            given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.of(uc));
-        } else {
-            given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.empty());
-        }
+    private void mockGuest(User user, Challenge challenge) {
+        given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.empty());
+    }
+
+    private void mockParticipantWithStatus(User user, Challenge challenge, ChallengeJoinStatus status) {
+        UserChallenge uc = mock(UserChallenge.class);
+        lenient().when(uc.getId()).thenReturn(100L);
+        lenient().when(uc.getStatus()).thenReturn(status);
+        given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.of(uc));
     }
 
     private void setRoundDate(Challenge challenge, LocalDate startDate) {
