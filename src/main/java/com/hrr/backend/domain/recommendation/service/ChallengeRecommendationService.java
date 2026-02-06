@@ -41,7 +41,7 @@ public class ChallengeRecommendationService {
     private final ChallengeRepository challengeJpaRepository;   // Challenge 엔티티 조회용 JPA repo
     private final ChallengeStaticsService challengeStaticsService;
     private final ChallengeLikeRepository challengeLikeRepository;
-    private final UserChallengeRepository UserChallengeRepository;
+    private final UserChallengeRepository userChallengeRepository;
 
     private final UserFavorService userFavorService;
 
@@ -66,7 +66,7 @@ public class ChallengeRecommendationService {
         }
         // 1.5) 차단한 사용자가 방장(OWNER)인 챌린지 제외
         List<Long> excludedChallengeIds =
-                UserChallengeRepository.findChallengeIdsWhereOwnerIsBlockedByUser(
+                userChallengeRepository.findChallengeIdsWhereOwnerIsBlockedByUser(
                         request.getUserId(),
                         UserChallengeRole.OWNER
                 );
