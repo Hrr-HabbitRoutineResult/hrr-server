@@ -169,15 +169,22 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 유저 상태 확인 (참여 여부, 오늘 인증 여부)
 		boolean isParticipant = false;
 		boolean isCertifiedToday = false;
+		boolean isKicked = false; // 강퇴 여부 플래그 추가
 
         // 유저가 참여 중인지 확인
         Optional<UserChallenge> ucOp = userChallengeRepository.findByUserAndChallenge(user, challenge);
 
-        if (ucOp.isPresent()) {
-            isParticipant = true;
-            // 참여자라면 오늘 인증 여부 체크 (시간대 + 오늘 기준)
-            isCertifiedToday = checkTodayVerification(ucOp.get().getId(), challenge);
-        }
+		if (ucOp.isPresent()) {
+			UserChallenge uc = ucOp.get();
+			// 챌린지가 진행 중일 때만 오늘 인증 여부를 체크함
+			if (uc.getStatus() == ChallengeJoinStatus.JOINED && challenge.getStatus() != ChallengeStatus.FINISHED) {
+				isParticipant = true;
+				isCertifiedToday = checkTodayVerification(uc.getId(), challenge);
+			}
+			else if (uc.getStatus() == ChallengeJoinStatus.KICKED) {
+				isKicked = true;
+			}
+		}
 
 		// 챌린지 참여 개수 조회
 		boolean isMaxJoined = challengeRepository.countByUserIdAndStatus(user.getId(), ChallengeJoinStatus.JOINED) >= 5;
@@ -194,7 +201,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isOwnerActive = (owner != null) && (owner.getUserStatus() == UserStatus.ACTIVE);
 
 		// 버튼 상태 결정
-		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined);
+		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
 
 		// DTO 변환 및 반환
 		return challengeConverter.toHeaderInfoDto(
@@ -673,9 +680,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 		}
 
 		// 중복 참가 검증
-		if (userChallengeRepository.existsByUserAndChallenge(user, challenge)) {
-			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
-		}
+		userChallengeRepository.findByUserAndChallenge(user, challenge).ifPresent(uc -> {
+			if (uc.getStatus() == ChallengeJoinStatus.JOINED) {
+				throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
+			}
+			if (uc.getStatus() == ChallengeJoinStatus.KICKED) {
+				throw new GlobalException(ErrorCode.CHALLENGE_KICKED_USER);
+			}
+		});
 
 		// 정원 초과 검증
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
@@ -745,14 +757,19 @@ public class ChallengeServiceImpl implements ChallengeService {
      * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
      * (기획 따라 변경 가능)
      */
-	private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined) {
+	private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined, boolean isKicked) {
 
-		// 1. 챌린지 자체가 종료된 경우 (가장 먼저 체크)
+		// 1. 챌린지 자체가 종료된 경우
 		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
 			return ActionButtonStatus.FINISHED;
 		}
 
-		// 2. 참여자인 경우 (인증 관련 분기)
+		// 2. 강퇴된 유저의 경우
+		if (isKicked) {
+			return ActionButtonStatus.REJECT;
+		}
+
+		// 3. 참여자인 경우 (인증 관련 분기)
 		if (isParticipant) {
 			Round currentRound = challenge.getCurrentRound();
 
@@ -771,17 +788,17 @@ public class ChallengeServiceImpl implements ChallengeService {
 			return isCertifiedToday ? ActionButtonStatus.DONE : ActionButtonStatus.AVAILABLE;
 		}
 
-		// 3. 미참여자이면서 참여가 제한되는 경우
+		// 4. 미참여자이면서 참여가 제한되는 경우
 		if (isMaxJoined) {
 			return ActionButtonStatus.MAX_LIMIT_EXCEEDED;
 		}
 
-		// 4. 미참여자 정원 체크
+		// 5. 미참여자 정원 체크
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
 			return ActionButtonStatus.WAITLIST;
 		}
 
-		// 5. 그 외 참여 가능
+		// 6. 그 외 참여 가능
 		return ActionButtonStatus.JOIN;
 	}
 

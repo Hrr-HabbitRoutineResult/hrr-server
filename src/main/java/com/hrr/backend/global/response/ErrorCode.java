@@ -56,6 +56,7 @@ public enum ErrorCode implements BaseCode{
     USER_FAVOR_REQUIRED_FIELD_MISSING(HttpStatus.BAD_REQUEST, "CHALLENGE40014", "필수 선호 정보가 누락되었습니다."),
     CHALLENGE_CALCULATE_EMBEDDING(HttpStatus.BAD_REQUEST, "CHALLENGE40015", "챌린지 임베딩 계산 중 오류가 발생했습니다."),
     EMBEDDING_API_ERROR(HttpStatus.BAD_REQUEST, "CHALLENGE40016", "임베딩 API로부터 유효하지 않은 응답을 받았습니다."),
+    CHALLENGE_KICKED_USER(HttpStatus.FORBIDDEN, "CHALLENGE4031", "참가 자격이 제한된 챌린지입니다."),
 
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),

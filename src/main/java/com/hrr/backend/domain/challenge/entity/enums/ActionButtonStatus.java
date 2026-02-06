@@ -19,7 +19,8 @@ public enum ActionButtonStatus {
 
     // 3. 제한 상태 (DISABLED 세분화)
     FINISHED("종료된 챌린지"),
-    MAX_LIMIT_EXCEEDED("참여 개수 초과");
+    MAX_LIMIT_EXCEEDED("참여 개수 초과"),
+    REJECT("참가 신청 불가");;
 
     private final String description;
 }
