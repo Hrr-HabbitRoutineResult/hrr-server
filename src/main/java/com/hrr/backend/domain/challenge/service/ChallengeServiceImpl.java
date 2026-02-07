@@ -43,7 +43,6 @@ import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -300,7 +299,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 				.map(tuple -> Long.parseLong(Objects.requireNonNull(tuple.getValue())))
 				.toList();
 
-		List<ChallengeResponseDto.InfoDto> rawInfosFromRDB = challengeRepository.findChallengesByIds(challengeIds);
+		List<ChallengeResponseDto.InfoDto> rawInfosFromRDB = challengeRepository.findNotFinishedChallengesByIds(challengeIds);
 
 		// D-Day, isUpcoming, daysOfWeek 추가
 		List<ChallengeResponseDto.InfoDto> enrichedInfos = enrichChallengeInfo(rawInfosFromRDB);
