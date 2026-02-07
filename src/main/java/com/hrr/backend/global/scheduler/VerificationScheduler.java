@@ -24,10 +24,7 @@ public class VerificationScheduler {
 
 	private final RoundRecordRepository roundRecordRepository;
 
-	private final VerificationAbsenceLogRepository verificationAbsenceLogRepository;
 	private final VerificationAbsenceService verificationAbsenceService;
-
-	private final RoundRecordService roundRecordService;
 
 
 	@Scheduled(cron = "0 5 0 * * *") // 매일 00 : 05 실행
