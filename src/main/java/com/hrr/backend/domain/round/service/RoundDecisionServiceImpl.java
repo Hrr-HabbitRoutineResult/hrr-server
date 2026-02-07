@@ -93,23 +93,30 @@ public class RoundDecisionServiceImpl implements RoundDecisionService {
 
         /*
          * 결정 기간 로직:
-         * endDate - 2일 (Open) ~ endDate - 1일 (Close)
-         * 예: 라운드 종료일이 10일이면, 8일(Open) ~ 9일(Close 전까지? 로직상 8일 하루만 가능해보임)
-         * 기존 로직 유지하되 가독성 개선:
-         * decisionOpenDate = D-2
-         * decisionCloseDate = D-1 (이 날짜가 되면 닫힘? 혹은 이 날짜까지 가능?)
-         * 원본 로직: !today.isBefore(decisionCloseDate) -> today >= decisionCloseDate 이면 에러.
-         * 즉, [D-2] 하루만 열리는 매우 타이트한 기간임.
+         * [변경 후]
+         * - decisionOpenDate = endDate - 3일 (D-3, 18일)
+         * - decisionCloseDate = endDate - 2일 (D-2, 19일)
+         * - 결과: D-3 ~ D-2 (2일간) 가능
+         *
+         * [타임라인 예시] endDate = 21일
+         * - 18일(D-3) 09:00: 알림 발송
+         * - 18일 ~ 19일 23:59: 연장 여부 응답 가능
+         * - 20일 23:59: 무응답자 드랍
+         * - 21일 00:10: 라운드 전환
          */
-        LocalDate decisionOpenDate = endDate.minusDays(2);
-        LocalDate decisionCloseDate = endDate.minusDays(1);
+        LocalDate decisionOpenDate = endDate.minusDays(3);  // 수정: D-2 → D-3
+        LocalDate decisionCloseDate = endDate.minusDays(2); //수정: D-1 → D-2
 
+        // D-3 이전에는 아직 열리지 않음
         if (today.isBefore(decisionOpenDate)) {
             throw new GlobalException(ErrorCode.ROUND_DECISION_PERIOD_NOT_OPEN);
         }
-        // closeDate(D-1)가 되는 순간 기간 만료 처리 (D-2 하루만 가능)
-        if (!today.isBefore(decisionCloseDate)) {
-            throw new GlobalException(ErrorCode.ROUND_DECISION_PERIOD_CLOSED); // 에러코드 명칭 명확화 권장
+
+        // D-2를 넘어가면 기간 만료 (D-2 23:59까지 가능)
+        // !today.isBefore(decisionCloseDate) → today.isAfter(decisionCloseDate)
+        // 이유: D-2 당일까지 포함시키기 위함
+        if (today.isAfter(decisionCloseDate)) {
+            throw new GlobalException(ErrorCode.ROUND_DECISION_PERIOD_CLOSED);
         }
     }
 }
