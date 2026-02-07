@@ -77,10 +77,14 @@ public class AuthService {
         // Refresh Token 유효성 검증
         jwtService.validateToken(refreshToken);
 
+        // Redis에 저장된 Refresh Token과 비교 검증
+        if (!jwtService.isTokenBlacklisted(refreshToken)) {
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+        }
+
         // userId 추출
         Long userId = jwtService.extractUserId(refreshToken);
 
-        // Redis에 저장된 Refresh Token과 비교 검증
         if (!jwtService.validateRefreshToken(refreshToken, userId)) {
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
@@ -93,11 +97,9 @@ public class AuthService {
 
         // 기존 Refresh Token 블랙리스트 처리 (만료되지 않은 경우에만)
         Duration remainingExpiration = jwtService.getRemainingExpiration(refreshToken);
-        if (remainingExpiration.isNegative() || remainingExpiration.isZero()) {
-            // 이미 만료된 토큰은 블랙리스트에 넣을 필요 없음
-            return new AuthResponseDto.TokenReissueResponse(newAccessToken, newRefreshToken);
+        if (!remainingExpiration.isNegative() && !remainingExpiration.isZero()) {
+            jwtService.blacklistToken(refreshToken, remainingExpiration);
         }
-        jwtService.blacklistToken(refreshToken, remainingExpiration);
 
         return new AuthResponseDto.TokenReissueResponse(newAccessToken, newRefreshToken);
     }

@@ -6,12 +6,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -25,12 +28,19 @@ class JwtServiceTest {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    // [Code Review 반영] 하드코딩된 값 대신 설정 파일의 값을 주입받아 사용
+    @Value("${jwt.access-token-validity}")
+    private long accessTokenValidity;
+
     private static final Long TEST_USER_ID = 1L;
 
     @BeforeEach
     void setUp() {
-        // Redis 초기화
-        redisTemplate.keys("*").forEach(key -> redisTemplate.delete(key));
+        // [Code Review 반영] keys("*")는 블로킹 연산이므로 flushAll()로 대체하여 안전하게 초기화
+        redisTemplate.execute((RedisCallback<Object>) connection -> {
+            connection.serverCommands().flushAll();
+            return null;
+        });
     }
 
     @Test
@@ -72,7 +82,7 @@ class JwtServiceTest {
     @DisplayName("잘못된 Refresh Token 검증 실패")
     void validateRefreshTokenFail() {
         // given
-        String realToken = jwtService.generateRefreshToken(TEST_USER_ID);
+        // [Code Review 반영] 사용하지 않는 realToken 변수 삭제
         String fakeToken = "fake.refresh.token";
 
         // when & then
@@ -133,7 +143,7 @@ class JwtServiceTest {
 
     @Test
     @DisplayName("남은 만료 시간 계산 정확성")
-    void getRemainingExpiration() throws InterruptedException {
+    void getRemainingExpiration() {
         // given
         String accessToken = jwtService.generateAccessToken(TEST_USER_ID);
 
@@ -142,7 +152,10 @@ class JwtServiceTest {
 
         // then
         assertThat(remaining.toMillis()).isGreaterThan(0);
-        assertThat(remaining.toMinutes()).isLessThanOrEqualTo(30); // 기본 30분 이하
+
+        // 하드코딩(30분) 대신 설정된 유효 시간으로 검증 (밀리초 -> 분 변환)
+        long validityInMinutes = accessTokenValidity / (1000 * 60);
+        assertThat(remaining.toMinutes()).isLessThanOrEqualTo(validityInMinutes);
     }
 
     @Test

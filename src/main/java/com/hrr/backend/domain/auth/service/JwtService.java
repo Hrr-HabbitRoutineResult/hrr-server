@@ -154,6 +154,11 @@ public class JwtService {
     // Refresh Token 검증 (Redis에 저장된 토큰과 비교)
     public boolean validateRefreshToken(String refreshToken, Long userId) {
         String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + userId);
+
+        if (storedToken == null || refreshToken == null) {
+            return false;
+        }
+
         return refreshToken.equals(storedToken);
     }
 
