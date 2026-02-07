@@ -5,6 +5,9 @@ import com.hrr.backend.domain.user.entity.User;
 
 public interface ReportService {
 
+	// 부실 인증 신고
+	void reportWeakVerification(User reporter, Long verificationId);
+
 	// 인증 게시글 신고
 	void reportVerificationPost(User reporter, ReportRequestDto request);
 

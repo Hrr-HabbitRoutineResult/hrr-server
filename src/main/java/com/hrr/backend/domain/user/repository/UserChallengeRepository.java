@@ -15,10 +15,10 @@ import java.util.Optional;
 
 public interface UserChallengeRepository extends JpaRepository<UserChallenge, Long>, UserChallengeRepositoryCustom {
 
-    // 유저가 특정 챌린지에 이미 참여 중인지 확인
-    boolean existsByUserAndChallenge(User user, Challenge challenge);
+    // 유저가 특정 챌린지에 특정 상태로 참여한 데이터가 있는지 확인
+	boolean existsByUserAndChallengeAndStatus(User user, Challenge challenge, ChallengeJoinStatus status);
 
-    // 유저와 챌린지 객체로 내 참여 정보(엔티티) 조회 (이미 객체가 있을 때 사용)
+	// 유저와 챌린지 객체로 내 참여 정보(엔티티) 조회 (이미 객체가 있을 때 사용)
     Optional<UserChallenge> findByUserAndChallenge(User user, Challenge challenge);
 
     // 인증 생성할 때 유저-챌린지 매핑 조회용 (ID만 알 때 사용)
@@ -96,4 +96,6 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
             @Param("role") UserChallengeRole role
     );
 
+	// 특정 챌린지에 특정 상태로 참여 중인 유저 수 집계
+	long countByChallengeIdAndStatus(Long challengeId, ChallengeJoinStatus status);
 }

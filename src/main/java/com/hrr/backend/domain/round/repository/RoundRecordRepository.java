@@ -6,15 +6,25 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> {
+
+	// 비관적 락 조회
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT rr FROM RoundRecord rr WHERE rr.id = :id")
+	Optional<RoundRecord> findByIdWithPessimisticLock(@Param("id") Long id);
 
     /**
      * UserChallenge와 Round ID로 RoundRecord 조회
@@ -88,4 +98,23 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
 		"WHERE rr.round.id = :roundId " +
 		"AND rr.userChallenge.user.userStatus = :status")
 	int countParticipantsByRoundAndUserStatus(@Param("roundId") Long roundId, @Param("status") UserStatus status);
+
+	// 라운드가 진행 중인 챌린지에 참여 중인 유저가 어제 인증요일이었는데 미인증 한 사실이 있는지 조회
+	@Query("SELECT rr FROM RoundRecord rr " +
+		"JOIN rr.userChallenge uc " +
+		"JOIN uc.challenge c " +
+		"JOIN c.challengeDays cd " +
+		"WHERE c.status = com.hrr.backend.global.common.enums.ChallengeStatus.ONGOING " + // 진행 중인 챌린지
+		"AND uc.status = com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus.JOINED " + // 참여 중인 유저
+		"AND rr.round = c.currentRound " +	// 현재 라운드만 확인
+		"AND cd.dayOfWeek = :yesterdayChallengeDay " + // 어제 요일이 인증 요일인지 확인
+		"AND NOT EXISTS ( " +
+		"    SELECT v FROM Verification v " +
+		"    WHERE v.roundRecord = rr " +
+		"    AND CAST(v.createdAt AS LocalDate) = :yesterdayDate " + // 어제 날짜의 인증 기록이 없는지 확인 - CAST를 통해 LocalDate로의 캐스팅 효과
+		")")
+	List<RoundRecord> findAbsentees(
+		@Param("yesterdayChallengeDay") ChallengeDays yesterdayChallengeDay,
+		@Param("yesterdayDate") LocalDate yesterdayDate
+	);
 }

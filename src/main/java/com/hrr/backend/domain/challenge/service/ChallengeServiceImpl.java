@@ -524,7 +524,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		Challenge challenge = findChallenge(challengeId);
 
 		// 챌린지 참여 여부 확인
-		if (userChallengeRepository.existsByUserAndChallenge(user, challenge)) {
+		if (userChallengeRepository.existsByUserAndChallengeAndStatus(user, challenge, ChallengeJoinStatus.JOINED)) {
 			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
 		}
 

@@ -136,6 +136,8 @@ public enum ErrorCode implements BaseCode{
     VERIFICATION_INVALID_IMAGE_KEY(HttpStatus.BAD_REQUEST, "VERIFICATION40021", "이미지 키는 null 또는 공백이 아닌 값이어야 합니다."),
     VERIFICATION_DAY_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40022", "인증 가능한 요일이 아닙니다."),
     VERIFICATION_TIME_INVALID(HttpStatus.BAD_REQUEST, "VERIFICATION40023", "인증 가능한 시간대가 아닙니다."),
+	CANNOT_REPORT_OTHER_CHALLENGE_VERIFICATION(HttpStatus.CONFLICT, "VERIFICATION409110", "참가 중인 챌린지에서만 부실 인증 신고가 가능합니다."),
+
 
     // file upload
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE5001", "파일 업로드에 실패했습니다."),
