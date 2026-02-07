@@ -82,7 +82,6 @@ class JwtServiceTest {
     @DisplayName("잘못된 Refresh Token 검증 실패")
     void validateRefreshTokenFail() {
         // given
-        // [Code Review 반영] 사용하지 않는 realToken 변수 삭제
         String fakeToken = "fake.refresh.token";
 
         // when & then
@@ -111,7 +110,9 @@ class JwtServiceTest {
         jwtService.blacklistToken(accessToken, Duration.ofMinutes(5));
 
         // when & then
-        assertThat(jwtService.isTokenBlacklisted(accessToken)).isTrue();
+        assertThatThrownBy(() -> jwtService.validateToken(accessToken))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_INVALID_TOKEN);
     }
 
     @Test

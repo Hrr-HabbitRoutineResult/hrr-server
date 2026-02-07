@@ -78,7 +78,7 @@ public class AuthService {
         jwtService.validateToken(refreshToken);
 
         // Redis에 저장된 Refresh Token과 비교 검증
-        if (!jwtService.isTokenBlacklisted(refreshToken)) {
+        if (jwtService.isTokenBlacklisted(refreshToken)) {
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
 

@@ -68,6 +68,9 @@ public class JwtService {
     }
 
     public boolean validateToken(String token) {
+        if (isTokenBlacklisted(token)) {
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+        }
         try {
             Jwts.parserBuilder()
                     .setSigningKey(getSigningKey())
@@ -125,7 +128,7 @@ public class JwtService {
     }
 
     public boolean isTokenBlacklisted(String token) {
-        return redisTemplate.hasKey(BLACKLIST_PREFIX + token);
+        return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
     }
 
     public Duration getRemainingExpiration(String token) {
