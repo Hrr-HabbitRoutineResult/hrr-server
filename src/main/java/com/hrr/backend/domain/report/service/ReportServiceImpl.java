@@ -3,12 +3,17 @@ package com.hrr.backend.domain.report.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.report.dto.ReportRequestDto;
 import com.hrr.backend.domain.report.entity.UserReport;
 import com.hrr.backend.domain.report.entity.VerificationPostReport;
+import com.hrr.backend.domain.report.entity.WeakVerificationReport;
 import com.hrr.backend.domain.report.repository.UserReportRepository;
 import com.hrr.backend.domain.report.repository.VerificationPostReportRepository;
+import com.hrr.backend.domain.report.repository.WeakVerificationReportRepository;
+import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -29,6 +34,45 @@ public class ReportServiceImpl implements ReportService {
 
 	private final UserRepository userRepository;
 	private final UserReportRepository userReportRepository;
+
+	private final UserChallengeRepository userChallengeRepository;
+
+	private final WeakVerificationReportRepository weakVerificationReportRepository;
+
+	@Override
+	@Transactional
+	public void reportWeakVerification(User reporter,Long verificationId) {
+		// 신고 대상 조회(Verification)
+		Verification targetVerification = verificationRepository.findByIdWithPessimisticLock(verificationId)
+			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+		// 피신고자 정보 조회(RoundRecord)
+		RoundRecord targetRecord = targetVerification.getRoundRecord();
+
+		// 권한 검증: 신고자와 피신고자가 동일 챌린지에 참여 중인지 확인 - 검증 완료 시 다음 단계로 이동
+		validateChallengeParticipation(reporter, targetVerification.getUserChallenge().getChallenge());
+
+		// 신고 내역 저장
+		WeakVerificationReport report = WeakVerificationReport.builder()
+			.reporter(reporter)
+			.verification(targetVerification)
+			.roundRecord(targetRecord)
+			.build();
+		weakVerificationReportRepository.save(report);
+
+		// Todo: 경고 횟수를 업데이트 후 퇴출 여부를 결정하는 메소드 호출
+	}
+
+	/**
+	 * 신고자와 피신고자가 같은 챌린지에 참여하고 있는지를 검증
+	 * @param reporter 신고자 User 객체
+	 * @param challenge 확인하려는 챌린지
+	 */
+	private void validateChallengeParticipation(User reporter, Challenge challenge) {
+		if (!userChallengeRepository.existsByUserAndChallenge(reporter, challenge)) {
+			throw new GlobalException(ErrorCode.CANNOT_REPORT_OTHER_CHALLENGE_VERIFICATION);
+		}
+	}
 
 	@Override
 	@Transactional
