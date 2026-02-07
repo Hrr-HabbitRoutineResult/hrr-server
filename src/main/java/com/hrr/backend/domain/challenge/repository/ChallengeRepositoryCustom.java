@@ -24,6 +24,6 @@ public interface ChallengeRepositoryCustom {
 		Pageable pageable
 	);
 
-	// 챌린지 id 목록으로 정보 조회
-	List<ChallengeResponseDto.InfoDto> findChallengesByIds(List<Long> ids);
+	// 챌린지 id 목록으로 정보 조회(단, 종료된 챌린지는 제외)
+	List<ChallengeResponseDto.InfoDto> findNotFinishedChallengesByIds(List<Long> ids);
 }

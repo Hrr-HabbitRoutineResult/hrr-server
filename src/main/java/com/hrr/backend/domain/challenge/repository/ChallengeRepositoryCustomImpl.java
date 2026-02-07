@@ -15,6 +15,7 @@ import com.hrr.backend.domain.challenge.entity.QChallenge;
 import com.hrr.backend.domain.challenge.entity.QChallengeDayJoin;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeDays;
+import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.SortType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
@@ -81,7 +82,7 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 
 
 	@Override
-	public List<ChallengeResponseDto.InfoDto> findChallengesByIds(List<Long> ids) {
+	public List<ChallengeResponseDto.InfoDto> findNotFinishedChallengesByIds(List<Long> ids) {
 		return jpaQueryFactory
 			.select(Projections.bean(ChallengeResponseDto.InfoDto.class,
 				qChallenge.id.as("challengeId"),
@@ -95,7 +96,7 @@ public class ChallengeRepositoryCustomImpl implements ChallengeRepositoryCustom{
 
 			))
 			.from(qChallenge)
-			.where(qChallenge.id.in(ids))
+			.where(qChallenge.id.in(ids), qChallenge.status.ne(ChallengeStatus.FINISHED))
 			.fetch();
 	}
 
