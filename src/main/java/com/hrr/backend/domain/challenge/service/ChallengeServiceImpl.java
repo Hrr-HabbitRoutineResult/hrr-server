@@ -497,18 +497,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 	}
 
 	private void createRoundRecordOrFail(Challenge challenge, UserChallenge userChallenge) {
-		Round currentRound = challenge.getCurrentRound();
+		Round currentRound = challenge.getCurrentRound(); //
 
 		// 챌린지가 있는데 라운드가 없는 건 서버 에러
 		if (currentRound == null) {
-			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
+			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR); //
 		}
 
-		RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
-				currentRound,
-				userChallenge
-		);
-		roundRecordRepository.save(roundRecord);
+		// 이미 기록이 존재하는지 체크
+		boolean isExist = roundRecordRepository.existsByUserChallengeAndRound(userChallenge, currentRound);
+
+		if (!isExist) {
+			// 기록이 없을 때만 신규 생성
+			RoundRecord roundRecord = roundConverter.toRoundRecordEntity(
+					currentRound,
+					userChallenge
+			);
+			roundRecordRepository.save(roundRecord);
+		}
 	}
 
 	@Override
