@@ -210,7 +210,7 @@ public class AuthService {
                 : tokenHeader;
 
         // userId 추출
-        Long userId = jwtService.extractUserId(token);
+        Long userId = jwtService.getUserIdFromToken(token);
 
         // Access Token 블랙리스트 처리
         Duration remainingExpiration = jwtService.getRemainingExpiration(token);
@@ -258,13 +258,19 @@ public class AuthService {
         SocialAuth socialAuth = socialAuthRepository.findByUser(user)
                 .orElseThrow(() -> new GlobalException(ErrorCode.AUTH_INFO_NOT_FOUND));
 
-        switch (socialAuth.getSocialType()) {
-            case NAVER -> naverAuthService.revoke(socialAuth.getSocialRefreshToken());
-            case APPLE -> appleAuthService.revoke(socialAuth.getSocialRefreshToken());
-            case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
-            default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
+        try {
+            switch (socialAuth.getSocialType()) {
+                case NAVER -> naverAuthService.revoke(socialAuth.getSocialRefreshToken());
+                case APPLE -> appleAuthService.revoke(socialAuth.getSocialRefreshToken());
+                case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
+                default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
+            }
+        } catch (Exception e) {
+            log.error("Social revoke failed for userId: {}", userId, e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+        } finally {
+            // 외부 연동 해제 실패 여부와 상관없이 내부 Refresh Token은 삭제하여 재로그인 방지
+            jwtService.deleteRefreshToken(userId);
         }
-        jwtService.deleteRefreshToken(userId);
-    }
-
+}
 }

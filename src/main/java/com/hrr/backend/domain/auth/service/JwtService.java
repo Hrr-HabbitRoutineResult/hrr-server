@@ -110,6 +110,22 @@ public class JwtService {
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
     }
+    public Long getUserIdFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            return Long.parseLong(claims.getSubject());
+        } catch (ExpiredJwtException e) {
+            // 만료된 토큰에서도 Claims(Subject=UserId) 추출 가능
+            return Long.parseLong(e.getClaims().getSubject());
+        } catch (Exception e) {
+            // 그 외 서명 불일치 등은 유효하지 않은 토큰 처리
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+        }
+    }
 
     public String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
