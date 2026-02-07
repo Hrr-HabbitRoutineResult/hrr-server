@@ -14,6 +14,7 @@ import com.hrr.backend.domain.report.repository.WeakVerificationReportRepository
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.service.RoundRecordService;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
@@ -89,7 +90,7 @@ public class ReportServiceImpl implements ReportService {
 	 * @param challenge 확인하려는 챌린지
 	 */
 	private void validateChallengeParticipation(User reporter, Challenge challenge) {
-		if (!userChallengeRepository.existsByUserAndChallenge(reporter, challenge)) {
+		if (!userChallengeRepository.existsByUserAndChallengeAndStatus(reporter, challenge, ChallengeJoinStatus.JOINED)) {
 			throw new GlobalException(ErrorCode.CANNOT_REPORT_OTHER_CHALLENGE_VERIFICATION);
 		}
 	}
