@@ -96,4 +96,6 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
             @Param("role") UserChallengeRole role
     );
 
+	// 특정 챌린지에 특정 상태로 참여 중인 유저 수 집계
+	long countByChallengeIdAndStatus(Long challengeId, ChallengeJoinStatus status);
 }

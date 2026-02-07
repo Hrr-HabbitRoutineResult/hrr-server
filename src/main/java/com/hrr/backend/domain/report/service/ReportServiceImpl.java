@@ -12,6 +12,7 @@ import com.hrr.backend.domain.report.repository.UserReportRepository;
 import com.hrr.backend.domain.report.repository.VerificationPostReportRepository;
 import com.hrr.backend.domain.report.repository.WeakVerificationReportRepository;
 import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.service.RoundRecordService;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -39,6 +40,8 @@ public class ReportServiceImpl implements ReportService {
 
 	private final WeakVerificationReportRepository weakVerificationReportRepository;
 
+	private final RoundRecordService roundRecordService;
+
 	@Override
 	@Transactional
 	public void reportWeakVerification(User reporter,Long verificationId) {
@@ -60,7 +63,8 @@ public class ReportServiceImpl implements ReportService {
 			.build();
 		weakVerificationReportRepository.save(report);
 
-		// Todo: 경고 횟수를 업데이트 후 퇴출 여부를 결정하는 메소드 호출
+		// 경고 횟수를 업데이트 후 퇴출 여부를 결정하는 메소드 호출
+		roundRecordService.synchronizeWarnCount(targetRecord.getId());
 	}
 
 	/**
