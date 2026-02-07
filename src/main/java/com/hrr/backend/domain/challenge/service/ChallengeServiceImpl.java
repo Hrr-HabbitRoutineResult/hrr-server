@@ -469,14 +469,20 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 비즈니스 룰 검증
 		validateJoinRequest(challenge, user, req.getPassword());
 
-		// 참가 처리
-		UserChallenge userChallenge = userChallengeConverter.toChallenger(user, challenge);
+		// 기존 참여 기록이 있는지 확인 (유니크 제약 조건 충돌 방지)
+		Optional<UserChallenge> existingUcOp = userChallengeRepository.findByUserAndChallenge(user, challenge);
 
-		try {
+		UserChallenge userChallenge;
+		if (existingUcOp.isPresent()) {
+			// 기존 기록이 있다면 (validateJoinRequest를 통과했으므로 DROPPED 상태임) 상태만 JOINED로 변경
+			userChallenge = existingUcOp.get();
+			userChallenge.updateStatus(ChallengeJoinStatus.JOINED);
+		} else {
+			// 기록이 없다면 신규 생성
+			userChallenge = userChallengeConverter.toChallenger(user, challenge);
 			userChallengeRepository.save(userChallenge);
-		} catch (DataIntegrityViolationException e) {
-			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_JOINED);
 		}
+
 		// 챌린지 인원 업데이트
 		challenge.increaseCurrentParticipants();
 
