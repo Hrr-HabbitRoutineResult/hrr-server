@@ -36,7 +36,7 @@ public class RoundRecordServiceImpl implements RoundRecordService {
 	@Transactional
 	public void synchronizeWarnCount(Long roundRecordId) {
 		// 라운드 기록 조회
-		RoundRecord roundRecord = roundRecordRepository.findById(roundRecordId)
+		RoundRecord roundRecord = roundRecordRepository.findByIdWithPessimisticLock(roundRecordId)
 			.orElseThrow(() -> new GlobalException(ErrorCode.ROUND_RECORD_NOT_FOUND));
 
 		// 부실 인증 신고 수와 미인증 로그 수 조회

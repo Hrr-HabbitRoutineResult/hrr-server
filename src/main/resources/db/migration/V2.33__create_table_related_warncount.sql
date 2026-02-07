@@ -5,7 +5,7 @@ BEGIN
     -- 1 . round_record 테이블에 version 컬럼 추가 (없을 경우에만)
     IF NOT EXISTS (
         SELECT * FROM information_schema.COLUMNS
-        WHERE TABLE_NAME = 'round_record' AND COLUMN_NAME = 'version'
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'round_record' AND COLUMN_NAME = 'version'
     ) THEN
         ALTER TABLE `round_record` ADD COLUMN `version` BIGINT DEFAULT 0;
     END IF;

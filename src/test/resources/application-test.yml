@@ -6,7 +6,9 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop # 테스트 후 삭제
-      globally_quoted_identifiers: true
+    properties:
+          hibernate:
+            globally_quoted_identifiers: true
   config:
     activate:
       on-profile: "test"

@@ -9,6 +9,7 @@ import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,7 +17,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> {
+
+	// 비관적 락 조회
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT rr FROM RoundRecord rr WHERE rr.id = :id")
+	Optional<RoundRecord> findByIdWithPessimisticLock(@Param("id") Long id);
 
     /**
      * UserChallenge와 Round ID로 RoundRecord 조회
