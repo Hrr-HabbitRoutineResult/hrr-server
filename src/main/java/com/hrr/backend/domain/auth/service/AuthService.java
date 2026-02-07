@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.auth.service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import com.hrr.backend.domain.auth.dto.AuthRequestDto;
@@ -12,6 +13,8 @@ import com.hrr.backend.domain.auth.entity.SocialAuth;
 import com.hrr.backend.domain.auth.entity.enums.SocialType;
 import com.hrr.backend.domain.auth.repository.SocialAuthRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
@@ -85,7 +88,10 @@ public class AuthService {
         // userId 추출
         Long userId = jwtService.extractUserId(refreshToken);
 
-        if (!jwtService.validateRefreshToken(refreshToken, userId)) {
+        String storedRefreshToken = jwtService.getAndDeleteRefreshToken(userId);
+
+        // 저장된 토큰이 없거나(이미 사용됨/만료됨), 요청한 토큰과 다를 경우 실패 처리
+        if (storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)) {
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
 
@@ -143,7 +149,9 @@ public class AuthService {
 
             String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
             String appleRefreshToken = appleTokens.get("refresh_token");
-
+            if (appleRefreshToken == null) {
+                appleRefreshToken = ""; // 또는 null 상태로 전달하되 upsert 로직에서 무시하도록 처리
+            }
             User user = socialUserService.upsertAppleUser(socialId, appleRefreshToken, request.getName());
 
             String accessToken = jwtService.generateAccessToken(user.getId());
@@ -215,11 +223,28 @@ public class AuthService {
     }
 
     @Transactional
-    public void withdraw(Long userId) {
+    public void withdraw(Long userId, String tokenHeader) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
         user.withdraw();
+
+        List<UserChallenge> userChallenges = userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
+        userChallenges.forEach(userChallenge -> {
+            // 챌린지 엔티티의 인원 수 감소 로직 호출
+            userChallenge.getChallenge().decreaseCurrentParticipants();
+            // 상태 변경
+            userChallenge.updateStatus(ChallengeJoinStatus.DROPPED);
+        });
+
+        // Access Token 블랙리스트 처리
+        if (tokenHeader != null) {
+            String token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
+            Duration remainingExpiration = jwtService.getRemainingExpiration(token);
+            if (!remainingExpiration.isNegative() && !remainingExpiration.isZero()) {
+                jwtService.blacklistToken(token, remainingExpiration);
+            }
+        }
 
         // 탈퇴 시 Refresh Token 삭제
         jwtService.deleteRefreshToken(userId);

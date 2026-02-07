@@ -165,6 +165,11 @@ public class JwtService {
         return refreshToken.equals(storedToken);
     }
 
+    // Redis에서 키를 조회함과 동시에 삭제하여 동시성 문제를 해결
+    public String getAndDeleteRefreshToken(Long userId) {
+        return redisTemplate.opsForValue().getAndDelete(REFRESH_TOKEN_PREFIX + userId);
+    }
+
     // Refresh Token 삭제 (로그아웃 시 사용)
     public void deleteRefreshToken(Long userId) {
         redisTemplate.delete(REFRESH_TOKEN_PREFIX + userId);
