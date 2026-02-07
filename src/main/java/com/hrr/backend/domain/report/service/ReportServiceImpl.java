@@ -52,6 +52,16 @@ public class ReportServiceImpl implements ReportService {
 		// 피신고자 정보 조회(RoundRecord)
 		RoundRecord targetRecord = targetVerification.getRoundRecord();
 
+		// 자기 신고 방지
+			if (targetVerification.getUserChallenge().getUser().getId().equals(reporter.getId())) {
+				throw new GlobalException(ErrorCode.CANNOT_REPORT_OWN_POST);
+			}
+
+		// 중복 신고 방지
+			if (weakVerificationReportRepository.existsByReporterAndVerification(reporter, targetVerification)) {
+			throw new GlobalException(ErrorCode.ALREADY_REPORTED);
+		}
+
 		// 권한 검증: 신고자와 피신고자가 동일 챌린지에 참여 중인지 확인 - 검증 완료 시 다음 단계로 이동
 		validateChallengeParticipation(reporter, targetVerification.getUserChallenge().getChallenge());
 
