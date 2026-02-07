@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 public class ChallengeRequestDto {
 
@@ -83,6 +84,7 @@ public class ChallengeRequestDto {
     }
 
     @Getter
+    @Setter
     @NoArgsConstructor
     @Schema(description = "챌린지 참가 요청 DTO")
     public static class JoinChallengeDto {
