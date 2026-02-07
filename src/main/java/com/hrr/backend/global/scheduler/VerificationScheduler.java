@@ -10,21 +10,25 @@ import org.springframework.transaction.annotation.Transactional;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.service.RoundRecordService;
-import com.hrr.backend.domain.verification.entity.VerificationAbsenceLog;
 import com.hrr.backend.domain.verification.repository.VerificationAbsenceLogRepository;
+import com.hrr.backend.domain.verification.service.VerificationAbsenceService;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class VerificationScheduler {
 
 	private final RoundRecordRepository roundRecordRepository;
 
 	private final VerificationAbsenceLogRepository verificationAbsenceLogRepository;
+	private final VerificationAbsenceService verificationAbsenceService;
 
 	private final RoundRecordService roundRecordService;
+
 
 	@Scheduled(cron = "0 5 0 * * *") // 매일 00 : 05 실행
 	@Transactional
@@ -40,15 +44,17 @@ public class VerificationScheduler {
 		// 미인증 대상자 조회
 		List<RoundRecord> absentees = roundRecordRepository.findAbsentees(yesterdayChallengeDay, yesterdayDate);
 
-		for (RoundRecord record : absentees) {
-			// 미인증 로그 저장
-			verificationAbsenceLogRepository.save(VerificationAbsenceLog.builder()
-				.roundRecord(record)
-				.absenceDate(yesterdayDate)	// 인증이 완료되지 않은 요일은 체크 대상인 어제이므로 어제를 미인증날짜로 기록
-				.build());
+		log.info("미인증 대상자 {}건 처리 시작", absentees.size());
+		int failCount = 0;
 
-			// 경고 횟수를 업데이트 후 퇴출 여부를 결정하는 메소드 호출
-			roundRecordService.synchronizeWarnCount(record.getId());
+		for (RoundRecord record : absentees) {
+			try {
+				verificationAbsenceService.processAbsentee(record, yesterdayDate); // 인증이 완료되지 않은 요일은 체크 대상인 어제이므로 어제를 미인증날짜로 기록
+			} catch (Exception e) {
+				log.error("미인증 처리 실패 - roundRecordId: {}", record.getId(), e);
+				failCount++;
+			}
 		}
+		log.info("미인증 처리 완료 - 총: {}, 실패: {}", absentees.size(), failCount);
 	}
 }
