@@ -66,7 +66,7 @@ public class ReportServiceImpl implements ReportService {
 
 		// 중복 신고 방지
 			if (weakVerificationReportRepository.existsByReporterAndVerification(reporter, targetVerification)) {
-			throw new GlobalException(ErrorCode.ALREADY_REPORTED);
+				throw new GlobalException(ErrorCode.ALREADY_REPORTED);
 		}
 
 		// 권한 검증: 신고자와 피신고자가 동일 챌린지에 참여 중인지 확인 - 검증 완료 시 다음 단계로 이동
