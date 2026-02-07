@@ -239,6 +239,7 @@ public class AuthService {
             case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
             default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
         }
+        jwtService.deleteRefreshToken(userId);
     }
 
 }
