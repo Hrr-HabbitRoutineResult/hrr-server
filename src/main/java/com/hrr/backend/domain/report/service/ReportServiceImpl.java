@@ -49,6 +49,12 @@ public class ReportServiceImpl implements ReportService {
 		Verification targetVerification = verificationRepository.findByIdWithPessimisticLock(verificationId)
 			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+		// 차단 확인 (가장 먼저!)
+		// 이미 게시글 신고 5회 누적으로 차단된 글이라면 다른 검증을 할 필요도 없이 바로 예외를 던짐
+		if (VerificationStatus.BLOCKED.equals(targetVerification.getStatus())) {
+			throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+		}
+
 		// 피신고자 정보 조회(RoundRecord)
 		RoundRecord targetRecord = targetVerification.getRoundRecord();
 
