@@ -25,6 +25,7 @@ import lombok.NoArgsConstructor;
 		)
 	}
 )
+// 부실인증 신고를 위한 엔티티
 public class WeakVerificationReport extends BaseEntity {
 
 	@Id
