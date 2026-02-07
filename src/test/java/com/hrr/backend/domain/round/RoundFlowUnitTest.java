@@ -1,6 +1,6 @@
 package com.hrr.backend.domain.round;
 
-import static org.assertj.core.api.Assertions.assertThat; // 추가됨
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -15,7 +15,7 @@ import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.dto.RoundDecisionRequestDto;
-import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto; // 추가됨
+import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
@@ -24,6 +24,7 @@ import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.round.service.RoundDecisionServiceImpl;
 import com.hrr.backend.domain.round.service.RoundDropServiceImpl;
 import com.hrr.backend.domain.round.service.RoundLifecycleServiceImpl;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
@@ -64,9 +65,209 @@ class RoundFlowUnitTest {
         }).when(transactionTemplate).executeWithoutResult(any());
     }
 
-    // -------------------------------------------------------------------------
-    // 1) RoundDecisionServiceImpl 단위 테스트
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // 추가: 연장 가능 기간 검증 테스트 (D-3 ~ D-2)
+    // =========================================================================
+
+    @Test
+    @DisplayName("[수정된 로직] D-4일에는 연장 불가 (아직 열리지 않음)")
+    void decideNextRound_D_minus_4_shouldFail_notOpenYet() {
+        // given
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        // 수정: 현재 시점 기준 상대 날짜로 설정
+        LocalDate today = LocalDate.now(); // 현재 날짜
+        LocalDate endDate = today.plusDays(4); // 4일 후 종료
+
+        Challenge challenge = mock(Challenge.class);
+        Round currentRound = mock(Round.class);
+        UserChallenge uc = mock(UserChallenge.class);
+
+        when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
+        when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
+        when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+        when(challenge.getCurrentRound()).thenReturn(currentRound);
+
+        when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
+        when(currentRound.getEndDate()).thenReturn(endDate);
+
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
+
+        // when & then
+        assertThatThrownBy(() -> roundDecisionService.decideNextRound(userId, challengeId, request))
+                .isInstanceOf(GlobalException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ROUND_DECISION_PERIOD_NOT_OPEN);
+
+        verifyNoInteractions(roundRecordRepository);
+    }
+
+    @Test
+    @DisplayName(" [수정된 로직] D-3일에는 연장 가능 (기간 시작)")
+    void decideNextRound_D_minus_3_shouldSucceed() {
+        // given
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        // 수정: 현재 시점 기준 상대 날짜로 설정
+        LocalDate today = LocalDate.now(); // 현재 날짜
+        LocalDate endDate = today.plusDays(3); // 3일 후 종료
+
+        Challenge challenge = mock(Challenge.class);
+        Round currentRound = mock(Round.class);
+        UserChallenge uc = mock(UserChallenge.class);
+        RoundRecord rr = mock(RoundRecord.class);
+        User user = mock(User.class);
+
+        when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
+        when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
+        when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+        when(uc.getUser()).thenReturn(user);
+        when(challenge.getCurrentRound()).thenReturn(currentRound);
+        when(currentRound.getId()).thenReturn(100L);
+
+        when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
+        when(currentRound.getEndDate()).thenReturn(endDate);
+
+        when(roundRecordRepository.findByUserChallengeAndRoundId(uc, 100L)).thenReturn(Optional.of(rr));
+
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
+
+        // when
+        RoundDecisionResponseDto response = roundDecisionService.decideNextRound(userId, challengeId, request);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.isResponded()).isTrue();
+        verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
+        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
+    }
+
+    @Test
+    @DisplayName("[수정된 로직] D-2일에도 연장 가능  (기간 마지막 날)")
+    void decideNextRound_D_minus_2_shouldSucceed() {
+        // given
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        //수정: 현재 시점 기준 상대 날짜로 설정
+        LocalDate today = LocalDate.now(); // 현재 날짜
+        LocalDate endDate = today.plusDays(2); // 2일 후 종료
+
+        Challenge challenge = mock(Challenge.class);
+        Round currentRound = mock(Round.class);
+        UserChallenge uc = mock(UserChallenge.class);
+        RoundRecord rr = mock(RoundRecord.class);
+        User user = mock(User.class);
+
+        when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
+        when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
+        when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+        when(uc.getUser()).thenReturn(user);
+        when(challenge.getCurrentRound()).thenReturn(currentRound);
+        when(currentRound.getId()).thenReturn(100L);
+
+        when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
+        when(currentRound.getEndDate()).thenReturn(endDate);
+
+        when(roundRecordRepository.findByUserChallengeAndRoundId(uc, 100L)).thenReturn(Optional.of(rr));
+
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.STOP, null);
+
+        // when
+        RoundDecisionResponseDto response = roundDecisionService.decideNextRound(userId, challengeId, request);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.isResponded()).isTrue();
+        verify(rr).updateNextRoundIntent(NextRoundIntent.STOP);
+        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
+    }
+
+    @Test
+    @DisplayName("[수정된 로직] D-1일에는 연장 불가 (기간 만료)")
+    void decideNextRound_D_minus_1_shouldFail_periodClosed() {
+        // given
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        // 수정: 현재 시점 기준 상대 날짜로 설정
+        LocalDate today = LocalDate.now(); // 현재 날짜
+        LocalDate endDate = today.plusDays(1); // 1일 후 종료
+
+        Challenge challenge = mock(Challenge.class);
+        Round currentRound = mock(Round.class);
+        UserChallenge uc = mock(UserChallenge.class);
+
+        when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
+        when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
+        when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+        when(challenge.getCurrentRound()).thenReturn(currentRound);
+
+        when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
+        when(currentRound.getEndDate()).thenReturn(endDate);
+
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
+
+        // when & then
+        assertThatThrownBy(() -> roundDecisionService.decideNextRound(userId, challengeId, request))
+                .isInstanceOf(GlobalException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ROUND_DECISION_PERIOD_CLOSED);
+
+        verifyNoInteractions(roundRecordRepository);
+    }
+
+    @Test
+    @DisplayName("[실제 시나리오] endDate=오늘+3일, 오늘(D-3) 오전 9시 알림 후 즉시 연장 가능")
+    void decideNextRound_realScenario_day18_afterNotification() {
+        // given
+        Long userId = 1L;
+        Long challengeId = 10L;
+
+        // 수정: 현재 시점 기준 상대 날짜로 설정
+        // 실제 시나리오: 라운드가 3일 후에 끝남
+        // 오늘(D-3) 오전 9시에 알림이 발송되고, 사용자가 바로 응답
+        LocalDate today = LocalDate.now();
+        LocalDate endDate = today.plusDays(3);
+
+        Challenge challenge = mock(Challenge.class);
+        Round currentRound = mock(Round.class);
+        UserChallenge uc = mock(UserChallenge.class);
+        RoundRecord rr = mock(RoundRecord.class);
+        User user = mock(User.class);
+
+        when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
+        when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
+        when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+        when(uc.getUser()).thenReturn(user);
+        when(challenge.getCurrentRound()).thenReturn(currentRound);
+        when(currentRound.getId()).thenReturn(100L);
+
+        when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
+        when(currentRound.getEndDate()).thenReturn(endDate);
+
+        when(roundRecordRepository.findByUserChallengeAndRoundId(uc, 100L)).thenReturn(Optional.of(rr));
+
+        RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
+
+        // when
+        RoundDecisionResponseDto response = roundDecisionService.decideNextRound(userId, challengeId, request);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.roundId()).isEqualTo(100L);
+        assertThat(response.intent()).isEqualTo(NextRoundIntent.CONTINUE);
+        assertThat(response.isResponded()).isTrue();
+
+        verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
+        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
+    }
+
+    // =========================================================================
+    // 1) RoundDecisionServiceImpl 기존 테스트
+    // =========================================================================
 
     @Test
     @DisplayName("decideNextRound: intent가 null/UNDECIDED면 ROUND_DECISION_INTENT_INVALID 예외")
@@ -89,10 +290,9 @@ class RoundFlowUnitTest {
         // startDate가 null이 아니어야 "라운드 기간 체크" 로직을 통과할 수 있습니다.
         when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
 
-        // endDate 설정 (결정 기간 안으로 설정)
-        when(currentRound.getEndDate()).thenReturn(today.plusDays(2));
+        // 수정: endDate를 D-3 기간 안으로 설정
+        when(currentRound.getEndDate()).thenReturn(today.plusDays(3));
 
-        // RequestDto 수정됨 (notificationId 필드 추가 반영)
         RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.UNDECIDED, null);
 
         // when & then
@@ -125,8 +325,9 @@ class RoundFlowUnitTest {
         // startDate 세팅
         when(currentRound.getStartDate()).thenReturn(today.minusDays(10));
 
-        // 기간 밖으로 세팅: end=today+4 -> open=today+2, close=today+3 (현재 today는 아직 오픈 전)
-        when(currentRound.getEndDate()).thenReturn(today.plusDays(4));
+        // 수정: D-3 기준으로 기간 밖 설정
+        // end=today+5 -> open=today+2, close=today+3 (현재 today는 아직 오픈 전)
+        when(currentRound.getEndDate()).thenReturn(today.plusDays(5));
 
         RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
 
@@ -152,31 +353,35 @@ class RoundFlowUnitTest {
         Round currentRound = mock(Round.class);
         UserChallenge uc = mock(UserChallenge.class);
         RoundRecord rr = mock(RoundRecord.class);
+        User user = mock(User.class);
 
         when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
         when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+        when(uc.getUser()).thenReturn(user);
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
-        // 결정 기간: endDate=today+2 -> open=today, close=today+1 -> today는 open에 해당
+
+        // 🔧 수정: D-3 기간 안으로 설정
+        // endDate=today+3 -> open=today, close=today+1 -> today는 open에 해당
         when(currentRound.getStartDate()).thenReturn(today.minusDays(1));
-        when(currentRound.getEndDate()).thenReturn(today.plusDays(2));
+        when(currentRound.getEndDate()).thenReturn(today.plusDays(3));
 
         when(roundRecordRepository.findByUserChallengeAndRoundId(uc, 100L)).thenReturn(Optional.of(rr));
 
         RoundDecisionRequestDto request = new RoundDecisionRequestDto(NextRoundIntent.CONTINUE, null);
 
         // when
-        // 반환값 검증을 위해 결과를 받음
         RoundDecisionResponseDto response = roundDecisionService.decideNextRound(userId, challengeId, request);
 
         // then
         // 1. DB 업데이트 확인
         verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
-        // 2. 알림 이벤트 발행 확인
+
+        // 2. 이벤트 발행 확인
         verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
 
-        // 3. 반환값 검증 (isResponded 체크)
+        // 3. 응답 DTO 검증
         assertThat(response).isNotNull();
         assertThat(response.roundId()).isEqualTo(100L);
         assertThat(response.intent()).isEqualTo(NextRoundIntent.CONTINUE);
@@ -188,8 +393,8 @@ class RoundFlowUnitTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("dropNonContinuersAt: CONTINUE가 아닌 JOINED 유저는 DROPPED 처리 + 참가자 수 감소")
-    void dropNonContinuersAt_dropsNonContinuers() {
+    @DisplayName("dropNonContinuersAt: STOP/UNDECIDED인 사람만 DROPPED + 참가자 감소")
+    void dropNonContinuersAt_dropsStopAndUndecided() {
         // given
         LocalDate endDate = LocalDate.now();
 
