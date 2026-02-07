@@ -149,9 +149,6 @@ public class AuthService {
 
             String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
             String appleRefreshToken = appleTokens.get("refresh_token");
-            if (appleRefreshToken == null) {
-                appleRefreshToken = ""; // 또는 null 상태로 전달하되 upsert 로직에서 무시하도록 처리
-            }
             User user = socialUserService.upsertAppleUser(socialId, appleRefreshToken, request.getName());
 
             String accessToken = jwtService.generateAccessToken(user.getId());

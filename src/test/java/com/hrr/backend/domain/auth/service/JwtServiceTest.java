@@ -8,13 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
-import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -28,7 +26,6 @@ class JwtServiceTest {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    // [Code Review 반영] 하드코딩된 값 대신 설정 파일의 값을 주입받아 사용
     @Value("${jwt.access-token-validity}")
     private long accessTokenValidity;
 
@@ -36,7 +33,7 @@ class JwtServiceTest {
 
     @BeforeEach
     void setUp() {
-        // [Code Review 반영] keys("*")는 블로킹 연산이므로 flushAll()로 대체하여 안전하게 초기화
+        // Redis 초기화
         redisTemplate.execute((RedisCallback<Object>) connection -> {
             connection.serverCommands().flushAll();
             return null;
@@ -46,10 +43,8 @@ class JwtServiceTest {
     @Test
     @DisplayName("Access Token 생성 및 검증 성공")
     void generateAndValidateAccessToken() {
-        // given & when
         String accessToken = jwtService.generateAccessToken(TEST_USER_ID);
 
-        // then
         assertThat(accessToken).isNotNull();
         assertThat(jwtService.validateToken(accessToken)).isTrue();
         assertThat(jwtService.extractUserId(accessToken)).isEqualTo(TEST_USER_ID);
@@ -58,58 +53,47 @@ class JwtServiceTest {
     @Test
     @DisplayName("Refresh Token 생성 시 Redis에 저장됨")
     void generateRefreshTokenSavesToRedis() {
-        // given & when
         String refreshToken = jwtService.generateRefreshToken(TEST_USER_ID);
 
-        // then
         assertThat(refreshToken).isNotNull();
 
         String storedToken = redisTemplate.opsForValue().get("refresh_token:" + TEST_USER_ID);
         assertThat(storedToken).isEqualTo(refreshToken);
     }
 
+    // [수정됨] validateRefreshToken 메서드 삭제로 인해 getAndDeleteRefreshToken 테스트로 변경
     @Test
-    @DisplayName("Refresh Token 검증 성공")
-    void validateRefreshTokenSuccess() {
+    @DisplayName("Refresh Token 조회 및 삭제(Atomic) 성공")
+    void getAndDeleteRefreshTokenSuccess() {
         // given
         String refreshToken = jwtService.generateRefreshToken(TEST_USER_ID);
 
-        // when & then
-        assertThat(jwtService.validateRefreshToken(refreshToken, TEST_USER_ID)).isTrue();
-    }
+        // when
+        // 조회와 동시에 삭제가 일어나는지 검증
+        String storedToken = jwtService.getAndDeleteRefreshToken(TEST_USER_ID);
 
-    @Test
-    @DisplayName("잘못된 Refresh Token 검증 실패")
-    void validateRefreshTokenFail() {
-        // given
-        String fakeToken = "fake.refresh.token";
-
-        // when & then
-        assertThat(jwtService.validateRefreshToken(fakeToken, TEST_USER_ID)).isFalse();
+        // then
+        assertThat(storedToken).isEqualTo(refreshToken); // 값 일치 확인
+        assertThat(redisTemplate.hasKey("refresh_token:" + TEST_USER_ID)).isFalse(); // Redis에서 삭제되었는지 확인
     }
 
     @Test
     @DisplayName("토큰 블랙리스트 등록 및 확인")
     void blacklistToken() {
-        // given
         String accessToken = jwtService.generateAccessToken(TEST_USER_ID);
         Duration ttl = Duration.ofMinutes(5);
 
-        // when
         jwtService.blacklistToken(accessToken, ttl);
 
-        // then
         assertThat(jwtService.isTokenBlacklisted(accessToken)).isTrue();
     }
 
     @Test
     @DisplayName("블랙리스트에 등록된 토큰은 검증 시 무효 처리")
     void blacklistedTokenIsInvalid() {
-        // given
         String accessToken = jwtService.generateAccessToken(TEST_USER_ID);
         jwtService.blacklistToken(accessToken, Duration.ofMinutes(5));
 
-        // when & then
         assertThatThrownBy(() -> jwtService.validateToken(accessToken))
                 .isInstanceOf(GlobalException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_INVALID_TOKEN);
@@ -118,43 +102,33 @@ class JwtServiceTest {
     @Test
     @DisplayName("Refresh Token 삭제 성공")
     void deleteRefreshToken() {
-        // given
-        String refreshToken = jwtService.generateRefreshToken(TEST_USER_ID);
+        jwtService.generateRefreshToken(TEST_USER_ID);
         assertThat(redisTemplate.hasKey("refresh_token:" + TEST_USER_ID)).isTrue();
 
-        // when
         jwtService.deleteRefreshToken(TEST_USER_ID);
 
-        // then
         assertThat(redisTemplate.hasKey("refresh_token:" + TEST_USER_ID)).isFalse();
     }
 
     @Test
     @DisplayName("유효하지 않은 토큰 검증 시 예외 발생")
     void validateInvalidToken() {
-        // given
         String invalidToken = "invalid.token.here";
 
-        // when & then
         assertThatThrownBy(() -> jwtService.validateToken(invalidToken))
                 .isInstanceOf(GlobalException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_INVALID_TOKEN);
     }
 
-
     @Test
     @DisplayName("남은 만료 시간 계산 정확성")
     void getRemainingExpiration() {
-        // given
         String accessToken = jwtService.generateAccessToken(TEST_USER_ID);
 
-        // when
         Duration remaining = jwtService.getRemainingExpiration(accessToken);
 
-        // then
         assertThat(remaining.toMillis()).isGreaterThan(0);
 
-        // 하드코딩(30분) 대신 설정된 유효 시간으로 검증 (밀리초 -> 분 변환)
         long validityInMinutes = accessTokenValidity / (1000 * 60);
         assertThat(remaining.toMinutes()).isLessThanOrEqualTo(validityInMinutes);
     }
@@ -173,6 +147,5 @@ class JwtServiceTest {
 
         String storedToken = redisTemplate.opsForValue().get("refresh_token:" + TEST_USER_ID);
         assertThat(storedToken).isEqualTo(newRefreshToken);
-        assertThat(jwtService.validateRefreshToken(oldRefreshToken, TEST_USER_ID)).isFalse();
     }
 }

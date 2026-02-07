@@ -170,17 +170,6 @@ public class JwtService {
         }
     }
 
-    // Refresh Token 검증 (Redis에 저장된 토큰과 비교)
-    public boolean validateRefreshToken(String refreshToken, Long userId) {
-        String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + userId);
-
-        if (storedToken == null || refreshToken == null) {
-            return false;
-        }
-
-        return refreshToken.equals(storedToken);
-    }
-
     // Redis에서 키를 조회함과 동시에 삭제하여 동시성 문제를 해결
     public String getAndDeleteRefreshToken(Long userId) {
         return redisTemplate.opsForValue().getAndDelete(REFRESH_TOKEN_PREFIX + userId);
