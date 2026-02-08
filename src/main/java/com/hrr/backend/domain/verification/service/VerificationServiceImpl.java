@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -384,6 +385,10 @@ public class VerificationServiceImpl implements VerificationService {
             throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
         }
 
+        if (author.isNotActive()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         // 2. 현재 사용자가 로그인한 경우 차단 관계 확인
         if (currentUserId != null) {
             // 내가 작성자를 차단한 경우
@@ -408,6 +413,18 @@ public class VerificationServiceImpl implements VerificationService {
                 isMine
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
+
+		boolean canWriteComment = false;
+		if (currentUserId != null) {
+			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
+			boolean isCurrentRound = verification.getRoundRecord().getRound().equals(
+				verification.getRoundRecord().getRound().getChallenge().getCurrentRound());	// 현재 라운드인지 체크
+			boolean isParticipating = userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId)
+				.map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)// 해당 챌린지에 참여 중인지 체크
+				.orElse(false);
+			canWriteComment = isParticipating && isCurrentRound;
+		}
+
         Pageable pageable = PageRequest.of(page, size);
         CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, pageable);
 
@@ -424,6 +441,7 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                canWriteComment,
                 adoptedCommentId
         );
     }
@@ -520,6 +538,17 @@ public class VerificationServiceImpl implements VerificationService {
                 .findFirst()
                 .orElse(null);
 
+        boolean canWriteComment = false;
+        if (currentUserId != null) {
+			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
+			boolean isCurrentRound = verification.getRoundRecord().getRound().equals(
+						verification.getRoundRecord().getRound().getChallenge().getCurrentRound());	// 현재 라운드인지 체크
+			boolean isParticipating = userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId)
+						.map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)// 해당 챌린지에 참여 중인지 체크
+						.orElse(false);
+			canWriteComment = isParticipating && isCurrentRound;
+		}
+
         return verificationConverter.toDetailDto(
                 verification,
                 comments,
@@ -527,6 +556,7 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                canWriteComment,
                 adoptedCommentId
         );
     }

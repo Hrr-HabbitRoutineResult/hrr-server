@@ -133,6 +133,7 @@ public class VerificationConverter {
             boolean canEdit,
             boolean canDelete,
             boolean canSelectComment,
+            boolean canWriteComment,
             Long adoptedCommentId
     ) {
         RoundRecord roundRecord = verification.getRoundRecord();
@@ -183,7 +184,7 @@ public class VerificationConverter {
                 .canEdit(canEdit)
                 .canDelete(canDelete)
                 .canSelectComment(canSelectComment)
-                .canWriteComment(true)
+                .canWriteComment(canWriteComment)
                 .adoptedCommentId(adoptedCommentId)
                 .showResolvedBadge(verification.getIsResolved())
                 .commentCount(comments != null && comments.getComments() != null

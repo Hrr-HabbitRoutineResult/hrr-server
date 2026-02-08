@@ -1,20 +1,5 @@
 package com.hrr.backend.domain.verification.service;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.*;
-
-import java.util.Collections;
-import java.util.Optional;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
-
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.service.CommentService;
@@ -24,6 +9,7 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
@@ -31,8 +17,26 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Pageable;
+
+import java.util.Collections;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class VerificationServiceTest {
 
     @InjectMocks
@@ -49,6 +53,9 @@ class VerificationServiceTest {
 
     @Mock
     private CommentService commentService;
+
+    @Mock
+    private UserChallengeRepository userChallengeRepository; // 추가됨
 
     // --- Helper Methods ---
 
@@ -86,12 +93,13 @@ class VerificationServiceTest {
     // --- Tests ---
 
     @Test
-    @DisplayName("성공: 차단/탈퇴 문제 없는 정상 게시글 조회")
-    void getVerificationDetail_Success() {
+    @DisplayName("성공: 차단/탈퇴 문제 없는 정상 게시글 조회 (댓글 작성 가능)")
+    void getVerificationDetail_Success_CanWriteComment() {
         // given
         Long verificationId = 1L;
         Long currentUserId = 10L; // 나
         Long authorId = 20L;      // 작성자
+        Long challengeId = 100L;
 
         User author = createUser(authorId, UserStatus.ACTIVE);
         Verification verification = createVerification(verificationId, author, VerificationStatus.COMPLETED);
@@ -103,20 +111,33 @@ class VerificationServiceTest {
         given(userBlockRepository.existsByBlockerIdAndBlockedId(currentUserId, authorId)).willReturn(false);
         given(userBlockRepository.existsByBlockerIdAndBlockedId(authorId, currentUserId)).willReturn(false);
 
-        // 3. 댓글 서비스 Mock (DTO 생성자 이슈 해결을 위해 Mock 객체 사용)
-        CommentListResponseDto mockComments = mock(CommentListResponseDto.class);
-        given(mockComments.getComments()).willReturn(Collections.emptyList());
+        // 3. 챌린지 참여 여부 Mock (참여 중 -> 댓글 작성 가능)
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId))
+                .willReturn(Optional.of(UserChallenge.builder().id(999L).build()));
 
+        // 4. 댓글 서비스 Mock
+        CommentListResponseDto mockComments = CommentListResponseDto.builder()
+                .comments(Collections.emptyList())
+                .build();
         given(commentService.getComments(anyLong(), any(), any(Pageable.class)))
                 .willReturn(mockComments);
 
-        // 4. Converter Mock
+        // 5. Converter Mock (인자 8개 맞춤, canWriteComment=true 예상)
         VerificationDetailResponseDto expectedDto = VerificationDetailResponseDto.builder()
                 .verificationId(verificationId)
+                .canWriteComment(true)
                 .build();
 
-        given(verificationConverter.toDetailDto(any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any()))
-                .willReturn(expectedDto);
+		given(verificationConverter.toDetailDto(
+			any(Verification.class),        // 1. Verification
+			any(CommentListResponseDto.class), // 2. CommentListResponseDto
+			anyBoolean(),                   // 3. isLiked
+			anyBoolean(),                   // 4. canEdit
+			anyBoolean(),                   // 5. canDelete
+			anyBoolean(),                   // 6. canReport
+			anyBoolean(),                       // 7. canWriteComment (핵심 검증 대상)
+			any()                           // 8. currentUser (User 객체 혹은 null)
+		)).willReturn(expectedDto);
 
         // when
         VerificationDetailResponseDto result = verificationService.getVerificationDetail(verificationId, currentUserId, 0, 10);
@@ -124,6 +145,52 @@ class VerificationServiceTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.isCanWriteComment()).isTrue();
+    }
+
+    @Test
+    @DisplayName("성공: 챌린지 미참여자는 댓글 작성 불가 (canWriteComment=false)")
+    void getVerificationDetail_Success_CannotWriteComment() {
+        // given
+        Long verificationId = 1L;
+        Long currentUserId = 10L;
+        Long authorId = 20L;
+        Long challengeId = 100L;
+
+        User author = createUser(authorId, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, author, VerificationStatus.COMPLETED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userBlockRepository.existsByBlockerIdAndBlockedId(anyLong(), anyLong())).willReturn(false);
+
+		CommentListResponseDto mockComments = CommentListResponseDto.builder()
+			.comments(Collections.emptyList()) // 빈 리스트라도 넣어줘야 NPE가 안 납니다.
+			.build();
+		given(commentService.getComments(anyLong(), any(), any(Pageable.class)))
+			.willReturn(mockComments);
+
+        // **핵심**: 챌린지 미참여 (Empty)
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId))
+                .willReturn(Optional.empty());
+
+        // Converter Mock (canWriteComment=false 예상)
+        VerificationDetailResponseDto expectedDto = VerificationDetailResponseDto.builder()
+                .verificationId(verificationId)
+                .canWriteComment(false)
+                .build();
+
+		// Converter Mock 부분도 인자 개수 8개로 맞춤
+		given(verificationConverter.toDetailDto(
+			any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
+			eq(false), // canWriteComment = false 예상
+			any()
+		)).willReturn(expectedDto);
+
+        // when
+        VerificationDetailResponseDto result = verificationService.getVerificationDetail(verificationId, currentUserId, 0, 10);
+
+        // then
+        assertThat(result.isCanWriteComment()).isFalse();
     }
 
     @Test
