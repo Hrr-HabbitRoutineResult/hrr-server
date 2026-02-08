@@ -384,6 +384,10 @@ public class VerificationServiceImpl implements VerificationService {
             throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
         }
 
+        if (author.isNotActive()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         // 2. 현재 사용자가 로그인한 경우 차단 관계 확인
         if (currentUserId != null) {
             // 내가 작성자를 차단한 경우
@@ -408,6 +412,16 @@ public class VerificationServiceImpl implements VerificationService {
                 isMine
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
+
+        boolean canWriteComment = false;
+        if (currentUserId != null) {
+            Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
+            // 사용자가 해당 챌린지에 참여 중인지 확인
+            canWriteComment = userChallengeRepository
+                    .findByUserIdAndChallengeId(currentUserId, challengeId)
+                    .isPresent();
+        }
+
         Pageable pageable = PageRequest.of(page, size);
         CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, pageable);
 
@@ -424,6 +438,7 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                canWriteComment,
                 adoptedCommentId
         );
     }
@@ -519,6 +534,13 @@ public class VerificationServiceImpl implements VerificationService {
                 .map(CommentResponseDto::getCommentId)
                 .findFirst()
                 .orElse(null);
+        boolean canWriteComment = false;
+        if (currentUserId != null) {
+            Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
+            canWriteComment = userChallengeRepository
+                    .findByUserIdAndChallengeId(currentUserId, challengeId)
+                    .isPresent();
+        }
 
         return verificationConverter.toDetailDto(
                 verification,
@@ -527,6 +549,7 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                canWriteComment,
                 adoptedCommentId
         );
     }
