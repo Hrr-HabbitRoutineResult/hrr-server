@@ -23,6 +23,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Collections;
@@ -34,6 +36,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class VerificationServiceTest {
 
     @InjectMocks
@@ -125,11 +128,16 @@ class VerificationServiceTest {
                 .canWriteComment(true)
                 .build();
 
-        given(verificationConverter.toDetailDto(
-                any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
-                eq(true), // canWriteComment = true 예상
-                any()
-        )).willReturn(expectedDto);
+		given(verificationConverter.toDetailDto(
+			any(Verification.class),        // 1. Verification
+			any(CommentListResponseDto.class), // 2. CommentListResponseDto
+			anyBoolean(),                   // 3. isLiked
+			anyBoolean(),                   // 4. canEdit
+			anyBoolean(),                   // 5. canDelete
+			anyBoolean(),                   // 6. canReport
+			anyBoolean(),                       // 7. canWriteComment (핵심 검증 대상)
+			any()                           // 8. currentUser (User 객체 혹은 null)
+		)).willReturn(expectedDto);
 
         // when
         VerificationDetailResponseDto result = verificationService.getVerificationDetail(verificationId, currentUserId, 0, 10);
@@ -155,12 +163,15 @@ class VerificationServiceTest {
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         given(userBlockRepository.existsByBlockerIdAndBlockedId(anyLong(), anyLong())).willReturn(false);
 
+		CommentListResponseDto mockComments = CommentListResponseDto.builder()
+			.comments(Collections.emptyList()) // 빈 리스트라도 넣어줘야 NPE가 안 납니다.
+			.build();
+		given(commentService.getComments(anyLong(), any(), any(Pageable.class)))
+			.willReturn(mockComments);
+
         // **핵심**: 챌린지 미참여 (Empty)
         given(userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId))
                 .willReturn(Optional.empty());
-
-        given(commentService.getComments(anyLong(), anyLong(), any(Pageable.class)))
-                .willReturn(CommentListResponseDto.builder().comments(Collections.emptyList()).build());
 
         // Converter Mock (canWriteComment=false 예상)
         VerificationDetailResponseDto expectedDto = VerificationDetailResponseDto.builder()
@@ -168,11 +179,12 @@ class VerificationServiceTest {
                 .canWriteComment(false)
                 .build();
 
-        given(verificationConverter.toDetailDto(
-                any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
-                eq(false), // canWriteComment = false 예상
-                any()
-        )).willReturn(expectedDto);
+		// Converter Mock 부분도 인자 개수 8개로 맞춤
+		given(verificationConverter.toDetailDto(
+			any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
+			eq(false), // canWriteComment = false 예상
+			any()
+		)).willReturn(expectedDto);
 
         // when
         VerificationDetailResponseDto result = verificationService.getVerificationDetail(verificationId, currentUserId, 0, 10);

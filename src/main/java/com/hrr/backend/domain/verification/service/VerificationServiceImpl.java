@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -414,12 +415,11 @@ public class VerificationServiceImpl implements VerificationService {
                         && !isResolved;
 
         boolean canWriteComment = false;
-        if (currentUserId != null) {
-            Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
-            // 사용자가 해당 챌린지에 참여 중인지 확인
-            canWriteComment = userChallengeRepository
-                    .findByUserIdAndChallengeId(currentUserId, challengeId)
-                    .isPresent();
+        if (currentUserId != null
+			&& verification.getRoundRecord().getUserChallenge().getStatus() == ChallengeJoinStatus.JOINED	// 해당 챌린지에 참여 중인지 체크
+			&& verification.getRoundRecord().getRound().getChallenge().getCurrentRound() == verification.getRoundRecord().getRound()	// 현재 라운드인지 체크
+		 ) {
+            canWriteComment = true;
         }
 
         Pageable pageable = PageRequest.of(page, size);
@@ -535,12 +535,12 @@ public class VerificationServiceImpl implements VerificationService {
                 .findFirst()
                 .orElse(null);
         boolean canWriteComment = false;
-        if (currentUserId != null) {
-            Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
-            canWriteComment = userChallengeRepository
-                    .findByUserIdAndChallengeId(currentUserId, challengeId)
-                    .isPresent();
-        }
+		if (currentUserId != null
+			&& verification.getRoundRecord().getUserChallenge().getStatus() == ChallengeJoinStatus.JOINED	// 해당 챌린지에 참여 중인지 체크
+			&& verification.getRoundRecord().getRound().getChallenge().getCurrentRound() == verification.getRoundRecord().getRound()	// 현재 라운드인지 체크
+		) {
+			canWriteComment = true;
+		}
 
         return verificationConverter.toDetailDto(
                 verification,
