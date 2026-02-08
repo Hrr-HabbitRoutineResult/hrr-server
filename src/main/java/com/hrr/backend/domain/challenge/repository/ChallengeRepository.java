@@ -67,4 +67,16 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 		"WHERE c.id = :id AND c.currentParticipants > 0")
 	int decreaseCurrentParticipantCount(@Param("id") Long id);
 
+    @Query("""
+    select c.id
+    from Challenge c
+    where c.id in :ids
+      and c.status <> :finished
+    """)
+    List<Long> findNotFinishedIds(
+            @Param("ids") List<Long> ids,
+            @Param("finished") ChallengeStatus finished
+    );
+
+
 }

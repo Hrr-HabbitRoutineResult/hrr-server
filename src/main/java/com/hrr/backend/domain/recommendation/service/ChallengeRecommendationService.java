@@ -18,6 +18,7 @@ import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.service.UserFavorService;
 import com.hrr.backend.global.common.enums.Category;
+import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.s3.S3UrlUtil;
@@ -80,6 +81,27 @@ public class ChallengeRecommendationService {
 
         if (allChallenges.isEmpty()) {
             log.warn("[Recommend] All challenges excluded due to blocked owners. Returning empty result. userId={}", request.getUserId());
+            return ChallengeRecommendResult.builder()
+                    .userId(request.getUserId())
+                    .recommendations(List.of())
+                    .build();
+        }
+
+        // 1.6) 종료(FINISHED) 챌린지 제외
+        List<Long> allIds = allChallenges.stream()
+                .map(ChallengeItemDto::getChallengeId)
+                .toList();
+
+        Set<Long> notFinishedSet = new HashSet<>(
+                challengeJpaRepository.findNotFinishedIds(allIds, ChallengeStatus.FINISHED)
+        );
+
+        allChallenges = allChallenges.stream()
+                .filter(ch -> notFinishedSet.contains(ch.getChallengeId()))
+                .toList();
+
+        if (allChallenges.isEmpty()) {
+            log.warn("[Recommend] No available challenges. Returning empty result. userId={}", request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
