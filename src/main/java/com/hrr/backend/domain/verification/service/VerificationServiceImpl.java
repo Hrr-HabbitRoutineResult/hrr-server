@@ -414,13 +414,16 @@ public class VerificationServiceImpl implements VerificationService {
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
 
-        boolean canWriteComment = false;
-        if (currentUserId != null
-			&& verification.getRoundRecord().getUserChallenge().getStatus() == ChallengeJoinStatus.JOINED	// 해당 챌린지에 참여 중인지 체크
-			&& verification.getRoundRecord().getRound().getChallenge().getCurrentRound() == verification.getRoundRecord().getRound()	// 현재 라운드인지 체크
-		 ) {
-            canWriteComment = true;
-        }
+		boolean canWriteComment = false;
+		if (currentUserId != null) {
+			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
+			boolean isCurrentRound = verification.getRoundRecord().getRound().equals(
+				verification.getRoundRecord().getRound().getChallenge().getCurrentRound());	// 현재 라운드인지 체크
+			boolean isParticipating = userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId)
+				.map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)// 해당 챌린지에 참여 중인지 체크
+				.orElse(false);
+			canWriteComment = isParticipating && isCurrentRound;
+		}
 
         Pageable pageable = PageRequest.of(page, size);
         CommentListResponseDto comments = commentService.getComments(verificationId, currentUserId, pageable);
@@ -534,12 +537,16 @@ public class VerificationServiceImpl implements VerificationService {
                 .map(CommentResponseDto::getCommentId)
                 .findFirst()
                 .orElse(null);
+
         boolean canWriteComment = false;
-		if (currentUserId != null
-			&& verification.getRoundRecord().getUserChallenge().getStatus() == ChallengeJoinStatus.JOINED	// 해당 챌린지에 참여 중인지 체크
-			&& verification.getRoundRecord().getRound().getChallenge().getCurrentRound() == verification.getRoundRecord().getRound()	// 현재 라운드인지 체크
-		) {
-			canWriteComment = true;
+        if (currentUserId != null) {
+			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
+			boolean isCurrentRound = verification.getRoundRecord().getRound().equals(
+						verification.getRoundRecord().getRound().getChallenge().getCurrentRound());	// 현재 라운드인지 체크
+			boolean isParticipating = userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challengeId)
+						.map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)// 해당 챌린지에 참여 중인지 체크
+						.orElse(false);
+			canWriteComment = isParticipating && isCurrentRound;
 		}
 
         return verificationConverter.toDetailDto(
