@@ -77,7 +77,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
 		config.setAllowedOriginPatterns(List.of(
-			"https://*.hrr-umc7.store",  // 운영 환경 (www 포함 모든 서브도메인)
+			"https://*.hrr-official.cloud",  // 운영 환경 (www 포함 모든 서브도메인)
 			"http://localhost:*",         // 로컬 개발 환경
 			"https://appleid.apple.com",
 			"https://semicapitalistic-shanell-irretraceable.ngrok-free.dev"	// 로컬 테스트용 임시
@@ -86,8 +86,8 @@ public class SecurityConfig {
                         "http://localhost:8080",
                         "http://localhost:5173",
                         "http://localhost:3000",
-						"https://www.hrr-umc7.store",
-						"https://hrr-umc7.store"
+						"https://www.hrr-official.cloud",
+						"https://hrr-official.cloud"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
