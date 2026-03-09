@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.notification.listener;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.fcm.service.FcmPushService;
 import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
@@ -35,6 +36,7 @@ public class NotificationEventListener {
     private final NotificationTypeRepository typeRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
+    private final FcmPushService fcmPushService; // 추가
 
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -69,7 +71,7 @@ public class NotificationEventListener {
                 .build();
         eventRepository.save(notificationEvent);
 
-        // 수신자 전체에 대해 Delivery 생성 (목록에 표시를 위함)
+        // 수신자 전체에 대해 Delivery 생성
         List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(
                 round,
                 ChallengeJoinStatus.JOINED
@@ -83,11 +85,13 @@ public class NotificationEventListener {
                         .build())
                 .toList();
 
-        // DB 저장 (전원 저장되므로 알림 목록에서 확인 가능)
         if (!deliveries.isEmpty()) {
             notificationRepository.saveAll(deliveries);
-
             log.info("챌린지 연장 알림 DB 저장 완료: RoundId={}, 대상={}명", roundId, deliveries.size());
+
+            // FCM 푸시 발송 (알림 설정 체크 포함)
+            fcmPushService.sendPushForDeliveries(deliveries, notificationEvent);
+            log.info("챌린지 연장 FCM 푸시 발송 요청 완료: RoundId={}", roundId);
         }
     }
 
@@ -98,8 +102,7 @@ public class NotificationEventListener {
         Long roundId = event.getRoundId();
         User user = event.getUser();
 
-        // 1. [멱등성 체크] 이미 성공 또는 취소 알림이 발송되었는지 확인
-        // 안내 알림(CHALLENGE_EXTENSION)과 달리 결과 알림은 '성공' 혹은 '취소' 중 하나만 존재해야 합니다.
+        // 멱등성 체크
         List<NotificationTypeName> resultTypes = List.of(
                 NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS,
                 NotificationTypeName.CHALLENGE_EXTENSION_CANCEL
@@ -132,7 +135,6 @@ public class NotificationEventListener {
         NotificationType type = typeRepository.findByTypeName(typeName)
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
 
-        // NotificationEvent 생성 및 저장
         NotificationEvent notificationEvent = NotificationEvent.builder()
                 .type(type)
                 .category(NotificationCategory.CHALLENGE)
@@ -146,13 +148,17 @@ public class NotificationEventListener {
                 .build();
         eventRepository.save(notificationEvent);
 
-        // 해당 유저에게만 알림 내역(Delivery) 생성
-        notificationRepository.save(NotificationDelivery.builder()
+        NotificationDelivery delivery = NotificationDelivery.builder()
                 .event(notificationEvent)
                 .receiver(event.getUser())
                 .isRead(false)
-                .build());
+                .build();
+        notificationRepository.save(delivery);
 
         log.info("연장 응답 알림 생성 완료: User={}, Intent={}", event.getUser().getNickname(), event.getIntent());
+
+        // FCM 푸시 발송 (알림 설정 체크 포함)
+        fcmPushService.sendPushForDelivery(delivery, notificationEvent);
+        log.info("연장 응답 FCM 푸시 발송 요청 완료: User={}", event.getUser().getNickname());
     }
 }
