@@ -12,40 +12,64 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FcmPushServiceImpl implements FcmPushService {
 
+    private static final int FCM_MULTICAST_LIMIT = 500;
+
     private final FcmTokenRepository fcmTokenRepository;
     private final NotificationSettingRepository notificationSettingRepository;
 
     @Override
     public void sendPushForDeliveries(List<NotificationDelivery> deliveries, NotificationEvent event) {
-        for (NotificationDelivery delivery : deliveries) {
-            User receiver = delivery.getReceiver();
+        if (deliveries.isEmpty()) return;
 
-            // 유저 알림 설정 조회 (설정 없으면 발송 허용)
-            boolean allowed = notificationSettingRepository.findByUser(receiver)
-                    .map(setting -> isCategoryEnabled(setting, event.getCategory()))
-                    .orElse(true);
+        boolean isMandatory = event.getType().isMandatory();
+        List<User> receivers = deliveries.stream()
+                .map(NotificationDelivery::getReceiver)
+                .toList();
 
-            if (!allowed) {
-                log.debug("알림 설정으로 인해 푸시 발송 건너뜀: userId={}, category={}", receiver.getId(), event.getCategory());
-                continue;
-            }
+        // 알림 설정을 IN절로 한 번에 조회 → userId 기준 Map으로 변환
+        Map<Long, NotificationSetting> settingMap = notificationSettingRepository
+                .findAllByUserIn(receivers)
+                .stream()
+                .collect(Collectors.toMap(s -> s.getUser().getId(), s -> s));
 
-            // 해당 유저의 활성 FCM 토큰 목록 조회
-            List<String> tokens = fcmTokenRepository.findAllActiveTokensByUser(receiver);
+        // 발송 대상 유저 필터링
+        // isMandatory=true(필수 알림)면 유저 설정과 무관하게 발송, 설정 레코드가 없으면 기본 허용
+        List<User> eligibleReceivers = receivers.stream()
+                .filter(user -> {
+                    if (isMandatory) return true;
+                    NotificationSetting setting = settingMap.get(user.getId());
+                    if (setting == null) return true;
+                    return isCategoryEnabled(setting, event.getCategory());
+                })
+                .toList();
 
-            if (tokens.isEmpty()) {
-                log.debug("활성 FCM 토큰 없음: userId={}", receiver.getId());
-                continue;
-            }
+        if (eligibleReceivers.isEmpty()) {
+            log.debug("발송 대상 없음: category={}, mandatory={}", event.getCategory(), isMandatory);
+            return;
+        }
 
-            sendMulticast(tokens, event, receiver.getId());
+        // 활성 토큰을 IN절로 한 번에 조회
+        List<String> allTokens = fcmTokenRepository.findAllActiveTokensByUsers(eligibleReceivers);
+
+        if (allTokens.isEmpty()) {
+            log.debug("활성 FCM 토큰 없음: 대상={}명", eligibleReceivers.size());
+            return;
+        }
+
+        // FCM 500개 제한에 맞춰 배치 분할 후 벌크 전송
+        List<List<String>> batches = partitionTokens(allTokens, FCM_MULTICAST_LIMIT);
+        for (List<String> batch : batches) {
+            sendMulticast(batch, event, eligibleReceivers.size());
         }
     }
 
@@ -55,9 +79,7 @@ public class FcmPushServiceImpl implements FcmPushService {
     }
 
     private boolean isCategoryEnabled(NotificationSetting setting, NotificationCategory category) {
-        if (setting.isAllPaused()) {
-            return false;
-        }
+        if (setting.isAllPaused()) return false;
         return switch (category) {
             case CHALLENGE -> setting.isChallengeEnabled();
             case VERIFICATION -> setting.isVerificationEnabled();
@@ -66,7 +88,16 @@ public class FcmPushServiceImpl implements FcmPushService {
         };
     }
 
-    private void sendMulticast(List<String> tokens, NotificationEvent event, Long receiverUserId) {
+    /** 토큰 리스트를 maxSize 단위로 분할 (FCM 500개 제한 대응) */
+    private List<List<String>> partitionTokens(List<String> tokens, int maxSize) {
+        List<List<String>> partitions = new ArrayList<>();
+        for (int i = 0; i < tokens.size(); i += maxSize) {
+            partitions.add(tokens.subList(i, Math.min(i + maxSize, tokens.size())));
+        }
+        return partitions;
+    }
+
+    private void sendMulticast(List<String> tokens, NotificationEvent event, int totalReceivers) {
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(
@@ -87,13 +118,13 @@ public class FcmPushServiceImpl implements FcmPushService {
         try {
             BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(message);
 
-            log.info("FCM 멀티캐스트 발송 완료: userId={}, 성공={}, 실패={}",
-                    receiverUserId, response.getSuccessCount(), response.getFailureCount());
+            log.info("FCM 벌크 발송 완료: 대상={}명, 토큰={}개, 성공={}, 실패={}",
+                    totalReceivers, tokens.size(), response.getSuccessCount(), response.getFailureCount());
 
             handleFailedTokens(tokens, response);
 
         } catch (FirebaseMessagingException e) {
-            log.error("FCM 멀티캐스트 발송 실패: userId={}, error={}", receiverUserId, e.getMessage(), e);
+            log.error("FCM 벌크 발송 실패: 토큰={}개, error={}", tokens.size(), e.getMessage(), e);
         }
     }
 
