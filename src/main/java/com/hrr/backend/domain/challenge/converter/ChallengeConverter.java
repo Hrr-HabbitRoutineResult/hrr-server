@@ -169,4 +169,8 @@ public class ChallengeConverter {
                 challenge.getCurrentParticipants()
         );
     }
+
+    public ChallengeResponseDto.UpdateChallengeDto toUpdateResponseDto(Challenge challenge) {
+        return new ChallengeResponseDto.UpdateChallengeDto(challenge.getId());
+    }
 }
