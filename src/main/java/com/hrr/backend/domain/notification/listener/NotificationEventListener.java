@@ -1,7 +1,7 @@
 package com.hrr.backend.domain.notification.listener;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
-import com.hrr.backend.domain.fcm.service.FcmPushService;
+import com.hrr.backend.domain.fcm.event.FcmPushSendEvent; // 추가된 이벤트
 import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
@@ -16,6 +16,7 @@ import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher; // 주입 필요
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -36,7 +37,7 @@ public class NotificationEventListener {
     private final NotificationTypeRepository typeRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
-    private final FcmPushService fcmPushService; // 추가
+    private final ApplicationEventPublisher eventPublisher;
 
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -44,7 +45,7 @@ public class NotificationEventListener {
     public void handleChallengeExtensionEvent(ChallengeExtensionEvent event) {
         Long roundId = event.roundId();
 
-        // 멱등성 체크 (중복 알림 방지)
+        // 멱등성 체크
         if (eventRepository.existsByContextTypeAndContextIdAndCreatedAtAfter(
                 ResourceType.ROUND, roundId, LocalDate.now().atStartOfDay())) {
             return;
@@ -89,9 +90,8 @@ public class NotificationEventListener {
             notificationRepository.saveAll(deliveries);
             log.info("챌린지 연장 알림 DB 저장 완료: RoundId={}, 대상={}명", roundId, deliveries.size());
 
-            // FCM 푸시 발송 (알림 설정 체크 포함)
-            fcmPushService.sendPushForDeliveries(deliveries, notificationEvent);
-            log.info("챌린지 연장 FCM 푸시 발송 요청 완료: RoundId={}", roundId);
+            // 직접 FCM을 호출하지 않고 이벤트를 발행
+            eventPublisher.publishEvent(new FcmPushSendEvent(deliveries, notificationEvent));
         }
     }
 
@@ -113,7 +113,7 @@ public class NotificationEventListener {
             return;
         }
 
-        Round round = roundRepository.findById(event.roundId())
+        Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
         Challenge challenge = round.getChallenge();
 
@@ -150,15 +150,14 @@ public class NotificationEventListener {
 
         NotificationDelivery delivery = NotificationDelivery.builder()
                 .event(notificationEvent)
-                .receiver(event.user())
+                .receiver(user)
                 .isRead(false)
                 .build();
         notificationRepository.save(delivery);
 
-        log.info("연장 응답 알림 생성 완료: User={}, Intent={}", event.user().getNickname(), event.intent());
+        log.info("연장 응답 알림 생성 완료: User={}, Intent={}", user.getNickname(), event.intent());
 
-        // FCM 푸시 발송 (알림 설정 체크 포함)
-        fcmPushService.sendPushForDelivery(delivery, notificationEvent);
-        log.info("연장 응답 FCM 푸시 발송 요청 완료: User={}", event.user().getNickname());
+        // 내부 이벤트 발행 (DB 커밋 후 발송 보장)
+        eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
     }
 }
