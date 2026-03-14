@@ -208,6 +208,38 @@ class FcmPushServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("INVALID_ARGUMENT 에러 발생 시 토큰을 비활성화하지 않고 경고 로그를 남긴다")
+    void handleFailedTokens_ignoresInvalidArgument() throws FirebaseMessagingException {
+        // given
+        String tokenWithPayloadError = "payload-error-token";
+        given(notificationSettingRepository.findAllByUserIn(anyList())).willReturn(List.of(settingEnabled()));
+        given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(List.of(tokenWithPayloadError));
+
+        FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
+        given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.INVALID_ARGUMENT);
+
+        SendResponse failResponse = mock(SendResponse.class);
+        given(failResponse.isSuccessful()).willReturn(false);
+        given(failResponse.getException()).willReturn(exception);
+
+        BatchResponse batchResponse = mock(BatchResponse.class);
+        given(batchResponse.getResponses()).willReturn(List.of(failResponse));
+
+        try (MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
+            FirebaseMessaging firebaseMessaging = mock(FirebaseMessaging.class);
+            fm.when(FirebaseMessaging::getInstance).thenReturn(firebaseMessaging);
+            given(firebaseMessaging.sendEachForMulticast(any())).willReturn(batchResponse);
+
+            // when
+            fcmPushService.sendPushForDeliveries(List.of(delivery), event);
+
+            // then
+            // 비활성화 메서드(deactivateAllByToken)가 절대 호출되지 않아야 함
+            verify(fcmTokenRepository, never()).deactivateAllByToken(anyString());
+        }
+    }
+
     private NotificationSetting settingEnabled() {
         return NotificationSetting.builder()
                 .user(user)

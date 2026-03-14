@@ -135,15 +135,17 @@ public class FcmPushServiceImpl implements FcmPushService {
             if (!sendResponse.isSuccessful()) {
                 MessagingErrorCode errorCode = sendResponse.getException().getMessagingErrorCode();
 
-                if (errorCode == MessagingErrorCode.UNREGISTERED
-                        || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+                // 토큰이 유효하지 않거나 만료된 것이 확실한 경우만 비활성화
+                if (errorCode == MessagingErrorCode.UNREGISTERED) {
                     String failedToken = tokens.get(i);
-
-                    // 단건 조회가 아닌 벌크 업데이트로 중복된 모든 토큰 처리
                     fcmTokenRepository.deactivateAllByToken(failedToken);
-
                     log.info("유효하지 않은 FCM 토큰 전체 비활성화 완료: token={}...",
                             failedToken.substring(0, Math.min(20, failedToken.length())));
+                }
+                // 메시지 페이로드 오류 가능성이 있는 경우 로그만 출력 (비활성화 X)
+                else if (errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+                    log.warn("FCM 메시지 페이로드 또는 토큰 형식이 잘못되었습니다. (INVALID_ARGUMENT): token={}, message={}",
+                            tokens.get(i), sendResponse.getException().getMessage());
                 }
             }
         }
