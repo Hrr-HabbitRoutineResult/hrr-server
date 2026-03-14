@@ -224,4 +224,14 @@ public class ChallengeResponseDto {
 		private Boolean isCurrentRound;
 	}
 
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @Schema(description = "챌린지 수정 응답 DTO")
+    public static class UpdateChallengeDto {
+
+        @Schema(description = "수정된 챌린지 ID", example = "1")
+        private Long challengeId;
+    }
+
 }
