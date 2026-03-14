@@ -8,6 +8,7 @@ import com.hrr.backend.domain.notification.entity.NotificationSetting;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class FcmPushServiceImpl implements FcmPushService {
 
     private final FcmTokenRepository fcmTokenRepository;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final S3UrlUtil s3UrlUtil;
 
     @Override
     public void sendPushForDeliveries(List<NotificationDelivery> deliveries, NotificationEvent event) {
@@ -104,7 +106,7 @@ public class FcmPushServiceImpl implements FcmPushService {
                         Notification.builder()
                                 .setTitle(event.getTitle())
                                 .setBody(event.getMessage())
-                                .setImage(event.getImageKey())
+                                .setImage(s3UrlUtil.toFullUrl(event.getImageKey()))
                                 .build()
                 )
                 .putData("targetType", event.getTargetType() != null ? event.getTargetType().name() : "")
