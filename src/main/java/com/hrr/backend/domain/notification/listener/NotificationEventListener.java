@@ -42,7 +42,7 @@ public class NotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleChallengeExtensionEvent(ChallengeExtensionEvent event) {
-        Long roundId = event.getRoundId();
+        Long roundId = event.roundId();
 
         // 멱등성 체크 (중복 알림 방지)
         if (eventRepository.existsByContextTypeAndContextIdAndCreatedAtAfter(
@@ -99,8 +99,8 @@ public class NotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleChallengeExtensionResponseEvent(ChallengeExtensionResponseEvent event) {
-        Long roundId = event.getRoundId();
-        User user = event.getUser();
+        Long roundId = event.roundId();
+        User user = event.user();
 
         // 멱등성 체크
         List<NotificationTypeName> resultTypes = List.of(
@@ -113,7 +113,7 @@ public class NotificationEventListener {
             return;
         }
 
-        Round round = roundRepository.findById(event.getRoundId())
+        Round round = roundRepository.findById(event.roundId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
         Challenge challenge = round.getChallenge();
 
@@ -122,7 +122,7 @@ public class NotificationEventListener {
         String title;
         String message;
 
-        if (event.getIntent() == NextRoundIntent.CONTINUE) {
+        if (event.intent() == NextRoundIntent.CONTINUE) {
             typeName = NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS;
             title = String.format("%s 챌린지가 연장되었어요", challenge.getTitle());
             message = "다음 라운드에서도 루틴을 이어가요";
@@ -150,15 +150,15 @@ public class NotificationEventListener {
 
         NotificationDelivery delivery = NotificationDelivery.builder()
                 .event(notificationEvent)
-                .receiver(event.getUser())
+                .receiver(event.user())
                 .isRead(false)
                 .build();
         notificationRepository.save(delivery);
 
-        log.info("연장 응답 알림 생성 완료: User={}, Intent={}", event.getUser().getNickname(), event.getIntent());
+        log.info("연장 응답 알림 생성 완료: User={}, Intent={}", event.user().getNickname(), event.intent());
 
         // FCM 푸시 발송 (알림 설정 체크 포함)
         fcmPushService.sendPushForDelivery(delivery, notificationEvent);
-        log.info("연장 응답 FCM 푸시 발송 요청 완료: User={}", event.getUser().getNickname());
+        log.info("연장 응답 FCM 푸시 발송 요청 완료: User={}", event.user().getNickname());
     }
 }
