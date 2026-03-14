@@ -138,13 +138,12 @@ public class FcmPushServiceImpl implements FcmPushService {
                 if (errorCode == MessagingErrorCode.UNREGISTERED
                         || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
                     String failedToken = tokens.get(i);
-                    fcmTokenRepository.findByToken(failedToken)
-                            .ifPresent(fcmToken -> {
-                                fcmToken.deactivateToken();
-                                fcmTokenRepository.save(fcmToken);
-                                log.info("유효하지 않은 FCM 토큰 비활성화: token={}...",
-                                        failedToken.substring(0, Math.min(20, failedToken.length())));
-                            });
+
+                    // 단건 조회가 아닌 벌크 업데이트로 중복된 모든 토큰 처리
+                    fcmTokenRepository.deactivateAllByToken(failedToken);
+
+                    log.info("유효하지 않은 FCM 토큰 전체 비활성화 완료: token={}...",
+                            failedToken.substring(0, Math.min(20, failedToken.length())));
                 }
             }
         }

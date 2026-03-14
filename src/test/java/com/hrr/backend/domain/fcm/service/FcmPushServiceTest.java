@@ -155,14 +155,13 @@ class FcmPushServiceTest {
     }
 
     @Test
-    @DisplayName("UNREGISTERED 에러 발생 시 해당 토큰을 찾아 비활성화한다")
-    void handleFailedTokens_deactivatesInvalidToken() throws FirebaseMessagingException {
+    @DisplayName("UNREGISTERED 에러 발생 시 해당 토큰을 가진 모든 레코드를 비활성화한다")
+    void handleFailedTokens_deactivatesAllDuplicateTokens() throws FirebaseMessagingException {
         // given
         String invalidToken = "invalid-token";
         given(notificationSettingRepository.findAllByUserIn(anyList())).willReturn(List.of(settingEnabled()));
         given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(List.of(invalidToken));
 
-        // 실패 응답 구성
         FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
         given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
 
@@ -173,10 +172,6 @@ class FcmPushServiceTest {
         BatchResponse batchResponse = mock(BatchResponse.class);
         given(batchResponse.getResponses()).willReturn(List.of(failResponse));
 
-        // 토큰 엔티티 모킹
-        com.hrr.backend.domain.fcm.entity.FcmToken fcmTokenEntity = mock(com.hrr.backend.domain.fcm.entity.FcmToken.class);
-        given(fcmTokenRepository.findByToken(invalidToken)).willReturn(Optional.of(fcmTokenEntity));
-
         try (MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
             FirebaseMessaging firebaseMessaging = mock(FirebaseMessaging.class);
             fm.when(FirebaseMessaging::getInstance).thenReturn(firebaseMessaging);
@@ -186,8 +181,7 @@ class FcmPushServiceTest {
             fcmPushService.sendPushForDeliveries(List.of(delivery), event);
 
             // then
-            verify(fcmTokenEntity, times(1)).deactivateToken();
-            verify(fcmTokenRepository, times(1)).save(fcmTokenEntity);
+            verify(fcmTokenRepository, times(1)).deactivateAllByToken(invalidToken);
         }
     }
 

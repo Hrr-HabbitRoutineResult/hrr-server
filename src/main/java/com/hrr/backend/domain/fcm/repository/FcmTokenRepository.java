@@ -3,6 +3,7 @@ package com.hrr.backend.domain.fcm.repository;
 import com.hrr.backend.domain.fcm.entity.FcmToken;
 import com.hrr.backend.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,4 +25,9 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
     // 여러 유저의 활성화된 FCM 토큰 목록을 한 번에 조회 (벌크 발송용, N+1 방지)
     @Query("SELECT t.token FROM FcmToken t WHERE t.user IN :users AND t.isActive = true")
     List<String> findAllActiveTokensByUsers(@Param("users") List<User> users);
+
+    // 특정 토큰을 가진 모든 유저의 레코드를 한 번에 비활성화 (중복 토큰 대응)
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE FcmToken t SET t.isActive = false WHERE t.token = :token")
+    void deactivateAllByToken(@Param("token") String token);
 }
