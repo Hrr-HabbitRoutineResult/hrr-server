@@ -152,20 +152,28 @@ public class FcmPushServiceImpl implements FcmPushService {
             SendResponse sendResponse = responses.get(i);
             if (!sendResponse.isSuccessful()) {
                 MessagingErrorCode errorCode = sendResponse.getException().getMessagingErrorCode();
+                String token = tokens.get(i); // 현재 처리 중인 토큰
 
-                // 토큰이 유효하지 않거나 만료된 것이 확실한 경우만 비활성화
                 if (errorCode == MessagingErrorCode.UNREGISTERED) {
-                    String failedToken = tokens.get(i);
-                    fcmTokenRepository.deactivateAllByToken(failedToken);
-                    log.info("유효하지 않은 FCM 토큰 전체 비활성화 완료: token={}...",
-                            failedToken.substring(0, Math.min(20, failedToken.length())));
+                    fcmTokenRepository.deactivateAllByToken(token);
+                    // 마스킹 메서드 적용
+                    log.info("유효하지 않은 FCM 토큰 전체 비활성화 완료: token={}", maskToken(token));
                 }
-                // 메시지 페이로드 오류 가능성이 있는 경우 로그만 출력 (비활성화 X)
                 else if (errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+                    // 원문 대신 마스킹된 토큰 로그 출력
                     log.warn("FCM 메시지 페이로드 또는 토큰 형식이 잘못되었습니다. (INVALID_ARGUMENT): token={}, message={}",
-                            tokens.get(i), sendResponse.getException().getMessage());
+                            maskToken(token), sendResponse.getException().getMessage());
                 }
             }
         }
+    }
+
+    private String maskToken(String token) {
+        if (token == null || token.isBlank()) {
+            return "<empty>";
+        }
+        // 앞 20자만 보여주고 나머지는 마스킹 처리
+        int visible = Math.min(20, token.length());
+        return token.substring(0, visible) + "...";
     }
 }
