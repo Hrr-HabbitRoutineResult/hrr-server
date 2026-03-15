@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -42,10 +43,16 @@ public class FcmPushServiceImpl implements FcmPushService {
         boolean isMandatory = event.getType().isMandatory();
         NotificationCategory category = event.getCategory();
 
-        // 수신자 리스트 추출 시 중복 제거 (distinct 추가)
+        // 수신자 리스트 추출 및 ID 기반 중복 제거
         List<User> receivers = deliveries.stream()
-                .map(NotificationDelivery::getReceiver)
-                .distinct()
+                .collect(Collectors.toMap(
+                        d -> d.getReceiver().getId(),
+                        NotificationDelivery::getReceiver,
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
                 .toList();
 
         // 알림 설정 조회 및 Map 변환
@@ -55,8 +62,9 @@ public class FcmPushServiceImpl implements FcmPushService {
                 .collect(Collectors.toMap(
                         s -> s.getUser().getId(),
                         s -> s,
-                        (existing, replacement) -> existing // 중복 키 발생 시 기존 값 유지
+                        (existing, replacement) -> existing
                 ));
+
         // 발송 대상 유저 필터링
         List<User> eligibleReceivers = receivers.stream()
                 .filter(user -> {
