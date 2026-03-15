@@ -33,7 +33,15 @@ public class FcmPushServiceImpl implements FcmPushService {
     public void sendPushForDeliveries(List<NotificationDelivery> deliveries, NotificationEvent event) {
         if (deliveries.isEmpty()) return;
 
+        // 1. 필수 필드(Event, Type)에 대한 조기 리턴 (Early Return)
+        if (event == null || event.getType() == null) {
+            log.warn("FCM 발송 스킵: NotificationEvent 또는 NotificationType이 null입니다.");
+            return;
+        }
+
         boolean isMandatory = event.getType().isMandatory();
+        NotificationCategory category = event.getCategory(); // NPE 방지를 위해 변수로 추출
+
         List<User> receivers = deliveries.stream()
                 .map(NotificationDelivery::getReceiver)
                 .toList();
@@ -45,18 +53,26 @@ public class FcmPushServiceImpl implements FcmPushService {
                 .collect(Collectors.toMap(s -> s.getUser().getId(), s -> s));
 
         // 발송 대상 유저 필터링
-        // isMandatory=true(필수 알림)면 유저 설정과 무관하게 발송, 설정 레코드가 없으면 기본 허용
         List<User> eligibleReceivers = receivers.stream()
                 .filter(user -> {
+                    // 필수 알림인 경우 무조건 발송
                     if (isMandatory) return true;
+
+                    // 필수 알림이 아닌데 카테고리가 없으면 필터링 조건 확인 불가로 발송 제외
+                    if (category == null) {
+                        log.warn("FCM 발송 필터링: 필수 알림이 아니지만 카테고리가 null입니다. (UserId={})", user.getId());
+                        return false;
+                    }
+
                     NotificationSetting setting = settingMap.get(user.getId());
-                    if (setting == null) return true;
-                    return isCategoryEnabled(setting, event.getCategory());
+                    if (setting == null) return true; // 설정 레코드가 없으면 기본 허용
+
+                    return isCategoryEnabled(setting, category);
                 })
                 .toList();
 
         if (eligibleReceivers.isEmpty()) {
-            log.debug("발송 대상 없음: category={}, mandatory={}", event.getCategory(), isMandatory);
+            log.debug("발송 대상 없음: category={}, mandatory={}", category, isMandatory);
             return;
         }
 
