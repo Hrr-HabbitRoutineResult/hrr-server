@@ -33,25 +33,30 @@ public class FcmPushServiceImpl implements FcmPushService {
     public void sendPushForDeliveries(List<NotificationDelivery> deliveries, NotificationEvent event) {
         if (deliveries.isEmpty()) return;
 
-        // 1. 필수 필드(Event, Type)에 대한 조기 리턴 (Early Return)
+        // 필수 필드(Event, Type)에 대한 조기 리턴
         if (event == null || event.getType() == null) {
             log.warn("FCM 발송 스킵: NotificationEvent 또는 NotificationType이 null입니다.");
             return;
         }
 
         boolean isMandatory = event.getType().isMandatory();
-        NotificationCategory category = event.getCategory(); // NPE 방지를 위해 변수로 추출
+        NotificationCategory category = event.getCategory();
 
+        // 수신자 리스트 추출 시 중복 제거 (distinct 추가)
         List<User> receivers = deliveries.stream()
                 .map(NotificationDelivery::getReceiver)
+                .distinct()
                 .toList();
 
-        // 알림 설정을 IN절로 한 번에 조회 → userId 기준 Map으로 변환
+        // 알림 설정 조회 및 Map 변환
         Map<Long, NotificationSetting> settingMap = notificationSettingRepository
                 .findAllByUserIn(receivers)
                 .stream()
-                .collect(Collectors.toMap(s -> s.getUser().getId(), s -> s));
-
+                .collect(Collectors.toMap(
+                        s -> s.getUser().getId(),
+                        s -> s,
+                        (existing, replacement) -> existing // 중복 키 발생 시 기존 값 유지
+                ));
         // 발송 대상 유저 필터링
         List<User> eligibleReceivers = receivers.stream()
                 .filter(user -> {
