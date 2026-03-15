@@ -10,6 +10,7 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.global.s3.S3UrlUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,9 @@ class FcmPushServiceTest {
     @Mock
     private NotificationSettingRepository notificationSettingRepository;
 
+    @Mock
+    private S3UrlUtil s3UrlUtil;
+
     private User user;
     private NotificationEvent event;
     private NotificationDelivery delivery;
@@ -48,6 +52,9 @@ class FcmPushServiceTest {
     void setUp() {
         user = mock(User.class);
         lenient().when(user.getId()).thenReturn(1L);
+
+        lenient().when(s3UrlUtil.toFullUrl(any()))
+                .thenAnswer(invocation -> "https://s3.amazonaws.com/" + invocation.getArgument(0));
 
         // NotificationType 모킹 및 기본 설정
         mockType = mock(NotificationType.class);
@@ -59,6 +66,7 @@ class FcmPushServiceTest {
                 .category(NotificationCategory.CHALLENGE)
                 .title("챌린지 알림")
                 .message("테스트 메시지")
+                .imageKey("challenges/test.png")
                 .build();
 
         delivery = NotificationDelivery.builder()
