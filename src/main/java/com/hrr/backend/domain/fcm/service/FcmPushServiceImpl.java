@@ -43,6 +43,12 @@ public class FcmPushServiceImpl implements FcmPushService {
         boolean isMandatory = event.getType().isMandatory();
         NotificationCategory category = event.getCategory();
 
+        // 카테고리 체크를 스트림 외부로 이동하여 로그 폭증 방지
+        if (!isMandatory && category == null) {
+            log.warn("FCM 발송 스킵: 필수 알림이 아니지만 카테고리(category)가 null입니다.");
+            return;
+        }
+
         // 수신자 리스트 추출 및 ID 기반 중복 제거
         List<User> receivers = deliveries.stream()
                 .collect(Collectors.toMap(
@@ -68,17 +74,10 @@ public class FcmPushServiceImpl implements FcmPushService {
         // 발송 대상 유저 필터링
         List<User> eligibleReceivers = receivers.stream()
                 .filter(user -> {
-                    // 필수 알림인 경우 무조건 발송
                     if (isMandatory) return true;
 
-                    // 필수 알림이 아닌데 카테고리가 없으면 필터링 조건 확인 불가로 발송 제외
-                    if (category == null) {
-                        log.warn("FCM 발송 필터링: 필수 알림이 아니지만 카테고리가 null입니다. (UserId={})", user.getId());
-                        return false;
-                    }
-
                     NotificationSetting setting = settingMap.get(user.getId());
-                    if (setting == null) return true; // 설정 레코드가 없으면 기본 허용
+                    if (setting == null) return true;
 
                     return isCategoryEnabled(setting, category);
                 })
