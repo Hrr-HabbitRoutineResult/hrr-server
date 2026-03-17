@@ -32,7 +32,7 @@ public class FcmPushServiceImpl implements FcmPushService {
 
     @Override
     public void sendPushForDeliveries(List<NotificationDelivery> deliveries, NotificationEvent event) {
-        if (deliveries.isEmpty()) return;
+        if (deliveries == null || deliveries.isEmpty()) return;
 
         // 필수 필드(Event, Type)에 대한 조기 리턴
         if (event == null || event.getType() == null) {
@@ -106,6 +106,12 @@ public class FcmPushServiceImpl implements FcmPushService {
 
     @Override
     public void sendPushForDelivery(NotificationDelivery delivery, NotificationEvent event) {
+        // 단일 발송 시 delivery가 null인 경우 조기 리턴
+        if (delivery == null) {
+            log.warn("FCM 발송 스킵: NotificationDelivery가 null입니다.");
+            return;
+        }
+
         sendPushForDeliveries(List.of(delivery), event);
     }
 
