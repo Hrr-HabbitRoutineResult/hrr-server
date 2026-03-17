@@ -9,6 +9,7 @@ import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.common.enums.Category;
@@ -110,6 +111,7 @@ class VerificationAbsenceRepositoryTest {
         UserChallenge uc = userChallengeRepository.save(UserChallenge.builder()
                 .user(user)
                 .challenge(challenge)
+				.status(ChallengeJoinStatus.JOINED)
                 .build());
 
         // 라운드 레코드 생성
@@ -123,6 +125,7 @@ class VerificationAbsenceRepositoryTest {
 
         // then: 라운드 시작 전 날짜이므로 집계되면 안 된다
         // 현재 구현에서는 날짜 범위 검증이 빠져 있어 실패가 예상됨 (TDD용 실패 테스트)
+		// -> 라운드 기간 내 날짜만 미인증 집계 대상이 되도록 수정하여 테스트 통과
         assertThat(absentees).isEmpty();
     }
 }
