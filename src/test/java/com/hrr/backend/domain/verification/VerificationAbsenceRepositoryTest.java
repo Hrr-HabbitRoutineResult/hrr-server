@@ -128,5 +128,84 @@ class VerificationAbsenceRepositoryTest {
 		// -> 라운드 기간 내 날짜만 미인증 집계 대상이 되도록 수정하여 테스트 통과
         assertThat(absentees).isEmpty();
     }
+
+	@Test
+	@DisplayName("라운드 전환 시점에도 어제 날짜를 포함하는 이전 라운드 레코드를 정확히 조회한다")
+	void shouldCountAbsence_WhenRoundTransitions() {
+		// given
+		LocalDate today = LocalDate.now();
+		LocalDate yesterday = today.minusDays(1);
+		ChallengeDays yesterdayChallengeDay = ChallengeDays.from(yesterday.getDayOfWeek());
+
+		// 1. 유저 및 챌린지 설정 (상태: ONGOING)
+		User user = userRepository.save(User.builder()
+			.name("transition_tester")
+			.nickname("transition_nick")
+			.isPublic(true)
+			.build());
+
+		Challenge challenge = challengeRepository.save(Challenge.builder()
+			.isPublic(true)
+			.category(Category.HEALTH)
+			.isViewerMode(false)
+			.maxParticipants(10)
+			.currentParticipants(1)
+			.title("Transition Test Challenge")
+			.description("transition test description")
+			.startDate(yesterday.atStartOfDay().minusDays(7))
+			.verificationType(VerificationType.TEXT)
+			.verifyStartTime(LocalTime.of(9, 0))
+			.verifyEndTime(LocalTime.of(22, 0))
+			.status(ChallengeStatus.ONGOING)
+			.build());
+
+		// 어제 요일을 인증 요일에 포함
+		ChallengeDayJoin dayJoin = ChallengeDayJoin.builder()
+			.challenge(challenge)
+			.dayOfWeek(yesterdayChallengeDay)
+			.build();
+		challenge.getChallengeDays().add(dayJoin);
+		challengeRepository.save(challenge);
+
+		// 2. 라운드 설정: 라운드 2(어제가 종료일) -> 라운드 3(오늘이 시작일)
+		Round round2 = roundRepository.save(Round.builder()
+			.challenge(challenge)
+			.roundNumber(2)
+			.startDate(yesterday.minusDays(6))
+			.endDate(yesterday) // 어제가 마지막 날
+			.build());
+
+		Round round3 = roundRepository.save(Round.builder()
+			.challenge(challenge)
+			.roundNumber(3)
+			.startDate(today) // 오늘부터 시작
+			.endDate(today.plusDays(6))
+			.build());
+
+		// 챌린지의 현재 라운드를 이미 라운드 3으로 변경 (스케줄러에 의해 이미 넘어간 상황 시뮬레이션)
+		challenge.changeCurrentRound(round3);
+		challengeRepository.save(challenge);
+
+		// 3. 참여 정보 및 라운드 레코드 생성
+		UserChallenge uc = userChallengeRepository.save(UserChallenge.builder()
+			.user(user)
+			.challenge(challenge)
+			.build());
+
+		// 라운드 2에 대한 레코드 생성 (이전 라운드 미인증을 체크해야 함)
+		RoundRecord rr2 = roundRecordRepository.save(RoundRecord.builder()
+			.round(round2)
+			.userChallenge(uc)
+			.build());
+
+		// when: 어제 날짜로 미인증 대상 조회
+		List<RoundRecord> absentees = roundRecordRepository.findAbsentees(yesterdayChallengeDay, yesterday);
+
+		// then: 현재 라운드는 3이지만, 어제 날짜를 포함했던 라운드 2의 레코드가 조회되어야 함
+		assertThat(absentees).hasSize(1);
+		assertThat(absentees.get(0).getRound().getRoundNumber()).isEqualTo(2);
+		assertThat(absentees.get(0).getId()).isEqualTo(rr2.getId());
+	}
+
 }
 
