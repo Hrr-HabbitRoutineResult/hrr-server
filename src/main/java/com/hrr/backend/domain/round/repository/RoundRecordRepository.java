@@ -104,10 +104,12 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
 		"JOIN rr.userChallenge uc " +
 		"JOIN uc.challenge c " +
 		"JOIN c.challengeDays cd " +
+		"JOIN rr.round r " +
 		"WHERE c.status = com.hrr.backend.global.common.enums.ChallengeStatus.ONGOING " + // 진행 중인 챌린지
 		"AND uc.status = com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus.JOINED " + // 참여 중인 유저
-		"AND rr.round = c.currentRound " +	// 현재 라운드만 확인
 		"AND cd.dayOfWeek = :yesterdayChallengeDay " + // 어제 요일이 인증 요일인지 확인
+		"AND r.startDate <= :yesterdayDate " +		// 어제 날짜 기준, 해당 라운드의 기간 내에 포함되는지 확인
+		"AND r.endDate >= :yesterdayDate " +
 		"AND NOT EXISTS ( " +
 		"    SELECT v FROM Verification v " +
 		"    WHERE v.roundRecord = rr " +
