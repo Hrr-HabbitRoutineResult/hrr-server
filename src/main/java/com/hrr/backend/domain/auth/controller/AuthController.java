@@ -162,6 +162,7 @@ public class AuthController {
             //AuthService.withdraw()가 토큰에서 직접 userId를 추출하므로
             @RequestHeader("Authorization") String authorizationHeader // 추가됨
     ) {
+        authService.withdraw(authorizationHeader);
         return ApiResponse.onSuccess(SuccessCode.OK, "회원 탈퇴에 성공했습니다.");
     }
 

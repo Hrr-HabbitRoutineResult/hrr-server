@@ -278,7 +278,7 @@ public class AuthService {
 
     /**
      * 회원 탈퇴
-     * @param userId 탈퇴할 사용자의 userId
+     * 토큰 subject에서 userId 추출
      */
     @Transactional
     public void withdraw(String tokenHeader) {
