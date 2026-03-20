@@ -676,6 +676,7 @@ public class ChallengeServiceImpl implements ChallengeService {
         // ChallengeDayJoin 전체 교체 (기존 삭제 후 새로 insert)
         challengeDayJoinRepository.deleteAllByChallenge(challenge);
         List<ChallengeDayJoin> newDays = req.getDaysOfWeek().stream()
+                .distinct()
                 .map(day -> ChallengeDayJoin.builder()
                         .challenge(challenge)
                         .dayOfWeek(day)
@@ -775,6 +776,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 		if (challengeRepository.countByUserIdAndStatus(owner.getId(), ChallengeJoinStatus.JOINED) >= 5) {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
+
+        LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
 		// 시작일 검증: 오늘 이후여야 함
 		if (!req.getStartDate().isAfter(LocalDate.now())) {
