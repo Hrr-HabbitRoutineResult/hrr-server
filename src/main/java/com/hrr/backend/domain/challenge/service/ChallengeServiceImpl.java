@@ -687,8 +687,19 @@ public class ChallengeServiceImpl implements ChallengeService {
         // Round의 startDate / endDate도 갱신 (1라운드 시작일 변경)
         Round currentRound = challenge.getCurrentRound();
         if (currentRound != null) {
+            if (req.getStartDate() == null) {
+                throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
+            }
             currentRound.updateStartDate(req.getStartDate());
         }
+
+        // 수정 후 임베딩/검색 파생 데이터 갱신
+        // title, description, rule 변경 시 검색/추천 임베딩이 수정 전 텍스트로 남는 문제 방지
+        // createChallenge()와 동일한 이벤트 발행 패턴으로 임베딩 재계산 트리거
+        String updatedChallengeText = buildChallengeText(challenge);
+        eventPublisher.publishEvent(
+                new ChallengeCreatedEvent(challenge.getId(), updatedChallengeText)
+        );
 
         return challengeConverter.toUpdateResponseDto(challenge);
     }
