@@ -38,7 +38,6 @@ public class AuthService {
 
     private final SocialAuthRepository socialAuthRepository;
     private final UserRepository userRepository;
-    private final UserChallengeRepository userChallengeRepository;
 
     public AuthResponseDto.LoginResponse socialLogin(SocialType socialType, AuthRequestDto.SocialLoginRequest request) {
         // 지원하지 않는 소셜 타입이면 GlobalException 던지기
@@ -81,7 +80,13 @@ public class AuthService {
         }
     }
 
-    /** Refresh Token 기반 Access Token 재발급 */
+    /**
+     * Refresh Token 기반 Access Token 재발급
+     * RT를 Redis에 저장하고, 재발급 시 전달받은 RT와 Redis 저장값을 비교하여 검증 강화
+     * - validateToken()으로 서명/만료/블랙리스트 통합 검증
+     * - Redis에서 RT를 원자적으로 조회+삭제(getAndDeleteRefreshToken) 후 요청값과 비교
+     * - 검증 통과 시에만 새 AT/RT 발급, 기존 RT는 블랙리스트 처리
+     */
     public AuthResponseDto.TokenReissueResponse reissueToken(String refreshHeader) {
         // "Bearer " 접두사 제거
         String refreshToken = refreshHeader.startsWith("Bearer ")
@@ -277,27 +282,25 @@ public class AuthService {
      */
     @Transactional
     public void withdraw(Long userId, String tokenHeader) {
+
+        // AT 유효성 검증: 만료/블랙리스트/서명 이상 시 예외 발생
+        String token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
+        jwtService.validateToken(token);
+
         // 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
         // 유저 상태 변경 (Soft Delete)
         user.withdraw();
 
-        List<UserChallenge> userChallenges = userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
-        userChallenges.forEach(userChallenge -> {
-            // 챌린지 엔티티의 인원 수 감소 로직 호출
-            userChallenge.getChallenge().decreaseCurrentParticipants();
-            // 상태 변경
-            userChallenge.updateStatus(ChallengeJoinStatus.DROPPED);
-        });
+        // 챌린지 참여 상태 즉시 변경 로직 제거
+        // → 탈퇴는 비활성화와 동일한 개념이므로 30일 유예기간 동안 재활성화 가능
+        //   유예기간 중 챌린지 상태를 유지해야 재활성화 시 정상 복구됨
 
-        // Access Token 블랙리스트 처리
-        if (tokenHeader != null) {
-            String token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
-            Duration remainingExpiration = jwtService.getRemainingExpiration(token);
-            if (!remainingExpiration.isNegative() && !remainingExpiration.isZero()) {
-                jwtService.blacklistToken(token, remainingExpiration);
-            }
+        // AT 블랙리스트 처리 (남은 유효기간 동안 재사용 방지)
+        Duration remainingExpiration = jwtService.getRemainingExpiration(token);
+        if (!remainingExpiration.isNegative() && !remainingExpiration.isZero()) {
+            jwtService.blacklistToken(token, remainingExpiration);
         }
 
         // 탈퇴 시 Refresh Token 삭제

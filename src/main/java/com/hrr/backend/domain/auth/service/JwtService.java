@@ -94,8 +94,13 @@ public class JwtService {
     }
 
     /** 토큰 만료 여부 확인
-     * 만료가 되면 true를 반환하게 하고 유효하거나 파싱 불가할 때 false 반환하게 함*/
+     * 만료가 되면 true를 반환하게 하고 유효하거나 파싱 불가할 때 false 반환하게 함
+     * 블랙리스트에 등록된 토큰도 만료된 것으로 간주하도록 체크 추가 */
     public boolean isTokenExpired(String token) {
+        // 블랙리스트에 등록된 토큰은 만료 처리
+        if (isTokenBlacklisted(token)) {
+            return true;
+        }
         try {
             Date expiration = Jwts.parserBuilder()
                     .setSigningKey(getSigningKey())
