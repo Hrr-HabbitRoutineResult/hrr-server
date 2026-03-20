@@ -281,11 +281,15 @@ public class AuthService {
      * @param userId 탈퇴할 사용자의 userId
      */
     @Transactional
-    public void withdraw(Long userId, String tokenHeader) {
+    public void withdraw(String tokenHeader) {
 
         // AT 유효성 검증: 만료/블랙리스트/서명 이상 시 예외 발생
         String token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
         jwtService.validateToken(token);
+
+        // 파라미터 userId 대신 토큰 subject에서 직접 userId 추출
+        // → 컨트롤러에서 넘어온 파라미터를 맹목적으로 신뢰하지 않고, 토큰 주체를 직접 신뢰
+        Long userId = jwtService.extractUserId(token);
 
         // 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
         User user = userRepository.findById(userId)
@@ -325,6 +329,12 @@ public class AuthService {
                 case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
                 default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
             }
+        } catch (GlobalException e) {
+            // GlobalException(AUTH_INVALID_SOCIAL_TYPE 등 내부 분기 오류)은
+            // catch(Exception)에 덮이지 않도록 먼저 통과시킴
+            // → 내부 로직 오류를 외부 API 오류(AUTH_EXTERNAL_API_ERROR)로 오진하는 문제 방지
+            log.error("Social revoke internal error for userId: {}", userId, e);
+            throw e;
         } catch (Exception e) {
             log.error("Social revoke failed for userId: {}", userId, e);
             throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);

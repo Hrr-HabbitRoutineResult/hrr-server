@@ -30,9 +30,6 @@ class AuthServiceWithdrawTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private UserChallengeRepository userChallengeRepository;
-
     // [추가] withdraw 메서드 내부에서 jwtService를 호출하므로 Mock 추가 필요
     @Mock
     private JwtService jwtService;
@@ -45,36 +42,17 @@ class AuthServiceWithdrawTest {
         String dummyToken = "Bearer test_token"; // 더미 토큰
         User user = mock(User.class);
 
-        Challenge challenge = Challenge.builder()
-                .currentParticipants(5)
-                .build();
-
-        UserChallenge userChallenge = UserChallenge.builder()
-                .user(user)
-                .challenge(challenge)
-                .status(ChallengeJoinStatus.JOINED)
-                .build();
-
+        given(jwtService.extractUserId("test_token")).willReturn(userId);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED))
-                .willReturn(List.of(userChallenge));
-
-        // [추가] JwtService 호출에 대한 Stubbing (NPE 방지)
-        given(jwtService.getRemainingExpiration(anyString())).willReturn(Duration.ofMinutes(10));
-
+        given(jwtService.getRemainingExpiration("test_token")).willReturn(Duration.ofMinutes(10));
         // when
-        // [수정] 인자 2개 전달 (userId, token)
-        authService.withdraw(userId, dummyToken);
+        authService.withdraw(dummyToken);
 
         // then
         verify(user).withdraw();
 
-        // 챌린지 로직이 정상 수행되었는지 확인 (AssertionFailedError 해결 확인용)
-        assertThat(challenge.getCurrentParticipants()).isEqualTo(4);
-        assertThat(userChallenge.getStatus()).isEqualTo(ChallengeJoinStatus.DROPPED);
-
-        // 토큰 삭제 로직 수행 확인
-        verify(jwtService).blacklistToken(anyString(), any(Duration.class));
+        // 토큰 무효화 로직 수행 확인
+        verify(jwtService).blacklistToken(eq("test_token"), any(Duration.class));
         verify(jwtService).deleteRefreshToken(userId);
     }
 
@@ -86,22 +64,18 @@ class AuthServiceWithdrawTest {
         String dummyToken = "Bearer test_token";
         User user = mock(User.class);
 
+        given(jwtService.extractUserId("test_token")).willReturn(userId);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED))
-                .willReturn(List.of()); // 빈 리스트 반환
-
-        given(jwtService.getRemainingExpiration(anyString())).willReturn(Duration.ofMinutes(10));
+        // 남은 유효기간이 0이면 블랙리스트 등록을 생략해야 함
+        given(jwtService.getRemainingExpiration("test_token")).willReturn(Duration.ZERO);
 
         // when
-        // [수정] 인자 2개 전달
-        authService.withdraw(userId, dummyToken);
+        authService.withdraw(dummyToken);
 
         // then
         verify(user).withdraw();
+        // 만료된 토큰은 블랙리스트 등록 불필요
+        verify(jwtService, never()).blacklistToken(anyString(), any(Duration.class));
         verify(jwtService).deleteRefreshToken(userId);
-
-        // UnnecessaryStubbingException 해결:
-        // AuthService에 userChallengeRepository 호출 로직이 복구되었으므로,
-        // 위에서 선언한 given(userChallengeRepository...)가 정상적으로 사용되어 에러가 사라집니다.
     }
 }

@@ -159,10 +159,9 @@ public class AuthController {
     @PostMapping("/withdraw")
     @Operation(summary = "회원 탈퇴", description = "탈퇴를 진행합니다. 1개월 동안 재가입이 불가하며 모든 정보가 삭제됩니다.")
     public ApiResponse<String> withdraw(
-            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+            //AuthService.withdraw()가 토큰에서 직접 userId를 추출하므로
             @RequestHeader("Authorization") String authorizationHeader // 추가됨
     ) {
-        authService.withdraw(userDetails.getUser().getId(), authorizationHeader);
         return ApiResponse.onSuccess(SuccessCode.OK, "회원 탈퇴에 성공했습니다.");
     }
 
