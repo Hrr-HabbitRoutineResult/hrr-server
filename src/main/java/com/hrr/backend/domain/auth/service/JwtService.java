@@ -22,9 +22,11 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
 
+    //액세스 토큰 만료시간
     @Value("${jwt.access-token-validity}")
     private long accessTokenValidity;
 
+    // 리프레시 토큰 만료시간
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
 
@@ -37,6 +39,7 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** Access Token 생성 */
     public String generateAccessToken(Long userId) {
         Date now = new Date();
         return Jwts.builder()
@@ -47,6 +50,9 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * Refresh Token 생성
+     */
     public String generateRefreshToken(Long userId) {
         Date now = new Date();
         String refreshToken = Jwts.builder()
@@ -67,6 +73,9 @@ public class JwtService {
         return refreshToken;
     }
 
+    /**
+     * 토큰 유효성 검증 (서명 및  만료 여부 확인 위함)
+     * 유효하면 true 반환하도록 진행*/
     public boolean validateToken(String token) {
         if (isTokenBlacklisted(token)) {
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
@@ -84,6 +93,8 @@ public class JwtService {
         }
     }
 
+    /** 토큰 만료 여부 확인
+     * 만료가 되면 true를 반환하게 하고 유효하거나 파싱 불가할 때 false 반환하게 함*/
     public boolean isTokenExpired(String token) {
         try {
             Date expiration = Jwts.parserBuilder()
@@ -98,6 +109,7 @@ public class JwtService {
         }
     }
 
+    /** userId(subject) 추출 */
     public Long extractUserId(String token) {
         try {
             Claims claims = Jwts.parserBuilder()
@@ -127,6 +139,8 @@ public class JwtService {
         }
     }
 
+    /** HTTP 요청 헤더에서 JWT 추출
+     * Authroization: Bearer {token} 형태에서 token 만 분리하는 것임*/
     public String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
@@ -135,6 +149,7 @@ public class JwtService {
         return null;
     }
 
+    // 토큰을 더 이상 사용하지 못 하게 무효화
     public void blacklistToken(String token, Duration expirationDuration) {
         redisTemplate.opsForValue().set(
                 BLACKLIST_PREFIX + token,
@@ -143,25 +158,36 @@ public class JwtService {
         );
     }
 
+    // 블랙리스트 포함 여부 조회
     public boolean isTokenBlacklisted(String token) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
     }
 
+    /**
+     * JWT 토큰에서 남은 유효 기간(TTL)을 계산하여 반환
+     * * @param token JWT 문자열 (Bearer 접두사가 없는 순수 토큰)
+     * @return 토큰의 남은 유효 기간 (Duration). 이미 만료되었거나 파싱 오류 시 Duration.ZERO 반환.
+     */
     public Duration getRemainingExpiration(String token) {
         try {
+            // 토큰 파싱 및 Claims 획득
             Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
+                    .setSigningKey(getSigningKey()) // 토큰 검증에 사용된 시크릿 키
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
 
+            // 만료 시간 (exp 클레임) 획득
             Date expiration = claims.getExpiration();
             Date now = new Date();
 
+            // 남은 시간 계산
             if (expiration.after(now)) {
+                // 만료 시간이 현재 시간보다 늦다면, 남은 밀리초를 계산
                 long diffInMillis = expiration.getTime() - now.getTime();
                 return Duration.ofMillis(diffInMillis);
             } else {
+                // 이미 만료된 토큰인 경우
                 return Duration.ZERO;
             }
 

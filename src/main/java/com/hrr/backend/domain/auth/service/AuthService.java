@@ -41,18 +41,26 @@ public class AuthService {
     private final UserChallengeRepository userChallengeRepository;
 
     public AuthResponseDto.LoginResponse socialLogin(SocialType socialType, AuthRequestDto.SocialLoginRequest request) {
+        // 지원하지 않는 소셜 타입이면 GlobalException 던지기
         if (socialType != SocialType.KAKAO) {
             throw new GlobalException(ErrorCode.AUTH_UNSUPPORTED_SOCIAL_TYPE);
         }
 
         try {
+            // 1. 카카오 인가 코드로 토큰 발급
             KakaoTokenResponse token = kakaoAuthService.exchangeToken(request.code());
+
+            // 2. 카카오 유저 정보 조회
             KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(token.getAccessToken());
+
+            // 3. DB에 유저 upsert
             User user = socialUserService.upsertKakaoUser(kakaoUser);
 
+            // 4. JWT 생성
             String accessToken = jwtService.generateAccessToken(user.getId());
             String refreshToken = jwtService.generateRefreshToken(user.getId());
 
+            // 5. 다음단계 게산
             String nextStep = user.determineNextStep();
 
             return new AuthResponseDto.LoginResponse(
@@ -65,14 +73,17 @@ public class AuthService {
                     nextStep
             );
         } catch (GlobalException e) {
+            // KakaoAuthService 내부에서 GlobalException 이미 던지면 그대로 전달
             throw e;
         } catch (Exception e) {
+            // 외부 카카오 서버 통신 오류 처리
             throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
         }
     }
 
     /** Refresh Token 기반 Access Token 재발급 */
     public AuthResponseDto.TokenReissueResponse reissueToken(String refreshHeader) {
+        // "Bearer " 접두사 제거
         String refreshToken = refreshHeader.startsWith("Bearer ")
                 ? refreshHeader.substring(7)
                 : refreshHeader;
@@ -85,7 +96,7 @@ public class AuthService {
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
 
-        // userId 추출
+        // userId 추출 후 새 Access Token 발급
         Long userId = jwtService.extractUserId(refreshToken);
 
         String storedRefreshToken = jwtService.getAndDeleteRefreshToken(userId);
@@ -110,15 +121,27 @@ public class AuthService {
         return new AuthResponseDto.TokenReissueResponse(newAccessToken, newRefreshToken);
     }
 
+    /**
+     * 테스트용 / sdk 환경에 사용할 용도로 카카오 엑세스 토큰을 받아 내부 로그인 처리를 하는 메소드 입니다.
+     * 위의 socialLogin 메소드에서 socialType을 kakao로 고정하고, 카카오 엑세스 토큰을 발급받는 과정을 제외하고 동일합니다.
+     *
+     * @param kakaoAccessToken 카카오 sdk 통해서 받아온 엑세스 토큰
+     * @return 토큰, userId 등 필요 정보
+     */
     public AuthResponseDto.LoginResponse kakaoLogin(String kakaoAccessToken) {
 
         try {
+            // 카카오 유저 정보 조회
             KakaoUserResponse kakaoUser = kakaoAuthService.fetchUser(kakaoAccessToken);
+
+            // DB에 유저 upsert
             User user = socialUserService.upsertKakaoUser(kakaoUser);
 
+            // JWT 생성
             String accessToken = jwtService.generateAccessToken(user.getId());
             String refreshToken = jwtService.generateRefreshToken(user.getId());
 
+            // 다음단계 게산
             String nextStep = user.determineNextStep();
 
             return new AuthResponseDto.LoginResponse(
@@ -131,17 +154,26 @@ public class AuthService {
                     nextStep
             );
         } catch (GlobalException e) {
+            // KakaoAuthService 내부에서 GlobalException 이미 던지면 그대로 전달
             throw e;
         } catch (Exception e) {
+            // 외부 카카오 서버 통신 오류 처리
             throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
         }
     }
 
+    /**
+     * 애플 로그인 구현
+     *
+     * @param request 요청 Dto
+     * @return 토큰, userId 등 필요 정보
+     */
     public AuthResponseDto.LoginResponse appleLogin(AuthRequestDto.AppleLoginRequest request) {
 
         try {
             Map<String, String> appleTokens = appleAuthService.getAppleTokens(request.getAuthorizationCode());
 
+            // id_token 자체가 오지 않은 경우 처리
             if (appleTokens == null || appleTokens.get("id_token") == null) {
                 log.error("애플 id_token이 유효하지 않습니다.");
                 throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
@@ -149,11 +181,15 @@ public class AuthService {
 
             String socialId = appleAuthService.getAppleAccountId(appleTokens.get("id_token"));
             String appleRefreshToken = appleTokens.get("refresh_token");
+
+            // DB 저장 (애플은 RT 함께 저장)
             User user = socialUserService.upsertAppleUser(socialId, appleRefreshToken, request.getName());
 
+            // JWT 생성
             String accessToken = jwtService.generateAccessToken(user.getId());
             String refreshToken = jwtService.generateRefreshToken(user.getId());
 
+            // 다음단계 게산
             String nextStep = user.determineNextStep();
 
             return new AuthResponseDto.LoginResponse(
@@ -168,19 +204,30 @@ public class AuthService {
         } catch (GlobalException e) {
             throw e;
         } catch (Exception e) {
+            // 애플 서버 통신 오류 처리
             throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
         }
     }
 
+    /**
+     * 네이버 엑세스 토큰을 통해 로그인 (SDK 방식)
+     * @param naverAccessToken 네이버 sdk를 통해 프론트에서 받아온 엑세스 토큰
+     * @return 토큰, userId 등 필요 정보
+     */
     public AuthResponseDto.LoginResponse naverLogin(String naverAccessToken, String naverRefreshToken) {
 
         try {
+            // 네이버 유저 정보 조회
             NaverUserResponse naverUser = naverAuthService.fetchUser(naverAccessToken);
+
+            // DB에 유저 upsert
             User user = socialUserService.upsertNaverUser(naverUser, naverRefreshToken);
 
+            // JWT 생성
             String accessToken = jwtService.generateAccessToken(user.getId());
             String refreshToken = jwtService.generateRefreshToken(user.getId());
 
+            // 다음 단계 계산
             String nextStep = user.determineNextStep();
 
             return new AuthResponseDto.LoginResponse(
@@ -193,8 +240,10 @@ public class AuthService {
                     nextStep
             );
         } catch (GlobalException e) {
+            // 이미 NaverAuthService에서 던진 전용 에러를 그대로 위로 던짐
             throw e;
         } catch (Exception e) {
+            // 그 외 서버 내부 로직 오류 시 공통 외부 에러 처리
             log.error("네이버 로그인 중 오류 발생: ", e);
             throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
         }
@@ -202,6 +251,8 @@ public class AuthService {
 
     /** 로그아웃 */
     public void logout(String tokenHeader) {
+
+        // "Bearer " 접두사 제거
         String token = tokenHeader.startsWith("Bearer ")
                 ? tokenHeader.substring(7)
                 : tokenHeader;
@@ -209,7 +260,8 @@ public class AuthService {
         // userId 추출
         Long userId = jwtService.getUserIdFromToken(token);
 
-        // Access Token 블랙리스트 처리
+        // 토큰의 남은 유효 기간 계산 (Duration 타입)
+        // JWT의 exp 클레임과 현재 시간을 비교하여 남은 시간을 계산
         Duration remainingExpiration = jwtService.getRemainingExpiration(token);
         if (!remainingExpiration.isNegative() && !remainingExpiration.isZero()) {
             jwtService.blacklistToken(token, remainingExpiration);
@@ -219,11 +271,16 @@ public class AuthService {
         jwtService.deleteRefreshToken(userId);
     }
 
+    /**
+     * 회원 탈퇴
+     * @param userId 탈퇴할 사용자의 userId
+     */
     @Transactional
     public void withdraw(Long userId, String tokenHeader) {
+        // 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
-
+        // 유저 상태 변경 (Soft Delete)
         user.withdraw();
 
         List<UserChallenge> userChallenges = userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
@@ -248,10 +305,13 @@ public class AuthService {
     }
 
     @Transactional
+    // 소셜 로그인 연결 해제
     public void revoke(Long userId) {
+        // 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
+        // 소셜 연동 해제
         SocialAuth socialAuth = socialAuthRepository.findByUser(user)
                 .orElseThrow(() -> new GlobalException(ErrorCode.AUTH_INFO_NOT_FOUND));
 
