@@ -88,8 +88,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         Long roundId = event.roundId();
 
         // 멱등성 체크
-        if (eventRepository.existsByContextTypeAndContextIdAndCreatedDateGreaterThanEqual(
-                ResourceType.ROUND, roundId, LocalDate.now())) {
+        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+                ResourceType.ROUND, roundId, NotificationTypeName.CHALLENGE_EXTENSION, LocalDate.now())) {
             return;
         }
 
