@@ -6,6 +6,7 @@ import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,5 +120,28 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
 	List<RoundRecord> findAbsentees(
 		@Param("yesterdayChallengeDay") ChallengeDays yesterdayChallengeDay,
 		@Param("yesterdayDate") LocalDate yesterdayDate
+	);
+
+	@Query("""
+    SELECT rr FROM RoundRecord rr 
+    JOIN FETCH rr.userChallenge uc 
+    JOIN FETCH uc.user u 
+    JOIN FETCH u.notificationSetting 
+    WHERE rr.round = :round 
+    AND uc.status = :joinStatus 
+    AND NOT EXISTS (
+        SELECT v FROM Verification v 
+        WHERE v.roundRecord = rr 
+        AND v.status = :verificationStatus 
+        AND v.createdAt >= :startOfDay 
+        AND v.createdAt < :endOfDay
+    )
+""")
+	List<RoundRecord> findAllByRoundAndNotVerifiedToday(
+			@Param("round") Round round,
+			@Param("joinStatus") ChallengeJoinStatus joinStatus,
+			@Param("verificationStatus") VerificationStatus verificationStatus,
+			@Param("startOfDay") LocalDateTime startOfDay,
+			@Param("endOfDay") LocalDateTime endOfDay
 	);
 }

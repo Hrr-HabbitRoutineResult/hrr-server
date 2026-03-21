@@ -11,6 +11,7 @@ import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -92,24 +93,40 @@ public class VerificationDeadlineNotificationListener {
                                  LocalDate targetDate) {
         Long roundId = event.roundId();
 
-        // 멱등성 체크: 같은 라운드 + 같은 타입 + 같은 날짜에 이미 생성됐으면 skip
+        // 멱등성 체크: 해당 라운드 + 타입으로 오늘 이미 알림 이벤트가 생성됐는지 확인
         LocalDateTime dayStart = targetDate.atStartOfDay();
-        LocalDateTime dayEnd   = targetDate.plusDays(1).atStartOfDay();
+        LocalDateTime dayEnd = targetDate.plusDays(1).atStartOfDay();
 
         if (notificationEventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedAtBetween(
                 ResourceType.ROUND, roundId, typeName, dayStart, dayEnd)) {
-            log.info("[인증 마감 알림] 당일 이미 발송된 알림 건너뜀 | RoundId={} | type={} | date={}",
-                    roundId, typeName, targetDate);
+            log.info("[인증 마감 알림] 당일 이미 생성된 알림 이벤트 존재 → skip | RoundId={} | type={}",
+                    roundId, typeName);
             return;
         }
 
+        // 기초 데이터 조회
         Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
         Challenge challenge = round.getChallenge();
-
         NotificationType type = typeRepository.findByTypeName(typeName)
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
 
+        // 알림 대상자 조회
+        // 해당 라운드 참여자 중 오늘 인증 완료 기록이 없는 유저만 조회
+        List<RoundRecord> records = roundRecordRepository.findAllByRoundAndNotVerifiedToday(
+                round,
+                ChallengeJoinStatus.JOINED,
+                VerificationStatus.COMPLETED,
+                dayStart,
+                dayEnd
+        );
+
+        if (records.isEmpty()) {
+            log.info("[인증 마감 알림] 알림 보낼 대상(미인증자)이 없음 | RoundId={}", roundId);
+            return;
+        }
+
+        // NotificationEvent 생성 및 저장
         NotificationEvent notificationEvent = NotificationEvent.builder()
                 .type(type)
                 .category(NotificationCategory.VERIFICATION)
@@ -123,11 +140,9 @@ public class VerificationDeadlineNotificationListener {
                 .build();
         notificationEventRepository.save(notificationEvent);
 
-        List<RoundRecord> records = roundRecordRepository
-                .findAllByRoundWithUserAndSetting(round, ChallengeJoinStatus.JOINED);
-
+        // 수신자별 배송 정보(Delivery) 생성
         List<NotificationDelivery> deliveries = records.stream()
-                .filter(this::isVerificationEnabled)
+                .filter(this::isVerificationEnabled) // 유저가 인증 알림 설정을 켰는지 확인
                 .map(r -> NotificationDelivery.builder()
                         .event(notificationEvent)
                         .receiver(r.getUserChallenge().getUser())
@@ -136,17 +151,17 @@ public class VerificationDeadlineNotificationListener {
                 .toList();
 
         if (deliveries.isEmpty()) {
-            log.info("[인증 마감 알림] 수신 대상 없음 | RoundId={}", roundId);
+            log.info("[인증 마감 알림] 알림 설정을 켠 미인증 유저가 없음 | RoundId={}", roundId);
             return;
         }
 
+        // DB 저장 및 FCM 이벤트 발행
         notificationRepository.saveAll(deliveries);
-        log.info("[인증 마감 알림] DB 저장 완료 | RoundId={} | type={} | date={} | 대상={}명",
-                roundId, typeName, targetDate, deliveries.size());
+        log.info("[인증 마감 알림] 발송 준비 완료 | RoundId={} | type={} | 대상={}명",
+                roundId, typeName, deliveries.size());
 
         eventPublisher.publishEvent(new FcmPushSendEvent(deliveries, notificationEvent));
     }
-
 
     private String buildTitle() {
         return "완료되지 않은 인증이 있어요";
