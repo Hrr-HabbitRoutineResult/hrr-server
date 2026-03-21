@@ -3,6 +3,7 @@ package com.hrr.backend.domain.auth.service;
 import static org.mockito.BDDMockito.*;
 import static org.assertj.core.api.Assertions.*;
 
+import java.time.Duration; // import 추가
 import java.util.List;
 import java.util.Optional;
 
@@ -29,45 +30,30 @@ class AuthServiceWithdrawTest {
     @Mock
     private UserRepository userRepository;
 
+    // [추가] withdraw 메서드 내부에서 jwtService를 호출하므로 Mock 추가 필요
     @Mock
-    private UserChallengeRepository userChallengeRepository;
+    private JwtService jwtService;
 
     @Test
     @DisplayName("회원 탈퇴 성공 - 참여 중인 챌린지 인원 감소 및 상태 변경 확인")
     void withdraw_success() {
         // given
         Long userId = 1L;
-        User user = mock(User.class); // 유저 객체 모킹
+        String dummyToken = "Bearer test_token"; // 더미 토큰
+        User user = mock(User.class);
 
-        // 테스트용 챌린지 생성 (현재 인원 5명)
-        Challenge challenge = Challenge.builder()
-                .currentParticipants(5)
-                .build();
-
-        // 테스트용 유저-챌린지 참여 정보 생성 (JOINED 상태)
-        UserChallenge userChallenge = UserChallenge.builder()
-                .user(user)
-                .challenge(challenge)
-                .status(ChallengeJoinStatus.JOINED)
-                .build();
-
-        // Repository 모킹
+        given(jwtService.extractUserId("test_token")).willReturn(userId);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED))
-                .willReturn(List.of(userChallenge));
-
+        given(jwtService.getRemainingExpiration("test_token")).willReturn(Duration.ofMinutes(10));
         // when
-        authService.withdraw(userId);
+        authService.withdraw(dummyToken);
 
         // then
-        // 1. 유저 엔티티의 withdraw() 메서드가 호출되었는지 확인
         verify(user).withdraw();
 
-        // 2. 챌린지 엔티티의 인원수가 감소했는지 확인 (5 -> 4)
-        assertThat(challenge.getCurrentParticipants()).isEqualTo(4);
-
-        // 3. UserChallenge의 상태가 DROPPED로 변경되었는지 확인
-        assertThat(userChallenge.getStatus()).isEqualTo(ChallengeJoinStatus.DROPPED);
+        // 토큰 무효화 로직 수행 확인
+        verify(jwtService).blacklistToken(eq("test_token"), any(Duration.class));
+        verify(jwtService).deleteRefreshToken(userId);
     }
 
     @Test
@@ -75,18 +61,21 @@ class AuthServiceWithdrawTest {
     void withdraw_success_no_active_challenges() {
         // given
         Long userId = 1L;
+        String dummyToken = "Bearer test_token";
         User user = mock(User.class);
 
+        given(jwtService.extractUserId("test_token")).willReturn(userId);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        // 참여 중인 챌린지가 없음
-        given(userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED))
-                .willReturn(List.of());
+        // 남은 유효기간이 0이면 블랙리스트 등록을 생략해야 함
+        given(jwtService.getRemainingExpiration("test_token")).willReturn(Duration.ZERO);
 
         // when
-        authService.withdraw(userId);
+        authService.withdraw(dummyToken);
 
         // then
         verify(user).withdraw();
-        // 별다른 에러 없이 로직이 종료되어야 함
+        // 만료된 토큰은 블랙리스트 등록 불필요
+        verify(jwtService, never()).blacklistToken(anyString(), any(Duration.class));
+        verify(jwtService).deleteRefreshToken(userId);
     }
 }
