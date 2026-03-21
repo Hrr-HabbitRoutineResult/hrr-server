@@ -35,8 +35,8 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChallengeExtensionResponseEvent(ChallengeExtensionResponseEvent event) {
-        log.info("[알림 이벤트 리스너] 챌린지 연장 응답 결과 알림 처리 시작 | RoundId={}, User={}",
-                event.roundId(), event.user().getNickname());
+        log.info("[알림 이벤트 리스너] 챌린지 연장 응답 결과 알림 처리 시작 | RoundId={}, UserId={}",
+                event.roundId(), event.user().getId());
         notificationCommandService.sendChallengeExtensionResponseNotification(event);
     }
 }
