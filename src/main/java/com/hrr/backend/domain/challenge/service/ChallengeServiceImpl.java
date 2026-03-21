@@ -737,14 +737,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 
     /**
      * 챌린지 수정 기능 - 수정 요청 비즈니스 검증 로직
-     * - 새 시작일이 오늘(KST) 이후인지
+     * - 새 시작일이 내일(KST) 이후인지
      * - 인증 종료시간 > 시작시간인지
      * - 최대 참여 인원 >= 현재 참여 인원인지
      * - 공개/비공개 비밀번호 및 관찰자 모드 유효성
      */
     private void validateUpdateRequest(Challenge challenge, ChallengeRequestDto.UpdateChallengeDto req) {
 
-        // 시작일 검증: 오늘(KST) 이후여야 함
+        // 시작일 검증: 내일(KST) 이후여야 함
         LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
         if (!req.getStartDate().isAfter(todayKst)) {
             throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);

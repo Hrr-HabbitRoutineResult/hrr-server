@@ -197,7 +197,7 @@ public class ChallengeController {
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
 
-    @PatchMapping("/{challengeId}")
+    @PutMapping("/{challengeId}")
     @Operation(
             summary = "챌린지 수정",
             description = "챌린지를 수정합니다. 방장만 수정 가능하며, 챌린지 시작일 전날까지만 수정할 수 있습니다."
