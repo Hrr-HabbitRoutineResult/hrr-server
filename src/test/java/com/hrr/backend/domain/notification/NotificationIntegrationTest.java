@@ -2,20 +2,14 @@ package com.hrr.backend.domain.notification;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
-import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
-import com.hrr.backend.domain.notification.entity.NotificationDelivery;
-import com.hrr.backend.domain.notification.entity.NotificationSetting;
-import com.hrr.backend.domain.notification.entity.NotificationType;
+import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
 import com.hrr.backend.domain.notification.listener.VerificationDeadlineNotificationListener;
-import com.hrr.backend.domain.notification.repository.NotificationRepository;
-import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
-import com.hrr.backend.domain.notification.repository.NotificationTypeRepository;
-import com.hrr.backend.domain.notification.repository.NotificationEventRepository;
+import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
@@ -40,11 +34,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.event.ApplicationEvents;
-import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
@@ -53,7 +46,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@RecordApplicationEvents
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class NotificationIntegrationTest {
 
@@ -71,9 +63,6 @@ class NotificationIntegrationTest {
     @Autowired private NotificationSettingRepository notificationSettingRepository;
     @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired(required = false)
-    private ApplicationEvents applicationEvents;
-
     private Round testRound;
     private Challenge testChallenge;
 
@@ -81,7 +70,6 @@ class NotificationIntegrationTest {
     void setUp() {
         LocalDate today = LocalDate.now();
 
-        // 챌린지 생성
         testChallenge = challengeRepository.save(Challenge.builder()
                 .title("테스트 챌린지")
                 .description("설명")
@@ -123,19 +111,20 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("[통합] 1. 인증 마감 알림: 오늘 인증이 없는 유저에게만 알림이 발송된다")
-    void verificationDeadline_Integration_Test() {
+    @DisplayName("1. 인증 마감 알림: 인증 시간이 짧을 때 단일 알림(NOW)만 즉시 발송된다")
+    void verificationDeadline_SingleNotification_Test() {
         // given
         User verifiedUser = createUser("verified_user", true);
         saveVerification(createRoundRecord(joinChallenge(verifiedUser)), VerificationStatus.COMPLETED);
 
         User unverifiedUser = createUser("unverified_user", true);
         createRoundRecord(joinChallenge(unverifiedUser));
-
         verificationRepository.flush();
 
+        // 예약 시각을 과거로 설정(now - 1분)하여 스케줄링 없이 즉시 실행을 유도
+        LocalDateTime now = LocalDateTime.now();
         VerificationDeadlineEvent event = new VerificationDeadlineEvent(testRound.getId(), testChallenge.getId(),
-                LocalDate.now().atTime(9, 0), LocalDate.now().atTime(22, 0));
+                now.minusMinutes(1), now.plusMinutes(10));
 
         // when
         deadlineListener.handleVerificationDeadlineEvent(event);
@@ -146,30 +135,32 @@ class NotificationIntegrationTest {
             // 인증 완료자를 제외하고 1명만 있어야 함
             assertThat(deliveries).hasSize(1);
             assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("unverified_user");
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.VERIFICATION_DEADLINE_NOW);
         });
     }
 
     @Test
-    @DisplayName("[통합] 2. 인증 마감 알림: 설정을 끈 유저는 제외된다")
+    @DisplayName("2. 인증 마감 알림: 설정을 끈 유저는 제외된다")
     void verificationDeadline_DisabledSetting_Test() {
         // given
-        User disabledUser = createUser("disabled_user", false); // 설정 OFF
+        User disabledUser = createUser("disabled_user", false);
         createRoundRecord(joinChallenge(disabledUser));
         roundRecordRepository.flush();
 
+        LocalDateTime now = LocalDateTime.now();
         VerificationDeadlineEvent event = new VerificationDeadlineEvent(testRound.getId(), testChallenge.getId(),
-                LocalDate.now().atTime(9, 0), LocalDate.now().atTime(22, 0));
+                now.minusMinutes(1), now.plusMinutes(10));
 
         // when
         deadlineListener.handleVerificationDeadlineEvent(event);
 
-        // then
-        List<NotificationDelivery> deliveries = notificationRepository.findAll();
-        assertThat(deliveries).isEmpty();
+        // then: 알림 설정이 꺼져있으므로 내역이 없어야 함
+        assertThat(notificationRepository.findAll()).isEmpty();
     }
 
     @Test
-    @DisplayName("[통합] 3. 챌린지 연장 안내: 참여 중인 모든 유저에게 알림이 저장된다")
+    @DisplayName("3. 챌린지 연장 안내: 참여 중인 모든 유저에게 알림이 저장된다")
     void challengeExtension_Integration_Test() throws InterruptedException {
         // given
         User u1 = createUser("user1", true);
@@ -182,40 +173,94 @@ class NotificationIntegrationTest {
 
         // when
         eventListener.handleChallengeExtensionEvent(event);
+        Thread.sleep(1500); // @Async 처리 대기
 
-        // then: @Async 처리를 위한 대기
-        Thread.sleep(1500);
-
+        // then
         transactionTemplate.executeWithoutResult(status -> {
-            List<NotificationDelivery> deliveries = notificationRepository.findAll();
-            assertThat(deliveries).hasSize(2); // 두 유저 모두 받아야 함
+            assertThat(notificationRepository.findAll()).hasSize(2);
         });
     }
 
     @Test
-    @DisplayName("[통합] 4. 연장 응답 결과: 개별 유저에게 성공 알림이 발송된다")
+    @DisplayName("4. 연장 응답 결과: 개별 유저에게 성공 알림이 발송된다")
     void challengeExtensionResponse_Integration_Test() throws InterruptedException {
         // given
         User user = createUser("responder", true);
-        createRoundRecord(joinChallenge(user)); // 라운드 기록이 있어야 함
+        createRoundRecord(joinChallenge(user));
         roundRecordRepository.flush();
 
         ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(testRound.getId(), user, NextRoundIntent.CONTINUE);
 
         // when
         eventListener.handleChallengeExtensionResponseEvent(event);
-
-        // then: @Async 대기
         Thread.sleep(1500);
 
+        // then
         transactionTemplate.executeWithoutResult(status -> {
             List<NotificationDelivery> deliveries = notificationRepository.findAll();
             assertThat(deliveries).hasSize(1);
-            assertThat(deliveries.get(0).getEvent().getType().getTypeName()).isEqualTo(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS);
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS);
         });
     }
 
-    // --- 헬퍼 메서드 ---
+    @Test
+    @DisplayName("5. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
+    void notificationIdempotency_Test() {
+        // given
+        User user = createUser("idempotent_user", true);
+        createRoundRecord(joinChallenge(user));
+        roundRecordRepository.flush();
+
+        LocalDateTime now = LocalDateTime.now();
+        VerificationDeadlineEvent event = new VerificationDeadlineEvent(testRound.getId(), testChallenge.getId(),
+                now.minusMinutes(1), now.plusMinutes(10));
+
+        // when
+        deadlineListener.handleVerificationDeadlineEvent(event); // 첫 번째 호출
+        deadlineListener.handleVerificationDeadlineEvent(event); // 두 번째 호출 (중복 방지 작동해야 함)
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            // DB 유니크 제약 조건과 exists 체크 덕분에 1개만 생성됨
+            assertThat(notificationEventRepository.findAll()).hasSize(1);
+            assertThat(notificationRepository.findAll()).hasSize(1);
+        });
+    }
+
+    @Test
+    @DisplayName("6. 다중 알림 검증: 인증 시간이 3시간 이상이면 3H, 1H 알림이 모두 생성된다")
+    void multipleVerificationDeadlines_Test() {
+        // given
+        User user = createUser("multi_user", true);
+        createRoundRecord(joinChallenge(user));
+        roundRecordRepository.flush();
+
+        // 4시간으로 설정하여 3H, 1H 알림 조건 충족
+        LocalDateTime now = LocalDateTime.now();
+        VerificationDeadlineEvent event = new VerificationDeadlineEvent(testRound.getId(), testChallenge.getId(),
+                now.minusHours(5), now.minusHours(1));
+
+        // when
+        deadlineListener.handleVerificationDeadlineEvent(event);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            // 3H와 1H 두 종류가 생성
+            assertThat(events).hasSize(2);
+            assertThat(notificationRepository.findAll()).hasSize(2);
+
+            List<NotificationTypeName> typeNames = events.stream()
+                    .map(e -> e.getType().getTypeName()).toList();
+            assertThat(typeNames).containsExactlyInAnyOrder(
+                    NotificationTypeName.VERIFICATION_DEADLINE_3H,
+                    NotificationTypeName.VERIFICATION_DEADLINE_1H
+            );
+        });
+    }
+
+
     private User createUser(String name, boolean enabled) {
         User user = userRepository.save(User.builder().name(name).nickname(name + "_nick").isPublic(true).build());
         notificationSettingRepository.save(NotificationSetting.builder()
