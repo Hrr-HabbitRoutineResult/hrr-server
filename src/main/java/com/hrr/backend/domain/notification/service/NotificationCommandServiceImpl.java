@@ -45,8 +45,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         LocalDateTime dayEnd = targetDate.plusDays(1).atStartOfDay();
 
         // 멱등성 체크
-        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedAtBetween(
-                ResourceType.ROUND, roundId, typeName, dayStart, dayEnd)) {
+        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+                ResourceType.ROUND, roundId, typeName, targetDate)) {
             return;
         }
 
@@ -56,8 +56,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
         // 알림 이벤트 생성
         NotificationEvent notificationEvent = createEvent(type, NotificationCategory.VERIFICATION, challenge, roundId,
-                "완료되지 않은 인증이 있어요", buildDeadlineMessage(typeName, challenge.getTitle()));
-        eventRepository.save(notificationEvent);
+                "완료되지 않은 인증이 있어요", buildDeadlineMessage(typeName, challenge.getTitle()), targetDate);
+        eventRepository.saveAndFlush(notificationEvent);
 
         List<RoundRecord> records = roundRecordRepository.findAllByRoundAndNotVerifiedToday(
                 round,
@@ -82,7 +82,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         Long roundId = event.roundId();
 
         // 멱등성 체크
-        if (eventRepository.existsByContextTypeAndContextIdAndCreatedAtAfter(ResourceType.ROUND, roundId, LocalDate.now().atStartOfDay())) {
+        if (eventRepository.existsByContextTypeAndContextIdAndCreatedDateGreaterThanEqual(
+                ResourceType.ROUND, roundId, LocalDate.now())) {
             return;
         }
 
@@ -91,11 +92,11 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         NotificationType type = typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_EXTENSION).orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
 
         NotificationEvent notificationEvent = createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId,
-                String.format("%s 챌린지 종료 3일 전입니다.", challenge.getTitle()), "다음 라운드에도 참여하시겠어요?\n내일까지 연장 여부를 알려주세요!");
-        eventRepository.save(notificationEvent);
+                String.format("%s 챌린지 종료 3일 전입니다.", challenge.getTitle()), "다음 라운드에도 참여하시겠어요?\n내일까지 연장 여부를 알려주세요!", LocalDate.now());
+        eventRepository.saveAndFlush(notificationEvent);
 
         List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(round, ChallengeJoinStatus.JOINED);
-        List<NotificationDelivery> deliveries = createDeliveries(records, notificationEvent, false); // 챌린지 알림은 설정 필터링 일단 보류
+        List<NotificationDelivery> deliveries = createDeliveries(records, notificationEvent, false);
 
         if (!deliveries.isEmpty()) {
             notificationRepository.saveAll(deliveries);
@@ -129,8 +130,9 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
         NotificationType type = typeRepository.findByTypeName(typeName).orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
 
-        NotificationEvent notificationEvent = createEvent(type, NotificationCategory.CHALLENGE, challenge, round.getId(), title, message);
-        eventRepository.save(notificationEvent);
+        NotificationEvent notificationEvent = createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId,
+                title, message, LocalDate.now());
+        eventRepository.saveAndFlush(notificationEvent);
 
         NotificationDelivery delivery = NotificationDelivery.builder().event(notificationEvent).receiver(user).isRead(false).build();
         notificationRepository.save(delivery);
@@ -139,10 +141,20 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     }
 
 
-    private NotificationEvent createEvent(NotificationType type, NotificationCategory category, Challenge challenge, Long contextId, String title, String message) {
+    private NotificationEvent createEvent(NotificationType type, NotificationCategory category, Challenge challenge,
+                                          Long contextId, String title, String message, LocalDate createdDate) {
         return NotificationEvent.builder()
-                .type(type).category(category).targetType(ResourceType.CHALLENGE).targetId(challenge.getId())
-                .contextType(ResourceType.ROUND).contextId(contextId).title(title).message(message).imageKey(challenge.getImageKey()).build();
+                .type(type)
+                .category(category)
+                .targetType(ResourceType.CHALLENGE)
+                .targetId(challenge.getId())
+                .contextType(ResourceType.ROUND)
+                .contextId(contextId)
+                .title(title)
+                .message(message)
+                .imageKey(challenge.getImageKey())
+                .createdDate(createdDate)
+                .build();
     }
 
     private List<NotificationDelivery> createDeliveries(List<RoundRecord> records, NotificationEvent event, boolean checkVerificationSetting) {
