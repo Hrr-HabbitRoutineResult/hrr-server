@@ -6,6 +6,7 @@ import com.hrr.backend.domain.challenge.repository.ChallengeEmbeddingRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -41,21 +42,32 @@ public class ChallengeEmbeddingAsyncService {
 
             Challenge challengeRef = challengeRepository.getReferenceById(challengeId);
 
-            // 챌린지 수정 시 ChallengeCreatedEvent 재사용으로 인한 unique 제약 충돌 방지
-            // 기존 임베딩 레코드가 있으면 update, 없으면 insert (upsert 처리)
+            // 동시성에서 원자적이지 않아 unique 충돌 재발 가능한 문제 방어
+            // 기존 레코드 조회 후 null이면 insert 시도, null 아니면 바로 update
+            // insert 시 DataIntegrityViolationException 발생하면 재조회 후 update 재시도
             ChallengeEmbedding embeddingEntity = challengeEmbeddingRepository
                     .findByChallengeId(challengeId)
-                    .map(existing -> {
-                        existing.setChallengeText(challengeText);
-                        existing.setChallengeEmbedding(embeddingBytes);
-                        return existing;
-                    })
-                    .orElseGet(() -> ChallengeEmbedding.builder()
+                    .orElse(null);
+
+            if (embeddingEntity == null) {
+                try {
+                    embeddingEntity = ChallengeEmbedding.builder()
                             .challenge(challengeRef)
                             .challengeText(challengeText)
                             .challengeEmbedding(embeddingBytes)
-                            .build()
-                    );
+                            .build();
+                    challengeEmbeddingRepository.save(embeddingEntity);
+                } catch (DataIntegrityViolationException e) {
+                    embeddingEntity = challengeEmbeddingRepository
+                            .findByChallengeId(challengeId)
+                            .orElseThrow(() -> e);
+                    embeddingEntity.setChallengeText(challengeText);
+                    embeddingEntity.setChallengeEmbedding(embeddingBytes);
+                }
+            } else {
+                embeddingEntity.setChallengeText(challengeText);
+                embeddingEntity.setChallengeEmbedding(embeddingBytes);
+            }
 
             challengeEmbeddingRepository.save(embeddingEntity);
 
