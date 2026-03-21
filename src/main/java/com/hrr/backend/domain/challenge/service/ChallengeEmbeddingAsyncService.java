@@ -41,11 +41,21 @@ public class ChallengeEmbeddingAsyncService {
 
             Challenge challengeRef = challengeRepository.getReferenceById(challengeId);
 
-            ChallengeEmbedding embeddingEntity = ChallengeEmbedding.builder()
-                    .challenge(challengeRef)
-                    .challengeText(challengeText)
-                    .challengeEmbedding(embeddingBytes)
-                    .build();
+            // 챌린지 수정 시 ChallengeCreatedEvent 재사용으로 인한 unique 제약 충돌 방지
+            // 기존 임베딩 레코드가 있으면 update, 없으면 insert (upsert 처리)
+            ChallengeEmbedding embeddingEntity = challengeEmbeddingRepository
+                    .findByChallengeId(challengeId)
+                    .map(existing -> {
+                        existing.setChallengeText(challengeText);
+                        existing.setChallengeEmbedding(embeddingBytes);
+                        return existing;
+                    })
+                    .orElseGet(() -> ChallengeEmbedding.builder()
+                            .challenge(challengeRef)
+                            .challengeText(challengeText)
+                            .challengeEmbedding(embeddingBytes)
+                            .build()
+                    );
 
             challengeEmbeddingRepository.save(embeddingEntity);
 
