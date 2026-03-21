@@ -6,6 +6,7 @@ import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.*;
 import com.hrr.backend.domain.notification.repository.*;
+import com.hrr.backend.domain.notification.service.hepler.NotificationEventHelper;
 import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
@@ -37,6 +38,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationEventHelper eventHelper;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -121,6 +123,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     public void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event) {
         Long roundId = event.roundId();
         User user = event.user();
+        LocalDate today = LocalDate.now();
 
         // 멱등성 체크
         if (notificationRepository.existsResponseNotification(user, ResourceType.ROUND, roundId,
@@ -128,30 +131,33 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
             return;
         }
 
-        Round round = roundRepository.findById(roundId).orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
-        Challenge challenge = round.getChallenge();
-
         NotificationTypeName typeName = (event.intent() == NextRoundIntent.CONTINUE)
                 ? NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS : NotificationTypeName.CHALLENGE_EXTENSION_CANCEL;
 
+        Round round = roundRepository.findById(roundId).orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
+        Challenge challenge = round.getChallenge();
+        NotificationType type = typeRepository.findByTypeName(typeName).orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
         String title = (typeName == NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
                 ? String.format("%s 챌린지가 연장되었어요", challenge.getTitle()) : String.format("%s 챌린지를 마무리해요", challenge.getTitle());
-
         String message = (typeName == NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
                 ? "다음 라운드에서도 루틴을 이어가요" : "챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요";
 
-        NotificationType type = typeRepository.findByTypeName(typeName).orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+        NotificationEvent notificationEvent = eventHelper.getOrCreateSharedEvent(
+                ResourceType.ROUND, roundId, type, title, message, today,
+                () -> createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId, title, message, today)
+        );
+        NotificationEvent mergedEvent = eventRepository.findById(notificationEvent.getId()).orElseThrow();
 
-        NotificationEvent notificationEvent = createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId,
-                title, message, LocalDate.now());
-        eventRepository.saveAndFlush(notificationEvent);
-
-        NotificationDelivery delivery = NotificationDelivery.builder().event(notificationEvent).receiver(user).isRead(false).build();
+        NotificationDelivery delivery = NotificationDelivery.builder()
+                .event(mergedEvent)
+                .receiver(user)
+                .isRead(false)
+                .build();
         notificationRepository.save(delivery);
 
         eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
     }
-
 
     private NotificationEvent createEvent(NotificationType type, NotificationCategory category, Challenge challenge,
                                           Long contextId, String title, String message, LocalDate createdDate) {

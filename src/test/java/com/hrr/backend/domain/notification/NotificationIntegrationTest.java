@@ -260,6 +260,31 @@ class NotificationIntegrationTest {
         });
     }
 
+    @Test
+    @DisplayName("7. 연장 응답 다중 사용자: 여러 명이 응답해도 Event는 1개만 생성되고 Delivery는 각각 생성된다")
+    void challengeExtensionResponse_MultipleUsers_Test() throws InterruptedException {
+        // given
+        User user1 = createUser("user1", true);
+        User user2 = createUser("user2", true);
+        createRoundRecord(joinChallenge(user1));
+        createRoundRecord(joinChallenge(user2));
+        roundRecordRepository.flush();
+
+        // when: 두 명의 사용자가 각각 연장 응답(CONTINUE) 처리
+        eventListener.handleChallengeExtensionResponseEvent(new ChallengeExtensionResponseEvent(testRound.getId(), user1, NextRoundIntent.CONTINUE));
+        eventListener.handleChallengeExtensionResponseEvent(new ChallengeExtensionResponseEvent(testRound.getId(), user2, NextRoundIntent.CONTINUE));
+
+        Thread.sleep(1500);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            // Event는 유니크 제약 조건에 의해 1개만 유지되어야 함
+            assertThat(notificationEventRepository.findAll()).hasSize(1);
+            // Delivery는 각 유저별로 총 2개여야 함
+            assertThat(notificationRepository.findAll()).hasSize(2);
+        });
+    }
+
 
     private User createUser(String name, boolean enabled) {
         User user = userRepository.save(User.builder().name(name).nickname(name + "_nick").isPublic(true).build());

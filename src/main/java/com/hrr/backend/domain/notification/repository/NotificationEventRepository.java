@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public interface NotificationEventRepository extends JpaRepository<NotificationEvent, Long> {
 
@@ -24,4 +25,8 @@ public interface NotificationEventRepository extends JpaRepository<NotificationE
             Long contextId,
             LocalDate date
     );
+
+    // 특정 리소스 + 특정 알림 타입 + 특정 날짜로 생성된 기존 이벤트 조회
+    Optional<NotificationEvent> findByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+            ResourceType contextType, Long contextId, NotificationTypeName typeName, LocalDate createdDate);
 }
