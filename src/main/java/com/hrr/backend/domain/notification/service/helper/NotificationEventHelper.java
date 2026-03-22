@@ -1,4 +1,4 @@
-package com.hrr.backend.domain.notification.service.hepler;
+package com.hrr.backend.domain.notification.service.helper;
 
 import com.hrr.backend.domain.notification.entity.NotificationEvent;
 import com.hrr.backend.domain.notification.entity.NotificationType;

@@ -6,7 +6,7 @@ import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.*;
 import com.hrr.backend.domain.notification.repository.*;
-import com.hrr.backend.domain.notification.service.hepler.NotificationEventHelper;
+import com.hrr.backend.domain.notification.service.helper.NotificationEventHelper;
 import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
