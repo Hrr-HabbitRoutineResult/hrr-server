@@ -139,7 +139,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("2. 인증 마감 알림: 설정을 끈 유저는 제외된다")
+    @DisplayName("2. 인증 마감 알림: 설정을 끈 유저도 내역은 저장되지만 푸시 대상에서는 제외된다")
     void verificationDeadline_DisabledSetting_Test() {
         // given
         User disabledUser = createUser("disabled_user", false);
@@ -152,8 +152,12 @@ class NotificationIntegrationTest {
         // when
         deadlineListener.handleVerificationDeadlineEvent(event);
 
-        // then: 알림 설정이 꺼져있으므로 내역이 없어야 함
-        assertThat(notificationRepository.findAll()).isEmpty();
+        // then: 푸시 발송 여부와 상관없이 DB에 알림 내역(Delivery)은 생성되어야 함
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("disabled_user");
+        });
     }
 
     @Test

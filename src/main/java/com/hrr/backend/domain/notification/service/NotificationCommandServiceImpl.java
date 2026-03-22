@@ -12,6 +12,7 @@ import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -37,6 +38,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final NotificationTypeRepository typeRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationEventHelper eventHelper;
 
@@ -68,19 +70,23 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         }
 
         List<RoundRecord> records = roundRecordRepository.findAllByRoundAndNotVerifiedToday(
-                round,
-                ChallengeJoinStatus.JOINED,
-                VerificationStatus.COMPLETED,
-                dayStart,
-                dayEnd
+                round, ChallengeJoinStatus.JOINED, VerificationStatus.COMPLETED, targetDate.atStartOfDay(), targetDate.plusDays(1).atStartOfDay()
         );
 
-        // 알림 설정 확인 및 발송
-        List<NotificationDelivery> deliveries = createDeliveries(records, notificationEvent, true);
+        // 내역 생성
+        List<NotificationDelivery> allDeliveries = createDeliveries(records, notificationEvent);
 
-        if (!deliveries.isEmpty()) {
-            notificationRepository.saveAll(deliveries);
-            eventPublisher.publishEvent(new FcmPushSendEvent(deliveries, notificationEvent));
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
+            // 푸시 발송만 설정 확인 후 진행
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isVerificationEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
         }
     }
 
@@ -110,11 +116,21 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         }
 
         List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(round, ChallengeJoinStatus.JOINED);
-        List<NotificationDelivery> deliveries = createDeliveries(records, notificationEvent, false);
 
-        if (!deliveries.isEmpty()) {
-            notificationRepository.saveAll(deliveries);
-            eventPublisher.publishEvent(new FcmPushSendEvent(deliveries, notificationEvent));
+        // 내역 생성
+        List<NotificationDelivery> allDeliveries = createDeliveries(records, notificationEvent);
+
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
+            // 푸시 발송만 설정 확인
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
         }
     }
 
@@ -122,7 +138,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event) {
         Long roundId = event.roundId();
-        User user = event.user();
+        User user = userRepository.findById(event.user().getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
         LocalDate today = LocalDate.now();
 
         // 멱등성 체크
@@ -147,6 +164,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 ResourceType.ROUND, roundId, type, title, message, today,
                 () -> createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId, title, message, today)
         );
+
         NotificationEvent mergedEvent = eventRepository.findById(notificationEvent.getId()).orElseThrow();
 
         NotificationDelivery delivery = NotificationDelivery.builder()
@@ -154,9 +172,14 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .receiver(user)
                 .isRead(false)
                 .build();
+
+        // 내역 저장
         notificationRepository.save(delivery);
 
-        eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
+        // 푸시 발송 여부만 결정
+        if (user.getNotificationSetting().isChallengeEnabled()) {
+            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), mergedEvent));
+        }
     }
 
     private NotificationEvent createEvent(NotificationType type, NotificationCategory category, Challenge challenge,
@@ -175,10 +198,13 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .build();
     }
 
-    private List<NotificationDelivery> createDeliveries(List<RoundRecord> records, NotificationEvent event, boolean checkVerificationSetting) {
+    private List<NotificationDelivery> createDeliveries(List<RoundRecord> records, NotificationEvent event) {
         return records.stream()
-                .filter(r -> !checkVerificationSetting || r.getUserChallenge().getUser().getNotificationSetting().isVerificationEnabled())
-                .map(r -> NotificationDelivery.builder().event(event).receiver(r.getUserChallenge().getUser()).isRead(false).build())
+                .map(r -> NotificationDelivery.builder()
+                        .event(event)
+                        .receiver(r.getUserChallenge().getUser())
+                        .isRead(false)
+                        .build())
                 .toList();
     }
 
