@@ -1,4 +1,4 @@
-package com.hrr.backend.domain.notification.service.helper;
+package com.hrr.backend.domain.notification.service.helper; // 👈 오타 수정 (hepler -> helper)
 
 import com.hrr.backend.domain.notification.entity.NotificationEvent;
 import com.hrr.backend.domain.notification.entity.NotificationType;
@@ -31,7 +31,14 @@ public class NotificationEventHelper {
             return eventReader.tryCreate(creator.get());
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 충돌 시 새 트랜잭션에서 재조회
-            return eventReader.findIfExists(contextType, contextId, type.getTypeName(), date).orElseThrow();
+            Optional<NotificationEvent> persisted = eventReader.findIfExists(contextType, contextId, type.getTypeName(), date);
+
+            if (persisted.isPresent()) {
+                return persisted.get(); // 경쟁 상태에서 다른 스레드가 먼저 생성한 경우 정상 반환
+            }
+
+            // 재조회 결과가 없다면 유니크 제약 위반이 아닌 다른 무결성 에러이므로 원본 예외를 다시 던짐
+            throw e;
         }
     }
 }
