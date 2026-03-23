@@ -3,6 +3,7 @@ package com.hrr.backend.domain.round.repository;
 import java.util.Optional;
 
 import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.global.common.enums.ChallengeDays;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -63,4 +64,19 @@ public interface RoundRepository extends JpaRepository<Round, Long> {
 
     // 챌린지 ID로 모든 라운드를 회차 오름차순(1R, 2R, ...)으로 조회
     List<Round> findAllByChallengeIdOrderByRoundNumberAsc(Long challengeId);
+
+    /**
+     * 오늘이 인증 요일이고 현재 진행 중인 라운드 목록 조회
+     * - 인증 마감 알림 스케줄링에 사용
+     */
+    @Query("SELECT r FROM Round r " +
+            "JOIN FETCH r.challenge c " +
+            "JOIN c.challengeDays cd " +
+            "WHERE cd.dayOfWeek = :today " +
+            "AND r.startDate <= :now " +
+            "AND r.endDate >= :now")
+    List<Round> findAllByVerificationDay(
+            @Param("today") ChallengeDays today,
+            @Param("now") LocalDate now
+    );
 }

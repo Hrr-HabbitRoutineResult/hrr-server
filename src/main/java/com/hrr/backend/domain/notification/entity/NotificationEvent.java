@@ -11,12 +11,19 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "notification_event")
+@Table(name = "notification_event", uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_notification_event_idempotency",
+                columnNames = {"context_type", "context_id", "type_id", "created_date"}
+        )
+})
 public class NotificationEvent extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -62,5 +69,9 @@ public class NotificationEvent extends BaseEntity {
 
     @Column(name = "image_key", length = 255)
     private String imageKey;
+
+    @NotNull
+    @Column(name = "created_date", nullable = false)
+    private LocalDate createdDate;
 }
 

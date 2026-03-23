@@ -3,22 +3,25 @@ package com.hrr.backend.global.scheduler;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.global.common.enums.ChallengeDays;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // [추가] 로깅 라이브러리
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
-@Slf4j // [추가]
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class NotificationScheduler {
@@ -68,7 +71,7 @@ public class NotificationScheduler {
 
     /**
      * 연장 응답 기간 종료 직후(자정) 최종 결과 알림 발송
-     * 결정 기간(endDate - 2)이 종료되는 시점인 자정에 바로 실행합니다.
+     * 결정 기간(endDate - 2)이 종료되는 시점인 자정에 바로 실행
      */
     @Transactional(readOnly = true)
     @Scheduled(cron = "0 0 0 * * *") // 매일 자정 실행
@@ -100,6 +103,51 @@ public class NotificationScheduler {
                 log.info("[ExtensionResultScheduler] RoundId: {} 결과 알림 발행 완료", round.getId());
             } catch (Exception e) {
                 log.error("[ExtensionResultScheduler] 라운드 처리 실패 - RoundId: {}, 사유: {}", round.getId(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 인증 마감 알림 스케줄링 (매일 자정)
+     * - 오늘 인증 요일인 진행 중 라운드 조회
+     * - VerificationDeadlineEvent를 발행
+     */
+    @Transactional(readOnly = true)
+    @Scheduled(cron = "0 0 0 * * *") // 매일 자정에 오늘 인증 요일 라운드 스케줄링
+    public void scheduleVerificationDeadlineNotifications() {
+        LocalDate today = LocalDate.now();
+        ChallengeDays todayEnum = ChallengeDays.from(today.getDayOfWeek());
+
+        log.info("[VerificationDeadlineScheduler] 인증 마감 알림 스케줄링 시작 | 날짜={} 요일={}", today, todayEnum);
+
+        List<Round> targetRounds = roundRepository.findAllByVerificationDay(todayEnum, today);
+
+        log.info("[VerificationDeadlineScheduler] 대상 라운드 {}건", targetRounds.size());
+
+        if (targetRounds.isEmpty()) {
+            log.info("[VerificationDeadlineScheduler] 오늘 인증 요일인 라운드 없음");
+            return;
+        }
+
+        for (Round round : targetRounds) {
+            try {
+                Challenge challenge = round.getChallenge();
+
+                // verifyStartTime / verifyEndTime(LocalTime) + 오늘 날짜 → LocalDateTime 조합
+                LocalDateTime startAt = today.atTime(challenge.getVerifyStartTime());
+                LocalDateTime endAt = today.atTime(challenge.getVerifyEndTime());
+
+                eventPublisher.publishEvent(new VerificationDeadlineEvent(
+                        round.getId(),
+                        challenge.getId(),
+                        startAt,
+                        endAt
+                ));
+                log.info("[VerificationDeadlineScheduler] 이벤트 발행 완료 | RoundId={} | {}~{}",
+                        round.getId(), startAt, endAt);
+            } catch (Exception e) {
+                log.error("[VerificationDeadlineScheduler] 이벤트 발행 실패 | RoundId={} | 사유: {}",
+                        round.getId(), e.getMessage());
             }
         }
     }
