@@ -376,20 +376,31 @@ public class VerificationServiceImpl implements VerificationService {
         }
 
         RoundRecord roundRecord = verification.getRoundRecord();
-        UserChallenge userChallenge = roundRecord.getUserChallenge();
-        User author = userChallenge.getUser();
+        User author = roundRecord.getUserChallenge().getUser();
+        Challenge challenge = roundRecord.getRound().getChallenge();
 
-        // ===== 추가: 작성자 상태 확인 (탈퇴/차단) =====
-        // 1. 작성자가 탈퇴한 경우
-        if (author.getUserStatus() != UserStatus.ACTIVE) {
+        // 3. 권한 체크용 변수 설정
+        boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
+
+        // 4. [보안 추가] 비공개 챌린지 접근 제한 로직
+        if (Boolean.FALSE.equals(challenge.getIsPublic())) {
+            // 내가 참여 중(JOINED)인지 확인
+            boolean isJoined = currentUserId != null &&
+                    userChallengeRepository.findByUserIdAndChallengeId(currentUserId, challenge.getId())
+                            .map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)
+                            .orElse(false);
+
+            // 작성자 본인도 아니고, 참여자도 아니라면 접근 거부
+            if (!isMine && !isJoined) {
+                throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
+            }
+        }
+
+        // 5.현재 사용자가 로그인한 경우 차단 관계 확인
+        if (author.getUserStatus() != UserStatus.ACTIVE || author.isNotActive()) {
             throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
         }
 
-        if (author.isNotActive()) {
-            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
-        }
-
-        // 2. 현재 사용자가 로그인한 경우 차단 관계 확인
         if (currentUserId != null) {
             // 내가 작성자를 차단한 경우
             boolean iBlockedAuthor = userBlockRepository.existsByBlockerIdAndBlockedId(currentUserId, author.getId());
@@ -404,7 +415,6 @@ public class VerificationServiceImpl implements VerificationService {
             }
         }
 
-        boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
         boolean isResolved = Boolean.TRUE.equals(verification.getIsResolved());
         boolean canEdit = isMine && !isResolved;
         boolean canDelete = isMine && !isResolved;
