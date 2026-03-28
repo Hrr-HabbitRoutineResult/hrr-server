@@ -747,9 +747,11 @@ public class VerificationServiceImpl implements VerificationService {
         // 공개 계정
         Pageable pageable = PageRequest.of(page, size);
 
+        // 비공개 챌린지 인증 기록은 현재 사용자가 해당 챌린지의 JOINED 참여자인 경우에만 노출
         Slice<Verification> verificationSlice =
-                verificationRepository.findVerificationHistoryByUser(
+                verificationRepository.findFilteredVerificationHistory(
                         targetUser,
+                        currentUser.getId(),
                         VerificationStatus.COMPLETED,
                         pageable);
 
