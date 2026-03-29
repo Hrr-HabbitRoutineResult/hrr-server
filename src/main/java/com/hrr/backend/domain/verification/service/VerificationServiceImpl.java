@@ -382,7 +382,7 @@ public class VerificationServiceImpl implements VerificationService {
         // 3. 권한 체크용 변수 설정
         boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
 
-        // 4. [보안 추가] 비공개 챌린지 접근 제한 로직
+        // 4. 비공개 챌린지 접근 제한 로직
         if (Boolean.FALSE.equals(challenge.getIsPublic())) {
             // 내가 참여 중(JOINED)인지 확인
             boolean isJoined = currentUserId != null &&
@@ -397,7 +397,7 @@ public class VerificationServiceImpl implements VerificationService {
         }
 
         // 5.현재 사용자가 로그인한 경우 차단 관계 확인
-        if (author.getUserStatus() != UserStatus.ACTIVE || author.isNotActive()) {
+        if (author.isNotActive()) {
             throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
         }
 
