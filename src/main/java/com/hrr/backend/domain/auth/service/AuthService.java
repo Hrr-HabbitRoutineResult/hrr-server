@@ -300,6 +300,8 @@ public class AuthService {
         // 챌린지 참여 상태 즉시 변경 로직 제거
         // → 탈퇴는 비활성화와 동일한 개념이므로 30일 유예기간 동안 재활성화 가능
         //   유예기간 중 챌린지 상태를 유지해야 재활성화 시 정상 복구됨
+        //   즉시 탈퇴 처리로 발생한 공석을 타 유저가 선점할 경우,
+        //   서비스 복귀 시 정원 초과로 인한 복구 실패를 방지하기 위함
 
         // AT 블랙리스트 처리 (남은 유효기간 동안 재사용 방지)
         Duration remainingExpiration = jwtService.getRemainingExpiration(token);
