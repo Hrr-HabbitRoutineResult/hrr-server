@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.verification.repository;
 
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
@@ -50,25 +51,6 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     LocalDateTime findLatestVerificationTime(
             @Param("roundId") Long roundId,
             @Param("status") VerificationStatus status
-    );
-
-    // 특정 날짜(범위)의 인증 인원 수 (중복 제거, COMPLETED 상태만)
-    @Query("""
-    SELECT COUNT(DISTINCT r.userChallenge.id) FROM Verification v 
-    JOIN v.roundRecord r 
-    JOIN r.userChallenge uc 
-    JOIN uc.user u 
-    WHERE r.round.id = :roundId 
-    AND v.status = :status 
-    AND u.userStatus = :userStatus 
-    AND v.createdAt BETWEEN :start AND :end
-""")
-    Long countDistinctCertifiers(
-            @Param("roundId") Long roundId,
-            @Param("status") VerificationStatus status,
-            @Param("userStatus") UserStatus userStatus,
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end
     );
 
     @Query("SELECT v FROM Verification v " +
@@ -172,6 +154,28 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("user") User user,
             @Param("status") VerificationStatus status,
             Pageable pageable
+    );
+
+    /**
+     * 챌린지의 특정 라운드에서 특정 참여 상태(JOINED)인 인원 중 인증한 인원 조회
+     * (탈퇴자 포함, 퇴출자 제외)
+     */
+    @Query("""
+    SELECT COUNT(DISTINCT uc.id)
+    FROM Verification v
+    JOIN v.roundRecord r
+    JOIN r.userChallenge uc
+    WHERE r.round.id = :roundId
+    AND v.status = :status
+    AND uc.status = :joinStatus
+    AND v.createdAt BETWEEN :start AND :end
+""")
+    Long countDistinctCertifiers(
+            @Param("roundId") Long roundId,
+            @Param("status") VerificationStatus status,
+            @Param("joinStatus") ChallengeJoinStatus joinStatus,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
     );
 
 }

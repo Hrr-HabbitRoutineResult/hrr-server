@@ -93,14 +93,7 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
             @Param("user") User user,
             @Param("roundId") Long roundId
     );
-
-	// 챌린지의 특정 라운드의 현재 참가 인원을 조회하는데, 유저의 특정 상태로 필터링 - 인증 통계 조회를 위함
-	// 다음 라운드 연장을 하지 않더라도(ChallengeJoinStatus=DROPPED) 인증 통계의 총인원에는 포함되어야 하기에 해당 enum은 쿼리에 포함시키지 않음
-	@Query("SELECT COUNT(rr) FROM RoundRecord rr " +
-		"WHERE rr.round.id = :roundId " +
-		"AND rr.userChallenge.user.userStatus = :status")
-	int countParticipantsByRoundAndUserStatus(@Param("roundId") Long roundId, @Param("status") UserStatus status);
-
+	
 	// 라운드가 진행 중인 챌린지에 참여 중인 유저가 어제 인증요일이었는데 미인증 한 사실이 있는지 조회
 	@Query("SELECT rr FROM RoundRecord rr " +
 		"JOIN rr.userChallenge uc " +
@@ -143,5 +136,21 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
 			@Param("verificationStatus") VerificationStatus verificationStatus,
 			@Param("startOfDay") LocalDateTime startOfDay,
 			@Param("endOfDay") LocalDateTime endOfDay
+	);
+
+	/**
+	 * 챌린지의 특정 라운드에서 특정 참여 상태(JOINED)인 총 인원 조회
+	 * (탈퇴자 포함, 퇴출자 제외)
+	 */
+	@Query("""
+    SELECT COUNT(rr)
+    FROM RoundRecord rr
+    JOIN rr.userChallenge uc
+    WHERE rr.round.id = :roundId
+    AND uc.status = :status
+""")
+	int countByRoundIdAndJoinStatus(
+			@Param("roundId") Long roundId,
+			@Param("status") ChallengeJoinStatus status
 	);
 }

@@ -121,10 +121,14 @@ public class VerificationServiceImpl implements VerificationService {
             return verificationConverter.toStatDto(0, 0, null);
         }
 
-		// 인증 통계에서의 총인원은 '인증을 해야할 인원'을 의미하므로, 현재 라운드에 참가 중이면서 비활성이나 탈퇴 상태가 아닌 유저만 조회
-		Integer totalParticipantCount = roundRecordRepository.countParticipantsByRoundAndUserStatus(currentRound.getId(), UserStatus.ACTIVE);
+		// 퇴출된 유저 제외하고 조회
+        // 탈퇴 후 재활성화 가능 기간을 고려하여, 비활성(INACTIVE) 유저도 참여 상태가 유지되는 한 통계에 포함함
+        Integer totalParticipantCount = roundRecordRepository.countByRoundIdAndJoinStatus(
+                currentRound.getId(),
+                ChallengeJoinStatus.JOINED
+        );
 
-        // [수정] 실시간 현황 체크: 인증 요일/시간대가 아니면 null 반환
+        // 인증 요일/시간대가 아니면 null 반환
         LocalDateTime targetDateTime = determineTargetDateTime(challenge);
 
         if (targetDateTime == null) {
@@ -134,11 +138,11 @@ public class VerificationServiceImpl implements VerificationService {
 
         LocalDate targetDate = targetDateTime.toLocalDate();
 
-        // 인증자 중 현재 ACTIVE 상태인 유저만 집계 - 자동으로 비활성화 유저는 집계에서 제외됨
+        // 인증한 사람 중 퇴출한 유저 제외
         Long certifiedCount = verificationRepository.countDistinctCertifiers(
                 currentRound.getId(),
                 VerificationStatus.COMPLETED,
-                UserStatus.ACTIVE,
+                ChallengeJoinStatus.JOINED,
                 targetDate.atStartOfDay(),
                 targetDate.atTime(LocalTime.MAX)
         );
