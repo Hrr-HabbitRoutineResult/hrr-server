@@ -140,23 +140,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             Pageable pageable
     );
 
-    /**
-     * 사용자의 전체 챌린지 인증 기록 조회 (페이징)
-     */
-    @Query("SELECT v FROM Verification v " +
-            "JOIN FETCH v.roundRecord rr " +
-            "JOIN FETCH rr.userChallenge uc " +
-            "JOIN FETCH uc.challenge c " +
-            "WHERE uc.user = :user " +
-            "AND v.status = :status " +
-            "ORDER BY v.createdAt DESC")
-    Slice<Verification> findVerificationHistoryByUser(
-            @Param("user") User user,
-            @Param("status") VerificationStatus status,
-            Pageable pageable
-    );
-
-    /**
+     /**
      * 챌린지의 특정 라운드에서 특정 참여 상태(JOINED)인 인원 중 인증한 인원 조회
      * (탈퇴자 포함, 퇴출자 제외)
      */
@@ -169,13 +153,38 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     AND v.status = :status
     AND uc.status = :joinStatus
     AND v.createdAt BETWEEN :start AND :end
-""")
+    """)
     Long countDistinctCertifiers(
             @Param("roundId") Long roundId,
             @Param("status") VerificationStatus status,
             @Param("joinStatus") ChallengeJoinStatus joinStatus,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
+    );
+
+    /**
+     * 사용자의 전체 챌린지 인증 기록 조회 (비공개 챌린지 필터링)
+     */
+    @Query("""
+    SELECT v FROM Verification v
+    JOIN FETCH v.roundRecord rr
+    JOIN FETCH rr.userChallenge uc
+    JOIN FETCH uc.challenge c
+    WHERE uc.user = :user
+    AND v.status = :status
+    AND (c.isPublic = true OR EXISTS (
+        SELECT 1 FROM UserChallenge uc2
+        WHERE uc2.challenge = c
+        AND uc2.user.id = :currentUserId
+        AND uc2.status = 'JOINED'
+    ))
+    ORDER BY v.createdAt DESC
+    """)
+    Slice<Verification> findFilteredVerificationHistory(
+            @Param("user") User user,
+            @Param("currentUserId") Long currentUserId,
+            @Param("status") VerificationStatus status,
+            Pageable pageable
     );
 
 }
