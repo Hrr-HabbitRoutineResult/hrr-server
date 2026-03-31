@@ -140,6 +140,22 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             Pageable pageable
     );
 
+    /**
+     * 사용자의 전체 챌린지 인증 기록 조회 (페이징)
+     */
+    @Query("SELECT v FROM Verification v " +
+            "JOIN FETCH v.roundRecord rr " +
+            "JOIN FETCH rr.userChallenge uc " +
+            "JOIN FETCH uc.challenge c " +
+            "WHERE uc.user = :user " +
+            "AND v.status = :status " +
+            "ORDER BY v.createdAt DESC")
+    Slice<Verification> findVerificationHistoryByUser(
+            @Param("user") User user,
+            @Param("status") VerificationStatus status,
+            Pageable pageable
+    );
+
      /**
      * 챌린지의 특정 라운드에서 특정 참여 상태(JOINED)인 인원 중 인증한 인원 조회
      * (탈퇴자 포함, 퇴출자 제외)
