@@ -134,6 +134,20 @@ public class FcmPushServiceImpl implements FcmPushService {
     }
 
     private void sendMulticast(List<String> tokens, NotificationEvent event, int totalReceivers) {
+        // iOS APNs 설정 추가
+        ApnsConfig apnsConfig = ApnsConfig.builder()
+                .setAps(Aps.builder()
+                        .setSound("default")
+                        .setContentAvailable(true)
+                        .build())
+                .putHeader("apns-priority", "10")
+                .build();
+
+        // Android 우선순위 명시
+        AndroidConfig androidConfig = AndroidConfig.builder()
+                .setPriority(AndroidConfig.Priority.HIGH)
+                .build();
+
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(
@@ -143,6 +157,8 @@ public class FcmPushServiceImpl implements FcmPushService {
                                 .setImage(s3UrlUtil.toFullUrl(event.getImageKey()))
                                 .build()
                 )
+                .setApnsConfig(apnsConfig)
+                .setAndroidConfig(androidConfig)
                 .putData("targetType", event.getTargetType() != null ? event.getTargetType().name() : "")
                 .putData("targetId", event.getTargetId() != null ? String.valueOf(event.getTargetId()) : "")
                 .putData("contextType", event.getContextType() != null ? event.getContextType().name() : "")
