@@ -116,7 +116,7 @@ public class NotificationScheduler {
      * - 서버 재시작에도 알림이 증발하지 않도록 5분마다 DB 상태를 확인하여 발송
      */
     @Transactional(readOnly = true)
-    @Scheduled(fixedRate = 300000) // 5분(300,000ms)마다 실행
+    @Scheduled(cron = "0 0/5 * * * *")
     public void checkAndSendVerificationDeadlineNotifications() {
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = now.toLocalDate();
