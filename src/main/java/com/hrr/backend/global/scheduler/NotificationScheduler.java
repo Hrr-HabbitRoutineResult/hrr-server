@@ -1,9 +1,11 @@
 package com.hrr.backend.global.scheduler;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
+import com.hrr.backend.domain.notification.service.NotificationCommandService;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
@@ -17,6 +19,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +32,7 @@ public class NotificationScheduler {
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationCommandService notificationCommandService;
 
     @Transactional(readOnly = true)
     @Scheduled(cron = "0 0 9 * * *") // 매일 오전 9시
@@ -108,47 +112,71 @@ public class NotificationScheduler {
     }
 
     /**
-     * 인증 마감 알림 스케줄링 (매일 자정)
-     * - 오늘 인증 요일인 진행 중 라운드 조회
-     * - VerificationDeadlineEvent를 발행
+     * 인증 마감 알림 5분 단위 폴링 스케줄러 (핵심 수정 사항)
+     * - 서버 재시작에도 알림이 증발하지 않도록 5분마다 DB 상태를 확인하여 발송
      */
     @Transactional(readOnly = true)
-    @Scheduled(cron = "0 0 0 * * *") // 매일 자정에 오늘 인증 요일 라운드 스케줄링
-    public void scheduleVerificationDeadlineNotifications() {
-        LocalDate today = LocalDate.now();
+    @Scheduled(fixedRate = 300000) // 5분(300,000ms)마다 실행
+    public void checkAndSendVerificationDeadlineNotifications() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
         ChallengeDays todayEnum = ChallengeDays.from(today.getDayOfWeek());
 
-        log.info("[VerificationDeadlineScheduler] 인증 마감 알림 스케줄링 시작 | 날짜={} 요일={}", today, todayEnum);
-
+        // 오늘 인증 요일인 모든 진행 중 라운드 조회
         List<Round> targetRounds = roundRepository.findAllByVerificationDay(todayEnum, today);
 
-        log.info("[VerificationDeadlineScheduler] 대상 라운드 {}건", targetRounds.size());
-
         if (targetRounds.isEmpty()) {
-            log.info("[VerificationDeadlineScheduler] 오늘 인증 요일인 라운드 없음");
             return;
         }
 
         for (Round round : targetRounds) {
             try {
                 Challenge challenge = round.getChallenge();
-
-                // verifyStartTime / verifyEndTime(LocalTime) + 오늘 날짜 → LocalDateTime 조합
                 LocalDateTime startAt = today.atTime(challenge.getVerifyStartTime());
                 LocalDateTime endAt = today.atTime(challenge.getVerifyEndTime());
+                Duration window = Duration.between(startAt, endAt);
 
-                eventPublisher.publishEvent(new VerificationDeadlineEvent(
-                        round.getId(),
-                        challenge.getId(),
-                        startAt,
-                        endAt
-                ));
-                log.info("[VerificationDeadlineScheduler] 이벤트 발행 완료 | RoundId={} | {}~{}",
-                        round.getId(), startAt, endAt);
+                LocalDateTime deadline3h = endAt.minusHours(3);
+                LocalDateTime deadline1h = endAt.minusHours(1);
+
+                // 알림 윈도우 크기에 따른 발송 로직 분기
+                if (window.toHours() >= 3) {
+                    // [3시간 전 알림] 마감 3시간 전 ~ 1시간 전 사이
+                    if (now.isAfter(deadline3h) && now.isBefore(deadline1h)) {
+                        sendNotification(round, challenge, NotificationTypeName.VERIFICATION_DEADLINE_3H, startAt, endAt, today);
+                    }
+                    // [1시간 전 알림] 마감 1시간 전 ~ 마감 시각 사이
+                    if (now.isAfter(deadline1h) && now.isBefore(endAt)) {
+                        sendNotification(round, challenge, NotificationTypeName.VERIFICATION_DEADLINE_1H, startAt, endAt, today);
+                    }
+                } else if (window.toHours() >= 1) {
+                    // [1시간 전 알림] 1시간 전 ~ 마감 시각 사이
+                    if (now.isAfter(deadline1h) && now.isBefore(endAt)) {
+                        sendNotification(round, challenge, NotificationTypeName.VERIFICATION_DEADLINE_1H, startAt, endAt, today);
+                    }
+                } else {
+                    // [마감 임박 알림] 윈도우가 1시간 미만인 경우
+                    if (now.isAfter(startAt) && now.isBefore(endAt)) {
+                        sendNotification(round, challenge, NotificationTypeName.VERIFICATION_DEADLINE_NOW, startAt, endAt, today);
+                    }
+                }
             } catch (Exception e) {
-                log.error("[VerificationDeadlineScheduler] 이벤트 발행 실패 | RoundId={} | 사유: {}",
-                        round.getId(), e.getMessage());
+                log.error("[VerificationPolling] RoundId: {} 처리 실패: {}", round.getId(), e.getMessage());
             }
         }
+    }
+
+    /**
+     * 알림 명령을 직접 전달하는 헬퍼 메서드
+     */
+    private void sendNotification(Round round, Challenge challenge,
+                                  NotificationTypeName typeName,
+                                  LocalDateTime startAt, LocalDateTime endAt,
+                                  LocalDate targetDate) {
+        VerificationDeadlineEvent event = new VerificationDeadlineEvent(
+                round.getId(), challenge.getId(), startAt, endAt
+        );
+        // 리스너를 거치지 않고 즉시 서비스 호출
+        notificationCommandService.sendDeadlineNotification(event, typeName, targetDate);
     }
 }
