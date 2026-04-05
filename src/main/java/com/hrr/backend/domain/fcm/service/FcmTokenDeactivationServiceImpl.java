@@ -24,6 +24,14 @@ public class FcmTokenDeactivationServiceImpl implements FcmTokenDeactivationServ
     public void handleFailedTokens(List<String> tokens, BatchResponse response) {
         List<SendResponse> responses = response.getResponses();
 
+        // 토큰 리스트와 응답 리스트의 크기 정합성 체크
+        if (tokens == null || responses == null || tokens.size() != responses.size()) {
+            log.error("FCM 토큰 리스트와 응답 리스트의 크기가 일치하지 않거나 데이터가 누락되었습니다. (tokens={}, responses={})",
+                    tokens != null ? tokens.size() : "null",
+                    responses != null ? responses.size() : "null");
+            return;
+        }
+
         for (int i = 0; i < responses.size(); i++) {
             SendResponse sendResponse = responses.get(i);
 
