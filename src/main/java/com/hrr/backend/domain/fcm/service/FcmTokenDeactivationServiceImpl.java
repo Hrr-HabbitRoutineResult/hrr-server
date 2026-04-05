@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.fcm.service;
 
 import com.google.firebase.messaging.BatchResponse;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.SendResponse;
 import com.hrr.backend.domain.fcm.repository.FcmTokenRepository;
@@ -36,8 +37,16 @@ public class FcmTokenDeactivationServiceImpl implements FcmTokenDeactivationServ
             SendResponse sendResponse = responses.get(i);
 
             if (!sendResponse.isSuccessful()) {
-                MessagingErrorCode errorCode = sendResponse.getException().getMessagingErrorCode();
                 String token = tokens.get(i);
+
+                // NPE 방지
+                FirebaseMessagingException exception = sendResponse.getException();
+                if (exception == null) {
+                    log.warn("FCM 발송 실패했으나 예외 정보가 누락되었습니다: token={}", maskToken(token));
+                    continue; // 원인 파악이 불가능하므로 건너뜀
+                }
+
+                MessagingErrorCode errorCode = exception.getMessagingErrorCode();
 
                 if (errorCode == MessagingErrorCode.UNREGISTERED ||
                         errorCode == MessagingErrorCode.SENDER_ID_MISMATCH) {
@@ -49,12 +58,11 @@ public class FcmTokenDeactivationServiceImpl implements FcmTokenDeactivationServ
                 } else if (errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
                     // 페이로드 오류 등은 로그만 남기고 토큰은 유지
                     log.warn("FCM 페이로드 오류 (INVALID_ARGUMENT): token={}, message={}",
-                            maskToken(token), sendResponse.getException().getMessage());
-
+                            maskToken(token), exception.getMessage());
                 } else {
                     // 기타 일시적 오류 등
                     log.warn("FCM 발송 실패 (유지 대상): errorCode={}, message={}",
-                            errorCode, sendResponse.getException().getMessage());
+                            errorCode, exception.getMessage());
                 }
             }
         }
