@@ -29,6 +29,7 @@ public class FcmPushServiceImpl implements FcmPushService {
     private final FcmTokenRepository fcmTokenRepository;
     private final NotificationSettingRepository notificationSettingRepository;
     private final S3UrlUtil s3UrlUtil;
+    private final FcmTokenDeactivationService fcmTokenDeactivationService;
 
     @Override
     public void sendPushForDeliveries(List<NotificationDelivery> deliveries, NotificationEvent event) {
@@ -134,6 +135,20 @@ public class FcmPushServiceImpl implements FcmPushService {
     }
 
     private void sendMulticast(List<String> tokens, NotificationEvent event, int totalReceivers) {
+        // iOS APNs 설정 추가
+        ApnsConfig apnsConfig = ApnsConfig.builder()
+                .setAps(Aps.builder()
+                        .setSound("default")
+                        .setContentAvailable(true)
+                        .build())
+                .putHeader("apns-priority", "10")
+                .build();
+
+        // Android 우선순위 명시
+        AndroidConfig androidConfig = AndroidConfig.builder()
+                .setPriority(AndroidConfig.Priority.HIGH)
+                .build();
+
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(
@@ -143,6 +158,8 @@ public class FcmPushServiceImpl implements FcmPushService {
                                 .setImage(s3UrlUtil.toFullUrl(event.getImageKey()))
                                 .build()
                 )
+                .setApnsConfig(apnsConfig)
+                .setAndroidConfig(androidConfig)
                 .putData("targetType", event.getTargetType() != null ? event.getTargetType().name() : "")
                 .putData("targetId", event.getTargetId() != null ? String.valueOf(event.getTargetId()) : "")
                 .putData("contextType", event.getContextType() != null ? event.getContextType().name() : "")
@@ -157,41 +174,10 @@ public class FcmPushServiceImpl implements FcmPushService {
             log.info("FCM 벌크 발송 완료: 대상={}명, 토큰={}개, 성공={}, 실패={}",
                     totalReceivers, tokens.size(), response.getSuccessCount(), response.getFailureCount());
 
-            handleFailedTokens(tokens, response);
+            fcmTokenDeactivationService.handleFailedTokens(tokens, response);
 
         } catch (FirebaseMessagingException e) {
             log.error("FCM 벌크 발송 실패: 토큰={}개, error={}", tokens.size(), e.getMessage(), e);
         }
-    }
-
-    private void handleFailedTokens(List<String> tokens, BatchResponse response) {
-        List<SendResponse> responses = response.getResponses();
-        for (int i = 0; i < responses.size(); i++) {
-            SendResponse sendResponse = responses.get(i);
-            if (!sendResponse.isSuccessful()) {
-                MessagingErrorCode errorCode = sendResponse.getException().getMessagingErrorCode();
-                String token = tokens.get(i); // 현재 처리 중인 토큰
-
-                if (errorCode == MessagingErrorCode.UNREGISTERED) {
-                    fcmTokenRepository.deactivateAllByToken(token);
-                    // 마스킹 메서드 적용
-                    log.info("유효하지 않은 FCM 토큰 전체 비활성화 완료: token={}", maskToken(token));
-                }
-                else if (errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
-                    // 원문 대신 마스킹된 토큰 로그 출력
-                    log.warn("FCM 메시지 페이로드 또는 토큰 형식이 잘못되었습니다. (INVALID_ARGUMENT): token={}, message={}",
-                            maskToken(token), sendResponse.getException().getMessage());
-                }
-            }
-        }
-    }
-
-    private String maskToken(String token) {
-        if (token == null || token.isBlank()) {
-            return "<empty>";
-        }
-        // 앞 20자만 보여주고 나머지는 마스킹 처리
-        int visible = Math.min(20, token.length());
-        return token.substring(0, visible) + "...";
     }
 }
