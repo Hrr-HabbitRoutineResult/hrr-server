@@ -462,8 +462,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto req
 	) {
-		// 챌린지 조회
-		Challenge challenge = findChallenge(challengeId);
+		// 정원 초과 방지를 위한 락 조회
+		Challenge challenge = findChallengeForUpdate(challengeId);
 
 		// 비즈니스 룰 검증
 		validateJoinRequest(challenge, user, req.getPassword());
@@ -723,6 +723,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 	// 챌린지 일반 조회용
 	private Challenge findChallenge(Long challengeId) {
 		return challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+	}
+
+	/**
+	 * 챌린지 참가 시 참가자 수 정합성 보장을 위한 락 조회
+	 */
+	private Challenge findChallengeForUpdate(Long challengeId) {
+		return challengeRepository.findByIdForUpdate(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 	}
 
