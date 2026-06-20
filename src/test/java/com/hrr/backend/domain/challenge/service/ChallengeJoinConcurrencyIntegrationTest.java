@@ -116,6 +116,10 @@ class ChallengeJoinConcurrencyIntegrationTest {
         executorService.shutdown();
         boolean terminated = executorService.awaitTermination(10, TimeUnit.SECONDS);
 
+        if (!terminated) {
+            executorService.shutdownNow();
+        }
+
         assertThat(completed).as("모든 joinChallenge 요청이 제한 시간 안에 완료되어야 한다").isTrue();
         assertThat(terminated).as("ExecutorService가 정상 종료되어야 한다").isTrue();
 
