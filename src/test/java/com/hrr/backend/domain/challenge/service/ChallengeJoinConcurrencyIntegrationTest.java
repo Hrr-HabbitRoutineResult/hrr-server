@@ -16,6 +16,8 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -78,6 +81,7 @@ class ChallengeJoinConcurrencyIntegrationTest {
 
         AtomicInteger successCount = new AtomicInteger();
         AtomicInteger failureCount = new AtomicInteger();
+        List<Exception> unexpectedErrors = Collections.synchronizedList(new ArrayList<>());
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(CONCURRENT_REQUESTS);
         ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_REQUESTS);
@@ -92,8 +96,14 @@ class ChallengeJoinConcurrencyIntegrationTest {
 
                     challengeService.joinChallenge(user, challengeId, request);
                     successCount.incrementAndGet();
+                } catch (GlobalException e) {
+                    if (e.getErrorCode() == ErrorCode.CHALLENGE_FULL) {
+                        failureCount.incrementAndGet();
+                    } else {
+                        unexpectedErrors.add(e);
+                    }
                 } catch (Exception e) {
-                    failureCount.incrementAndGet();
+                    unexpectedErrors.add(e);
                 } finally {
                     endLatch.countDown();
                 }
@@ -131,6 +141,9 @@ class ChallengeJoinConcurrencyIntegrationTest {
         assertThat(joinedCount)
                 .as("JOINED 상태 UserChallenge 개수는 maxParticipants를 초과하면 안 된다")
                 .isLessThanOrEqualTo(challenge.getMaxParticipants());
+        assertThat(unexpectedErrors)
+                .as("예상하지 못한 예외가 없어야 한다")
+                .isEmpty();
     }
 
     private Long createChallengeWithCurrentRoundAndParticipants() {
