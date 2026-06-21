@@ -85,13 +85,16 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
     /**멱등성 위한 exists 메서드 추가-> 스케줄러 장애 또는 재시작으로 재실행돼도 중복 생성 방지하게*/
     boolean existsByUserChallengeAndRound(UserChallenge userChallenge, Round round);
 
-    /** 사용자와 라운드 ID로 RoundRecord 조회 (응답 여부 확인용) */
+    /**
+	 * 사용자와 라운드 ID 목록으로 RoundRecord 일괄 조회 (응답 여부 확인용)
+	 */
     @Query("SELECT rr FROM RoundRecord rr " +
+            "JOIN FETCH rr.round r " +
             "JOIN rr.userChallenge uc " +
-            "WHERE uc.user = :user AND rr.round.id = :roundId")
-    Optional<RoundRecord> findByUserAndRoundId(
+            "WHERE uc.user = :user AND r.id IN :roundIds")
+    List<RoundRecord> findByUserAndRoundIds(
             @Param("user") User user,
-            @Param("roundId") Long roundId
+            @Param("roundIds") List<Long> roundIds
     );
 	
 	// 라운드가 진행 중인 챌린지에 참여 중인 유저가 어제 인증요일이었는데 미인증 한 사실이 있는지 조회

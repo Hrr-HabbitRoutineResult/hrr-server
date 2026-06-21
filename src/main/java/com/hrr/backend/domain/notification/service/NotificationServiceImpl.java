@@ -9,6 +9,7 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.repository.NotificationRepository;
 import com.hrr.backend.domain.notification.repository.NotificationSettingRepository;
+import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.User;
@@ -20,8 +21,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -47,25 +56,41 @@ public class NotificationServiceImpl implements NotificationService {
                 .findMyNotifications(user, category, pageable);
 
         // Slice 내부의 엔티티를 DTO로 변환
-        Slice<NotificationResponseDto.InfoDto> dtoSlice = deliverySlice
+        List<NotificationResponseDto.InfoDto> dtos = deliverySlice.getContent().stream()
                 .map(delivery -> {
                     String fullUrl = s3UrlUtil.toFullUrl(delivery.getEvent().getImageKey());
-                    NotificationResponseDto.InfoDto dto = notificationConverter.toInfoDto(delivery, fullUrl);
+                    return notificationConverter.toInfoDto(delivery, fullUrl);
+                })
+                .toList();
 
-                    // 연장 안내 알림일 경우 응답 여부 계산
-                    if (dto.getType() == NotificationTypeName.CHALLENGE_EXTENSION) {
-                        boolean responded = roundRecordRepository.findByUserAndRoundId(user, dto.getContextId())
-                                .map(record -> record.getNextRoundIntent() != NextRoundIntent.UNDECIDED)
-                                .orElse(false);
-                        dto.setIsResponded(responded);
-                    } else {
-                        dto.setIsResponded(null);
-                    }
+        List<Long> challengeExtensionRoundIds = dtos.stream()
+                .filter(dto -> dto.getType() == NotificationTypeName.CHALLENGE_EXTENSION)
+                .map(NotificationResponseDto.InfoDto::getContextId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
 
-                    return dto;
-                });
+        Map<Long, RoundRecord> roundRecordByRoundId = challengeExtensionRoundIds.isEmpty()
+                ? Collections.emptyMap()
+                : roundRecordRepository.findByUserAndRoundIds(user, challengeExtensionRoundIds).stream()
+                .collect(Collectors.toMap(
+                        record -> record.getRound().getId(),
+                        Function.identity(),
+                        (first, ignored) -> first
+                ));
 
-        return new SliceResponseDto<>(dtoSlice);
+        // 연장 안내 알림일 경우 응답 여부 계산
+        dtos.forEach(dto -> {
+            if (dto.getType() == NotificationTypeName.CHALLENGE_EXTENSION) {
+                RoundRecord record = roundRecordByRoundId.get(dto.getContextId());
+                boolean responded = record != null && record.getNextRoundIntent() != NextRoundIntent.UNDECIDED;
+                dto.setIsResponded(responded);
+            } else {
+                dto.setIsResponded(null);
+            }
+        });
+
+        return new SliceResponseDto<>(new SliceImpl<>(dtos, pageable, deliverySlice.hasNext()));
     }
 
     @Override
@@ -128,5 +153,4 @@ public class NotificationServiceImpl implements NotificationService {
                 .hasUnread(hasUnread)
                 .build();
     }
-
 }
