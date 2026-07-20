@@ -7,5 +7,7 @@ public enum NotificationTypeName {
 
     VERIFICATION_DEADLINE_3H,     // 인증 마감 3시간 전
     VERIFICATION_DEADLINE_1H,     // 인증 마감 1시간 전
-    VERIFICATION_DEADLINE_NOW     // 인증 시간이 1시간 미만 → 시작 즉시
+    VERIFICATION_DEADLINE_NOW,    // 인증 시간이 1시간 미만 → 시작 즉시
+
+    COMMENT_CREATED               // 내 인증에 댓글 생성
 }

@@ -1,6 +1,8 @@
 package com.hrr.backend.domain.notification.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.comment.entity.Comment;
+import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
 import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
@@ -13,7 +15,9 @@ import com.hrr.backend.domain.round.repository.*;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
+import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +43,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final VerificationRepository verificationRepository;
+    private final CommentRepository commentRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationEventHelper eventHelper;
 
@@ -87,6 +93,57 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
             if (!pushTargets.isEmpty()) {
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendCommentCreatedNotification(CommentCreatedEvent event) {
+        Verification verification = verificationRepository.findById(event.verificationId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+        Comment comment = commentRepository.findById(event.commentId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
+
+        User receiver = verification.getUserChallenge().getUser();
+        if (receiver.getId().equals(event.actorId())) {
+            return;
+        }
+
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.COMMENT_CREATED)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+        Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .type(type)
+                .actor(comment.getUser())
+                .category(NotificationCategory.VERIFICATION)
+                .targetType(ResourceType.VERIFICATION)
+                .targetId(verification.getId())
+                .contextType(ResourceType.COMMENT)
+                .contextId(comment.getId())
+                .title("내 인증에 댓글이 달렸어요")
+                .message(comment.getContent())
+                .imageKey(challenge.getImageKey())
+                .createdDate(LocalDate.now())
+                .build();
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 댓글 생성 알림 이벤트 생성이 차단되었습니다. (CommentId={})", comment.getId());
+            return;
+        }
+
+        NotificationDelivery delivery = NotificationDelivery.builder()
+                .event(notificationEvent)
+                .receiver(receiver)
+                .isRead(false)
+                .build();
+
+        notificationRepository.save(delivery);
+
+        if (receiver.getNotificationSetting().isVerificationEnabled()) {
+            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
         }
     }
 
