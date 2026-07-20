@@ -383,7 +383,7 @@ class NotificationIntegrationTest {
             assertThat(notificationEvent.getActor()).isNull();
             assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.VERIFICATION);
             assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.VERIFICATION);
-            assertThat(notificationEvent.getTargetId()).isEqualTo(warnedUser.getId());
+            assertThat(notificationEvent.getTargetId()).isEqualTo(weakVerification.getId());
             assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.VERIFICATION);
             assertThat(notificationEvent.getContextId()).isEqualTo(weakVerification.getId());
             assertThat(notificationEvent.getTitle()).isEqualTo("챌린지 부실 인증 경고");

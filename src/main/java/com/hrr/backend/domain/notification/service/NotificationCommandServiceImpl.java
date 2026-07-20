@@ -221,10 +221,6 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         User receiver = userRepository.findById(event.warnedUserId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
-        if (!receiver.getNotificationSetting().isVerificationEnabled()) {
-            return;
-        }
-
         Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
         NotificationType type = typeRepository.findByTypeName(NotificationTypeName.WEAK_VERIFICATION_WARNING)
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
@@ -234,7 +230,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .actor(null)
                 .category(NotificationCategory.VERIFICATION)
                 .targetType(ResourceType.VERIFICATION)
-                .targetId(receiver.getId())
+                .targetId(verification.getId())
                 .contextType(ResourceType.VERIFICATION)
                 .contextId(verification.getId())
                 .title("챌린지 부실 인증 경고")
@@ -258,7 +254,10 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .build();
 
         notificationRepository.save(delivery);
-        eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
+
+        if (receiver.getNotificationSetting().isVerificationEnabled()) {
+            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
+        }
     }
 
     @Override
