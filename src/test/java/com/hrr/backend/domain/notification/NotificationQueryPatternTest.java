@@ -233,7 +233,7 @@ class NotificationQueryPatternTest {
                     NotificationCategory.CHALLENGE;
             case VERIFICATION_DEADLINE_3H, VERIFICATION_DEADLINE_1H, VERIFICATION_DEADLINE_NOW ->
                     NotificationCategory.VERIFICATION;
-            case COMMENT_CREATED ->
+            case COMMENT_CREATED, QUESTION_VERIFICATION ->
                     NotificationCategory.VERIFICATION;
         };
     }
