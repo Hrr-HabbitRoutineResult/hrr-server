@@ -4,6 +4,7 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import java.time.LocalDate;
 
@@ -19,4 +20,7 @@ public interface NotificationCommandService {
 
     // 인증 댓글 생성 알림 발송
     void sendCommentCreatedNotification(CommentCreatedEvent event);
+
+    // 질문 인증 생성 알림 발송
+    void sendQuestionVerificationCreatedNotification(QuestionVerificationCreatedEvent event);
 }

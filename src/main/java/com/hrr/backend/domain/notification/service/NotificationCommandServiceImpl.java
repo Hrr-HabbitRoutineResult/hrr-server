@@ -13,7 +13,9 @@ import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -43,6 +45,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final UserChallengeRepository userChallengeRepository;
     private final VerificationRepository verificationRepository;
     private final CommentRepository commentRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -144,6 +147,69 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
         if (receiver.getNotificationSetting().isVerificationEnabled()) {
             eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendQuestionVerificationCreatedNotification(QuestionVerificationCreatedEvent event) {
+        Verification verification = verificationRepository.findById(event.verificationId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        if (!Boolean.TRUE.equals(verification.getIsQuestion())) {
+            return;
+        }
+
+        Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
+        User actor = verification.getUserChallenge().getUser();
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.QUESTION_VERIFICATION)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .type(type)
+                .actor(actor)
+                .category(NotificationCategory.VERIFICATION)
+                .targetType(ResourceType.VERIFICATION)
+                .targetId(verification.getId())
+                .contextType(ResourceType.VERIFICATION)
+                .contextId(verification.getId())
+                .title("새로운 질문이 등록되었어요")
+                .message(String.format("%s 챌린지에 새로운 질문 인증글이 등록되었어요", challenge.getTitle()))
+                .imageKey(challenge.getImageKey())
+                .createdDate(LocalDate.now())
+                .build();
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 질문 인증 알림 이벤트 생성이 차단되었습니다. (VerificationId={})", verification.getId());
+            return;
+        }
+
+        List<UserChallenge> joinedUserChallenges =
+                userChallengeRepository.findAllByChallengeIdAndStatusWithUserAndSetting(
+                        challenge.getId(), ChallengeJoinStatus.JOINED);
+
+        List<NotificationDelivery> allDeliveries = joinedUserChallenges.stream()
+                .map(UserChallenge::getUser)
+                .filter(receiver -> !receiver.getId().equals(event.actorId()))
+                .map(receiver -> NotificationDelivery.builder()
+                        .event(notificationEvent)
+                        .receiver(receiver)
+                        .isRead(false)
+                        .build())
+                .toList();
+
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isVerificationEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
         }
     }
 
