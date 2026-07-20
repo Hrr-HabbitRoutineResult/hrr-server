@@ -11,5 +11,7 @@ public enum NotificationTypeName {
 
     COMMENT_CREATED,              // 내 인증에 댓글 생성
 
-    QUESTION_VERIFICATION         // 질문 인증 생성
+    QUESTION_VERIFICATION,        // 질문 인증 생성
+
+    WEAK_VERIFICATION_WARNING     // 부실 인증 경고
 }

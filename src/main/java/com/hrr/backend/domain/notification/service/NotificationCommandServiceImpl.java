@@ -215,6 +215,54 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendWeakVerificationWarningNotification(WeakVerificationWarningEvent event) {
+        Verification verification = verificationRepository.findById(event.verificationId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+        User receiver = userRepository.findById(event.warnedUserId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
+        if (!receiver.getNotificationSetting().isVerificationEnabled()) {
+            return;
+        }
+
+        Challenge challenge = verification.getRoundRecord().getRound().getChallenge();
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.WEAK_VERIFICATION_WARNING)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .type(type)
+                .actor(null)
+                .category(NotificationCategory.VERIFICATION)
+                .targetType(ResourceType.VERIFICATION)
+                .targetId(receiver.getId())
+                .contextType(ResourceType.VERIFICATION)
+                .contextId(verification.getId())
+                .title("챌린지 부실 인증 경고")
+                .message(String.format("%s 챌린지에서 부실 인증 경고가 적립되었어요", challenge.getTitle()))
+                .imageKey(challenge.getImageKey())
+                .createdDate(LocalDate.now())
+                .build();
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 부실 인증 경고 알림 이벤트 생성이 차단되었습니다. (VerificationId={}, WarnedUserId={})",
+                    verification.getId(), receiver.getId());
+            return;
+        }
+
+        NotificationDelivery delivery = NotificationDelivery.builder()
+                .event(notificationEvent)
+                .receiver(receiver)
+                .isRead(false)
+                .build();
+
+        notificationRepository.save(delivery);
+        eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendChallengeExtensionNotification(ChallengeExtensionEvent event) {
         Long roundId = event.roundId();
 
