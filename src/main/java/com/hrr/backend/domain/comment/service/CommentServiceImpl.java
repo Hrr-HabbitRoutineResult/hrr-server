@@ -8,6 +8,7 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.dto.CommentUpdateRequestDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
+import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -20,6 +21,7 @@ import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class CommentServiceImpl implements CommentService {
     private final CommentConverter commentConverter;
     private final UserBlockRepository userBlockRepository;
     private final UserChallengeRepository userChallengeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 댓글 작성 */
     @Override
@@ -119,6 +122,12 @@ public class CommentServiceImpl implements CommentService {
         );
 
         commentRepository.save(comment);
+
+        eventPublisher.publishEvent(new CommentCreatedEvent(
+                verificationId,
+                comment.getId(),
+                userId
+        ));
 
         // 차단 관계 조회 (댓글 작성 시에는 자신의 댓글이므로 빈 Set 전달)
         Set<Long> blockedUserIds = Collections.emptySet();
