@@ -1,9 +1,6 @@
 package com.hrr.backend.domain.challenge.service;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Collections;
@@ -465,8 +462,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 			Long challengeId,
 			ChallengeRequestDto.JoinChallengeDto req
 	) {
-		// 챌린지 조회
-		Challenge challenge = findChallenge(challengeId);
+		// 정원 초과 방지를 위한 락 조회
+		Challenge challenge = findChallengeForUpdate(challengeId);
 
 		// 비즈니스 룰 검증
 		validateJoinRequest(challenge, user, req.getPassword());
@@ -640,6 +637,151 @@ public class ChallengeServiceImpl implements ChallengeService {
 				})
 				.toList();
 	}
+    @Override
+    @Transactional
+    public ChallengeResponseDto.UpdateChallengeDto updateChallenge(
+            User user,
+            Long challengeId,
+            ChallengeRequestDto.UpdateChallengeDto req
+    ) {
+        // 챌린지 조회
+        Challenge challenge = findChallengeWithDays(challengeId);
+
+        // 방장 권한 검증
+        validateOwner(user, challengeId);
+
+        // 수정 가능 기간 검증 (한국 시간 기준: 시작일 전날 23:59:59까지)
+        validateUpdatePeriod(challenge);
+
+        // 수정 요청에 대한 비즈니스 검증
+        validateUpdateRequest(challenge, req);
+
+        // 공개/비공개 처리
+        boolean isPublic = req.getIsPublic();
+        boolean isViewerMode = isPublic && req.getIsViewerMode();
+        String password = isPublic ? null : req.getPassword();
+
+        // Challenge 필드 업데이트
+        challenge.update(
+                req.getTitle(),
+                req.getDescription(),
+                isPublic,
+                password,
+                isViewerMode,
+                req.getMaxParticipants(),
+                req.getRule(),
+                req.getVerifyStartTime(),
+                req.getVerifyEndTime(),
+                req.getStartDate().atStartOfDay(),
+                req.getVerificationType(),
+                req.getCategory(),
+                req.getImageKey()
+        );
+
+        // ChallengeDayJoin 전체 교체 (기존 삭제 후 새로 insert)
+        challengeDayJoinRepository.deleteAllByChallenge(challenge);
+        List<ChallengeDayJoin> newDays = req.getDaysOfWeek().stream()
+                .distinct()
+                .map(day -> ChallengeDayJoin.builder()
+                        .challenge(challenge)
+                        .dayOfWeek(day)
+                        .build())
+                .toList();
+        challengeDayJoinRepository.saveAll(newDays);
+
+        // Round의 startDate / endDate도 갱신 (1라운드 시작일 변경)
+        Round currentRound = challenge.getCurrentRound();
+        if (currentRound != null) {
+            if (req.getStartDate() == null) {
+                throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
+            }
+            currentRound.updateStartDate(req.getStartDate());
+        }
+
+        // 수정 후 임베딩/검색 파생 데이터 갱신
+        // title, description, rule 변경 시 검색/추천 임베딩이 수정 전 텍스트로 남는 문제 방지
+        // createChallenge()와 동일한 이벤트 발행 패턴으로 임베딩 재계산 트리거
+        String updatedChallengeText = buildChallengeText(challenge);
+        eventPublisher.publishEvent(
+                new ChallengeCreatedEvent(challenge.getId(), updatedChallengeText)
+        );
+
+        return challengeConverter.toUpdateResponseDto(challenge);
+    }
+
+    /**
+     * 챌린지 수정 기능 - 방장 권한 검증
+     * 해당 챌린지의 OWNER인지 확인, 방장이 아니면 CHALLENGE_UPDATE_FORBIDDEN(403) 예외 발생
+     */
+    private void validateOwner(User user, Long challengeId) {
+        UserChallenge ownerUc = userChallengeRepository.findByChallengeIdAndRole(challengeId, UserChallengeRole.OWNER)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+        if (!ownerUc.getUser().getId().equals(user.getId())) {
+            throw new GlobalException(ErrorCode.CHALLENGE_UPDATE_FORBIDDEN);
+        }
+    }
+
+    /**
+     * 챌린지 수정 기능 - 수정 가능 기간 검증
+     * - 한국 시간(KST, Asia/Seoul) 기준
+     * - 챌린지 시작일 전날 23:59:59까지만 수정 가능, 시작일 당일부터 CHALLENGE_UPDATE_PERIOD_EXPIRED(400) 예외 발생
+     */
+    private void validateUpdatePeriod(Challenge challenge) {
+        // 한국 시간 기준 현재 날짜
+        LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
+
+        // 챌린지 시작일 (startDate는 LocalDateTime으로 저장되어 있으므로 toLocalDate() 변환)
+        LocalDate startDate = challenge.getStartDate().toLocalDate();
+
+        // 시작일 당일 또는 이후라면 수정 불가
+        if (!todayKst.isBefore(startDate)) {
+            throw new GlobalException(ErrorCode.CHALLENGE_UPDATE_PERIOD_EXPIRED);
+        }
+    }
+
+    /**
+     * 챌린지 수정 기능 - 수정 요청 비즈니스 검증 로직
+     * - 새 시작일이 내일(KST) 이후인지
+     * - 인증 종료시간 > 시작시간인지
+     * - 최대 참여 인원 >= 현재 참여 인원인지
+     * - 공개/비공개 비밀번호 및 관찰자 모드 유효성
+     */
+    private void validateUpdateRequest(Challenge challenge, ChallengeRequestDto.UpdateChallengeDto req) {
+
+        // 시작일 검증: 내일(KST) 이후여야 함
+        LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        if (!req.getStartDate().isAfter(todayKst)) {
+            throw new GlobalException(ErrorCode.CHALLENGE_INVALID_START_DATE);
+        }
+
+        // 인증 시간 검증: 종료 시간 > 시작 시간
+        if (!req.getVerifyEndTime().isAfter(req.getVerifyStartTime())) {
+            throw new GlobalException(ErrorCode.CHALLENGE_INVALID_VERIFY_TIME);
+        }
+
+        // 최대 참여 인원이 현재 참여 인원보다 작으면 안 됨
+        if (req.getMaxParticipants() < challenge.getCurrentParticipants()) {
+            throw new GlobalException(ErrorCode.CHALLENGE_MAX_PARTICIPANTS_BELOW_CURRENT);
+        }
+
+        // 공개/비공개 및 비밀번호, 관찰자 모드 검증
+        if (!req.getIsPublic()) {
+            // 비공개인데 비밀번호가 없거나 4자리 숫자가 아닌 경우
+            if (req.getPassword() == null || !req.getPassword().matches("^\\d{4}$")) {
+                throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED);
+            }
+            // 비공개 챌린지인데 관찰자 모드를 설정한 경우
+            if (req.getIsViewerMode()) {
+                throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED);
+            }
+        } else {
+            // 공개인데 비밀번호가 입력된 경우
+            if (req.getPassword() != null && !req.getPassword().isBlank()) {
+                throw new GlobalException(ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT);
+            }
+        }
+    }
 
 	/**
 	 * 챌린지 생성 요청에 대한 비즈니스 검증 로직
@@ -650,6 +792,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 		if (challengeRepository.countByUserIdAndStatus(owner.getId(), ChallengeJoinStatus.JOINED) >= 5) {
 			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
 		}
+
+        LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
 		// 시작일 검증: 오늘 이후여야 함
 		if (!req.getStartDate().isAfter(LocalDate.now())) {
@@ -728,6 +872,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 	// 챌린지 일반 조회용
 	private Challenge findChallenge(Long challengeId) {
 		return challengeRepository.findById(challengeId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+	}
+
+	/**
+	 * 챌린지 참가 시 참가자 수 정합성 보장을 위한 락 조회
+	 */
+	private Challenge findChallengeForUpdate(Long challengeId) {
+		return challengeRepository.findByIdForUpdate(challengeId)
 				.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 	}
 
