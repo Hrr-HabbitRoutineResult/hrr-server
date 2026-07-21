@@ -1,6 +1,9 @@
 package com.hrr.backend.global.scheduler;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
@@ -31,6 +34,9 @@ class NotificationSchedulerTest {
     private NotificationScheduler notificationScheduler;
 
     @Mock
+    private ChallengeRepository challengeRepository;
+
+    @Mock
     private RoundRepository roundRepository;
 
     @Mock
@@ -38,6 +44,42 @@ class NotificationSchedulerTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Test
+    @DisplayName("챌린지 시작 알림 스케줄러: 내일 시작하는 챌린지마다 이벤트를 발행한다")
+    void scheduleChallengeStartNotifications_Success() {
+        // given
+        LocalDate targetDate = LocalDate.now().plusDays(1);
+        Challenge challenge = mock(Challenge.class);
+        given(challenge.getId()).willReturn(10L);
+        given(challengeRepository.findAllByStartDateGreaterThanEqualAndStartDateLessThan(
+                targetDate.atStartOfDay(),
+                targetDate.plusDays(1).atStartOfDay()
+        )).willReturn(List.of(challenge));
+
+        // when
+        notificationScheduler.scheduleChallengeStartNotifications();
+
+        // then
+        verify(eventPublisher, times(1)).publishEvent(any(ChallengeStartEvent.class));
+    }
+
+    @Test
+    @DisplayName("챌린지 시작 알림 스케줄러: 내일 시작하는 챌린지가 없으면 이벤트를 발행하지 않는다")
+    void scheduleChallengeStartNotifications_NoChallenges() {
+        // given
+        LocalDate targetDate = LocalDate.now().plusDays(1);
+        given(challengeRepository.findAllByStartDateGreaterThanEqualAndStartDateLessThan(
+                targetDate.atStartOfDay(),
+                targetDate.plusDays(1).atStartOfDay()
+        )).willReturn(List.of());
+
+        // when
+        notificationScheduler.scheduleChallengeStartNotifications();
+
+        // then
+        verify(eventPublisher, never()).publishEvent(any());
+    }
 
     @Test
     @DisplayName("결과 알림 스케줄러: 대상 라운드의 참여자 전원에게 이벤트를 발행한다")

@@ -33,6 +33,11 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 	@Query("SELECT c FROM Challenge c LEFT JOIN FETCH c.challengeDays WHERE c.id = :id")
 	Optional<Challenge> findByIdWithDays(@Param("id") Long id);
 
+	List<Challenge> findAllByStartDateGreaterThanEqualAndStartDateLessThan(
+			LocalDateTime startInclusive,
+			LocalDateTime endExclusive
+	);
+
 	/**
 	 * 기준 시각 이전(포함)의 UPCOMING 챌린지 ID 조회
 	 * - 스케줄러가 로그용으로 먼저 조회할 때 사용

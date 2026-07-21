@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.notification.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
 import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
@@ -11,7 +12,9 @@ import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.exception.GlobalException;
@@ -33,12 +36,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationCommandServiceImpl implements NotificationCommandService {
 
+    private final ChallengeRepository challengeRepository;
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final NotificationTypeRepository typeRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final UserChallengeRepository userChallengeRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationEventHelper eventHelper;
 
@@ -136,6 +141,55 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendChallengeStartNotification(ChallengeStartEvent event) {
+        Long challengeId = event.challengeId();
+        LocalDate today = LocalDate.now();
+
+        // 멱등성 체크
+        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+                ResourceType.CHALLENGE, challengeId, NotificationTypeName.CHALLENGE_START, today)) {
+            return;
+        }
+
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_START)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        String title = String.format("%s D-1", challenge.getTitle());
+        String message = String.format("내가 참여한 %s 챌린지가 내일 새로 시작해요", challenge.getTitle());
+        NotificationEvent notificationEvent = createChallengeEvent(
+                type, NotificationCategory.CHALLENGE, challenge, title, message, today);
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 챌린지 시작 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            return;
+        }
+
+        List<UserChallenge> participants = userChallengeRepository.findAllByChallengeIdAndStatusWithUserAndSetting(
+                challengeId, ChallengeJoinStatus.JOINED);
+
+        // 내역 생성
+        List<NotificationDelivery> allDeliveries = createDeliveriesForChallengeParticipants(participants, notificationEvent);
+
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
+            // 푸시 발송만 설정 확인
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event) {
         Long roundId = event.roundId();
         User user = userRepository.findById(event.user().getId())
@@ -198,11 +252,37 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .build();
     }
 
+    private NotificationEvent createChallengeEvent(NotificationType type, NotificationCategory category, Challenge challenge,
+                                                   String title, String message, LocalDate createdDate) {
+        return NotificationEvent.builder()
+                .type(type)
+                .category(category)
+                .targetType(ResourceType.CHALLENGE)
+                .targetId(challenge.getId())
+                .contextType(ResourceType.CHALLENGE)
+                .contextId(challenge.getId())
+                .title(title)
+                .message(message)
+                .imageKey(challenge.getImageKey())
+                .createdDate(createdDate)
+                .build();
+    }
+
     private List<NotificationDelivery> createDeliveries(List<RoundRecord> records, NotificationEvent event) {
         return records.stream()
                 .map(r -> NotificationDelivery.builder()
                         .event(event)
                         .receiver(r.getUserChallenge().getUser())
+                        .isRead(false)
+                        .build())
+                .toList();
+    }
+
+    private List<NotificationDelivery> createDeliveriesForChallengeParticipants(List<UserChallenge> participants, NotificationEvent event) {
+        return participants.stream()
+                .map(uc -> NotificationDelivery.builder()
+                        .event(event)
+                        .receiver(uc.getUser())
                         .isRead(false)
                         .build())
                 .toList();

@@ -1,9 +1,11 @@
 package com.hrr.backend.global.scheduler;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
 import com.hrr.backend.domain.round.entity.Round;
@@ -29,10 +31,48 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationScheduler {
 
+    private final ChallengeRepository challengeRepository;
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationCommandService notificationCommandService;
+
+    @Transactional(readOnly = true)
+    @Scheduled(cron = "0 0 9 * * *") // 매일 오전 9시
+    public void scheduleChallengeStartNotifications() {
+        LocalDate targetDate = LocalDate.now().plusDays(1);
+        LocalDateTime startInclusive = targetDate.atStartOfDay();
+        LocalDateTime endExclusive = targetDate.plusDays(1).atStartOfDay();
+
+        try {
+            log.info("[ChallengeStartScheduler] 챌린지 시작 하루 전 알림 스케줄러 시작 (대상 날짜: {})", targetDate);
+
+            List<Challenge> targetChallenges = challengeRepository
+                    .findAllByStartDateGreaterThanEqualAndStartDateLessThan(startInclusive, endExclusive);
+
+            log.info("[ChallengeStartScheduler] 대상 날짜({})에 시작하는 챌린지 총 {}건 발견", targetDate, targetChallenges.size());
+
+            if (targetChallenges.isEmpty()) {
+                log.info("[ChallengeStartScheduler] 알림을 보낼 대상 챌린지가 없습니다.");
+                return;
+            }
+
+            for (Challenge challenge : targetChallenges) {
+                try {
+                    eventPublisher.publishEvent(new ChallengeStartEvent(challenge.getId()));
+                    log.info("[ChallengeStartScheduler] 이벤트 발행 완료 - ChallengeId: {}", challenge.getId());
+                } catch (Exception e) {
+                    log.error("[ChallengeStartScheduler] 이벤트 발행 실패 - ChallengeId: {}, 사유: {}",
+                            challenge.getId(), e.getMessage());
+                }
+            }
+
+            log.info("[ChallengeStartScheduler] 스케줄러 작업 정상 종료");
+
+        } catch (Exception e) {
+            log.error("[ChallengeStartScheduler] 스케줄러 실행 중 심각한 오류 발생 (대상 날짜: {}), 에러: ", targetDate, e);
+        }
+    }
 
     @Transactional(readOnly = true)
     @Scheduled(cron = "0 0 9 * * *") // 매일 오전 9시
