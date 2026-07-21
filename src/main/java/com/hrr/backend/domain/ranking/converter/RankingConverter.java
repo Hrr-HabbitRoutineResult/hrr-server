@@ -22,7 +22,8 @@ public class RankingConverter {
             List<UserRankSnapshot> topRankerSnapshots,
             UserRankSnapshot mySnapshot,
             int topPercent,
-            Integer rankChange
+            Integer rankChange,
+            String rankChangeMessage
     ) {
         RankingResponseDto.MyProfileDto myProfile = RankingResponseDto.MyProfileDto.builder()
                 .nickname(user.getDisplayNickname())
@@ -39,6 +40,7 @@ public class RankingConverter {
                 .totalUserCount(mySnapshot.getTotalUserCount())
                 .topPercent(topPercent)
                 .rankChange(rankChange)
+                .rankChangeMessage(rankChangeMessage)
                 .myPoints(mySnapshot.getPoints())
                 .topRankers(topRankers)
                 .snapshotDate(mySnapshot.getSnapshotDate())

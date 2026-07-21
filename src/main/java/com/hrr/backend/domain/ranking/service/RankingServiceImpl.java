@@ -41,7 +41,7 @@ public class RankingServiceImpl implements RankingService {
 
         UserRankSnapshot mySnapshot = userRankSnapshotRepository
                 .findByUserIdAndSnapshotDate(user.getId(), latestSnapshotDate)
-                .orElseThrow(() -> new GlobalException(ErrorCode.RANKING_SNAPSHOT_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.RANKING_MY_SNAPSHOT_NOT_FOUND));
 
         // 직전 스냅샷과 비교하여 등수 변화 계산 (없으면 null = 비교 데이터 없음)
         Integer rankChange = userRankSnapshotRepository
@@ -53,6 +53,22 @@ public class RankingServiceImpl implements RankingService {
 
         int topPercent = (int) Math.ceil((mySnapshot.getRanking() * 100.0) / mySnapshot.getTotalUserCount());
 
-        return rankingConverter.toBoardDto(user, topRankers, mySnapshot, topPercent, rankChange);
+        String rankChangeMessage = buildRankChangeMessage(rankChange);
+
+        return rankingConverter.toBoardDto(user, topRankers, mySnapshot, topPercent, rankChange, rankChangeMessage);
+    }
+
+    // rankChange 값을 기반으로 문구 생성 (이전 데이터 없으면 null)
+    private String buildRankChangeMessage(Integer rankChange) {
+        if (rankChange == null) {
+            return null;
+        }
+        if (rankChange > 0) {
+            return "지난주보다 " + rankChange + "계단 상승했어요";
+        }
+        if (rankChange < 0) {
+            return "지난주보다 " + Math.abs(rankChange) + "계단 하락했어요";
+        }
+        return "지난주와 순위가 같아요";
     }
 }
