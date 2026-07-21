@@ -34,6 +34,6 @@ public interface PointService {
             LocalDateTime verifiedAt
     );
 
-    // 내 포인트 적립 내역 조회 (최근 3개월, 무한 스크롤)
-    SliceResponseDto<PointHistoryResponseDto.HistoryDto> getMyPointHistory(User user, int page, int size);
+    // 내 포인트 적립 내역 조회 (최근 3개월, 무한 스크롤) + 현재 보유 포인트
+    PointHistoryResponseDto.PageDto getMyPointHistory(User user, int page, int size);
 }
