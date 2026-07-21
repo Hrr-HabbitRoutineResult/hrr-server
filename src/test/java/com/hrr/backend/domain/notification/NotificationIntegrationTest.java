@@ -2,13 +2,19 @@ package com.hrr.backend.domain.notification;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
 import com.hrr.backend.domain.notification.entity.*;
+import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
+import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
+import com.hrr.backend.domain.follow.service.FollowService;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
@@ -33,7 +39,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.PayloadApplicationEvent;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
@@ -47,11 +56,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@RecordApplicationEvents
 class NotificationIntegrationTest {
 
     @Autowired private NotificationScheduler notificationScheduler;
     @Autowired private NotificationCommandService notificationCommandService;
     @Autowired private NotificationEventListener eventListener;
+    @Autowired private FollowService followService;
+    @Autowired private FollowRepository followRepository;
     @Autowired private RoundRecordRepository roundRecordRepository;
     @Autowired private RoundRepository roundRepository;
     @Autowired private ChallengeRepository challengeRepository;
@@ -63,6 +75,7 @@ class NotificationIntegrationTest {
     @Autowired private NotificationTypeRepository notificationTypeRepository;
     @Autowired private NotificationSettingRepository notificationSettingRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private ApplicationEvents applicationEvents;
 
     private final LocalDate FIXED_DATE = LocalDate.of(2026, 3, 22);
     private final LocalDateTime FIXED_NOW = FIXED_DATE.atTime(10, 0);
@@ -109,6 +122,7 @@ class NotificationIntegrationTest {
         roundRepository.deleteAll();
         userChallengeRepository.deleteAll();
         challengeRepository.deleteAll();
+        followRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -286,8 +300,71 @@ class NotificationIntegrationTest {
         });
     }
 
+    @Test
+    @DisplayName("8. 팔로우 알림: 공개 계정 팔로우 성립 시 이벤트 기반으로 알림과 푸시 이벤트가 생성된다")
+    void followCreated_Integration_Test() throws InterruptedException {
+        // given
+        User actor = createUser("follow_actor", true);
+        User receiver = createUser("follow_receiver", true);
+        applicationEvents.clear();
+
+        // when
+        followService.followUser(actor.getId(), receiver.getId());
+        Thread.sleep(1500);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+
+            NotificationDelivery delivery = deliveries.get(0);
+            NotificationEvent event = delivery.getEvent();
+            assertThat(delivery.getReceiver().getId()).isEqualTo(receiver.getId());
+            assertThat(event.getType().getTypeName()).isEqualTo(NotificationTypeName.FOLLOW_CREATED);
+            assertThat(event.getCategory()).isEqualTo(NotificationCategory.FOLLOW);
+            assertThat(event.getTargetType()).isEqualTo(ResourceType.USER);
+            assertThat(event.getTargetId()).isEqualTo(actor.getId());
+            assertThat(event.getContextType()).isEqualTo(ResourceType.USER);
+            assertThat(event.getContextId()).isEqualTo(actor.getId());
+            assertThat(event.getActor().getId()).isEqualTo(actor.getId());
+            assertThat(event.getTitle()).isEqualTo("새로운 팔로워가 있어요");
+            assertThat(event.getMessage()).isEqualTo("follow_actor_nick 님이 회원님을 팔로우하기 시작했어요");
+            assertThat(event.getImageKey()).isEqualTo("follow_actor-profile-image");
+        });
+
+        assertThat(countPayloadEvents(FollowCreatedEvent.class)).isEqualTo(1);
+        assertThat(countPayloadEvents(FcmPushSendEvent.class)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("9. 팔로우 알림: 팔로우 설정이 꺼져도 내역은 저장되고 FCM만 발행하지 않는다")
+    void followCreated_DisabledSetting_Test() {
+        // given
+        User actor = createUser("follow_disabled_actor", true);
+        User receiver = createUser("follow_disabled_receiver", false);
+        applicationEvents.clear();
+
+        // when
+        notificationCommandService.sendFollowCreatedNotification(new FollowCreatedEvent(actor, receiver));
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getId()).isEqualTo(receiver.getId());
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.FOLLOW_CREATED);
+        });
+        assertThat(countPayloadEvents(FcmPushSendEvent.class)).isZero();
+    }
+
     private User createUser(String name, boolean enabled) {
-        User user = userRepository.save(User.builder().name(name).nickname(name + "_nick").isPublic(true).build());
+        User user = userRepository.save(User.builder()
+                .name(name)
+                .nickname(name + "_nick")
+                .profileImage(name + "-profile-image")
+                .isPublic(true)
+                .build());
         notificationSettingRepository.save(NotificationSetting.builder()
                 .user(user).isVerificationEnabled(enabled).isChallengeEnabled(enabled).isFollowEnabled(enabled).isBadgeEnabled(enabled).build());
         return user;
@@ -304,5 +381,13 @@ class NotificationIntegrationTest {
     private void saveVerification(RoundRecord rr, VerificationStatus status) {
         verificationRepository.save(Verification.builder().roundRecord(rr).userChallenge(rr.getUserChallenge())
                 .roundId(testRound.getId()).status(status).build());
+    }
+
+    private long countPayloadEvents(Class<?> payloadType) {
+        return applicationEvents.stream()
+                .filter(PayloadApplicationEvent.class::isInstance)
+                .map(PayloadApplicationEvent.class::cast)
+                .filter(event -> payloadType.isInstance(event.getPayload()))
+                .count();
     }
 }
