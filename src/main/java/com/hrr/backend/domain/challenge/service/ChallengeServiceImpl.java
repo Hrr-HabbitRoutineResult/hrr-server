@@ -701,6 +701,8 @@ public class ChallengeServiceImpl implements ChallengeService {
         eventPublisher.publishEvent(
                 new ChallengeCreatedEvent(challenge.getId(), updatedChallengeText)
         );
+
+		// 챌린지 수정이 완료된 후 참가자 알림 생성을 위해 이벤트 발행
         eventPublisher.publishEvent(new ChallengeUpdatedEvent(challenge.getId()));
 
         return challengeConverter.toUpdateResponseDto(challenge);
