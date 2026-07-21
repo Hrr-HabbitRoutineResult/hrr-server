@@ -5,6 +5,7 @@ import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
+import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,5 +78,17 @@ public class NotificationEventListener {
         log.info("[알림 이벤트 리스너] 부실 인증 경고 알림 처리 시작 | VerificationId={}, WarnedUserId={}",
                 event.verificationId(), event.warnedUserId());
         notificationCommandService.sendWeakVerificationWarningNotification(event);
+    }
+
+    /**
+     * 팔로우 생성 이벤트 핸들러
+     * 팔로우 성립 후 비동기로 새 팔로워 알림을 생성
+     */
+    @Async("getAsyncExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleFollowCreatedEvent(FollowCreatedEvent event) {
+        log.info("[알림 이벤트 리스너] 팔로우 알림 처리 시작 | ActorId={}, ReceiverId={}",
+                event.actor().getId(), event.receiver().getId());
+        notificationCommandService.sendFollowCreatedNotification(event);
     }
 }

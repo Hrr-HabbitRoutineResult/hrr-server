@@ -235,6 +235,7 @@ class NotificationQueryPatternTest {
                     NotificationCategory.VERIFICATION;
             case COMMENT_CREATED, QUESTION_VERIFICATION, WEAK_VERIFICATION_WARNING ->
                     NotificationCategory.VERIFICATION;
+            case FOLLOW_CREATED -> NotificationCategory.FOLLOW;
         };
     }
 

@@ -10,8 +10,8 @@ public enum NotificationTypeName {
     VERIFICATION_DEADLINE_NOW,    // 인증 시간이 1시간 미만 → 시작 즉시
 
     COMMENT_CREATED,              // 내 인증에 댓글 생성
-
     QUESTION_VERIFICATION,        // 질문 인증 생성
+    WEAK_VERIFICATION_WARNING,    // 인증 시간이 1시간 미만 → 시작 즉시
 
-    WEAK_VERIFICATION_WARNING     // 부실 인증 경고
+    FOLLOW_CREATED                // 새 팔로워 알림
 }

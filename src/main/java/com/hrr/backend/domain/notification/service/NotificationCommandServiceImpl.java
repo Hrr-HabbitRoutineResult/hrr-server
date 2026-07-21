@@ -355,6 +355,56 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         }
     }
 
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendFollowCreatedNotification(FollowCreatedEvent event) {
+        User actor = userRepository.findById(event.actor().getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+        User receiver = userRepository.findById(event.receiver().getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.FOLLOW_CREATED)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+        LocalDate today = LocalDate.now();
+
+        NotificationEvent notificationEvent = eventHelper.getOrCreateSharedEvent(
+                ResourceType.USER, actor.getId(), type,
+                "새로운 팔로워가 있어요",
+                String.format("%s 님이 회원님을 팔로우하기 시작했어요", actor.getNickname()),
+                today,
+                () -> createFollowEvent(actor, type, today)
+        );
+
+        NotificationEvent mergedEvent = eventRepository.findById(notificationEvent.getId()).orElseThrow();
+
+        NotificationDelivery delivery = NotificationDelivery.builder()
+                .event(mergedEvent)
+                .receiver(receiver)
+                .isRead(false)
+                .build();
+
+        notificationRepository.save(delivery);
+
+        if (receiver.getNotificationSetting().isFollowEnabled()) {
+            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), mergedEvent));
+        }
+    }
+
+    private NotificationEvent createFollowEvent(User actor, NotificationType type, LocalDate createdDate) {
+        return NotificationEvent.builder()
+                .type(type)
+                .actor(actor)
+                .category(NotificationCategory.FOLLOW)
+                .targetType(ResourceType.USER)
+                .targetId(actor.getId())
+                .contextType(ResourceType.USER)
+                .contextId(actor.getId())
+                .title("새로운 팔로워가 있어요")
+                .message(String.format("%s 님이 회원님을 팔로우하기 시작했어요", actor.getNickname()))
+                .imageKey(actor.getProfileImage())
+                .createdDate(createdDate)
+                .build();
+    }
+
     private NotificationEvent createEvent(NotificationType type, NotificationCategory category, Challenge challenge,
                                           Long contextId, String title, String message, LocalDate createdDate) {
         return NotificationEvent.builder()

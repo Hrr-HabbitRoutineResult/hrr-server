@@ -5,6 +5,7 @@ import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
+import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import java.time.LocalDate;
@@ -27,4 +28,7 @@ public interface NotificationCommandService {
 
     // 부실 인증 경고 알림 발송
     void sendWeakVerificationWarningNotification(WeakVerificationWarningEvent event);
+
+    // 팔로우 생성 알림 발송
+    void sendFollowCreatedNotification(FollowCreatedEvent event);
 }
