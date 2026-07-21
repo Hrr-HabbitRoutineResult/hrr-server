@@ -19,6 +19,7 @@ import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
+import com.hrr.backend.domain.point.service.PointService;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final CommentService commentService;
     private final CommentRepository commentRepository;
     private final UserBlockRepository userBlockRepository;
+    private final PointService pointService;
 
 
     @Override
@@ -230,6 +232,11 @@ public class VerificationServiceImpl implements VerificationService {
             Verification savedVerification = verificationRepository.save(verification);
             verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
             roundRecord.increaseVerificationCount();
+            //포인트 기능
+            pointService.earnFirstVerificationPoint(user, challenge);
+            pointService.checkAndEarnWeeklyPerfectPoint(
+                    userChallenge, roundRecord, round, challenge, savedVerification.getCreatedAt()
+            );
             return verificationConverter.toResponseDto(savedVerification);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 중복된 인증 생성이 시도될 경우 에러 반환
@@ -281,6 +288,11 @@ public class VerificationServiceImpl implements VerificationService {
             Verification saved = verificationRepository.save(verification);
             verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
             roundRecord.increaseVerificationCount();
+            //포인트 기능
+            pointService.earnFirstVerificationPoint(user, challenge);
+            pointService.checkAndEarnWeeklyPerfectPoint(
+                    userChallenge, roundRecord, round, challenge, saved.getCreatedAt()
+            );
             return verificationConverter.toResponseDto(saved);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 중복된 인증 생성이 시도될 경우 에러 반환
