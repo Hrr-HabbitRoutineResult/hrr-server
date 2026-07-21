@@ -8,7 +8,6 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
@@ -399,7 +398,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("8. 질문 인증 생성 알림: 작성자를 제외한 동일 챌린지 JOINED 참여자에게 알림이 저장된다")
+    @DisplayName("10. 질문 인증 생성 알림: 작성자를 제외한 동일 챌린지 JOINED 참여자에게 알림이 저장된다")
     void questionVerificationCreated_Integration_Test() throws InterruptedException {
         // given
         User author = createUser("question_author", true);
@@ -459,7 +458,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("9. 부실 인증 경고 알림: 경고를 받은 사용자에게만 알림이 저장된다")
+    @DisplayName("11. 부실 인증 경고 알림: 경고를 받은 사용자에게만 알림이 저장된다")
     void weakVerificationWarning_Integration_Test() throws InterruptedException {
         // given
         User warnedUser = createUser("warned_user", true);
@@ -504,7 +503,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("10. 팔로우 알림: 공개 계정 팔로우 성립 시 이벤트 기반으로 알림과 푸시 이벤트가 생성된다")
+    @DisplayName("12. 팔로우 알림: 공개 계정 팔로우 성립 시 이벤트 기반으로 알림과 푸시 이벤트가 생성된다")
     void followCreated_Integration_Test() throws InterruptedException {
         // given
         User actor = createUser("follow_actor", true);
@@ -540,7 +539,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("11. 팔로우 알림: 팔로우 설정이 꺼져도 내역은 저장되고 FCM만 발행하지 않는다")
+    @DisplayName("13. 팔로우 알림: 팔로우 설정이 꺼져도 내역은 저장되고 FCM만 발행하지 않는다")
     void followCreated_DisabledSetting_Test() {
         // given
         User actor = createUser("follow_actor", true);

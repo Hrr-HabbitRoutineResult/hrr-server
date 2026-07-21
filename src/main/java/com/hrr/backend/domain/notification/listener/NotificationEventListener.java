@@ -4,7 +4,6 @@ import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;

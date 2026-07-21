@@ -9,14 +9,14 @@ import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.*;
 import com.hrr.backend.domain.notification.repository.*;
+import com.hrr.backend.domain.notification.service.helper.NotificationEventHelper;
 import com.hrr.backend.domain.round.entity.*;
 import com.hrr.backend.domain.round.repository.*;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.User;
-import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
-import com.hrr.backend.domain.user.repository.UserChallengeRepository;
+import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
@@ -47,10 +47,10 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final NotificationRepository notificationRepository;
     private final UserChallengeRepository userChallengeRepository;
     private final UserRepository userRepository;
-    private final UserChallengeRepository userChallengeRepository;
     private final VerificationRepository verificationRepository;
     private final CommentRepository commentRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationEventHelper eventHelper;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
