@@ -85,6 +85,38 @@ class RankingServiceImplTest {
         assertThat(result.getBoard().getRankChange()).isEqualTo(10);
         assertThat(result.getBoard().getMyRank()).isEqualTo(90);
         assertThat(result.getMyProfile().getPoints()).isEqualTo(100L); // 실시간 포인트는 User 엔티티 값 그대로
+        assertThat(result.getBoard().getRankChangeMessage()).isEqualTo("지난주보다 10계단 상승했어요");
+    }
+
+    @Test
+    @DisplayName("직전 스냅샷보다 등수가 나빠지면(숫자가 커지면) 하락 문구가 내려간다")
+    void getMyRankingBoard_calculatesNegativeRankChange_whenRankDropped() {
+        // given
+        rankingService = new RankingServiceImpl(userRankSnapshotRepository, rankingConverter);
+
+        User user = User.builder().id(1L).nickname("김흐르").points(100L).build();
+        LocalDate latest = LocalDate.of(2026, 7, 20);
+        LocalDate previous = LocalDate.of(2026, 7, 13);
+
+        UserRankSnapshot mySnapshot = UserRankSnapshot.builder()
+                .id(1L).user(user).ranking(50).points(80L).totalUserCount(1000).snapshotDate(latest)
+                .build();
+        UserRankSnapshot previousSnapshot = UserRankSnapshot.builder()
+                .id(2L).user(user).ranking(40).points(90L).totalUserCount(1000).snapshotDate(previous)
+                .build();
+
+        given(userRankSnapshotRepository.findLatestSnapshotDate()).willReturn(Optional.of(latest));
+        given(userRankSnapshotRepository.findTopByRanking(eq(latest), any())).willReturn(List.of());
+        given(userRankSnapshotRepository.findByUserIdAndSnapshotDate(1L, latest)).willReturn(Optional.of(mySnapshot));
+        given(userRankSnapshotRepository.findPreviousSnapshots(eq(1L), eq(latest), any()))
+                .willReturn(List.of(previousSnapshot));
+
+        // when
+        RankingResponseDto.BoardDto result = rankingService.getMyRankingBoard(user);
+
+        // then: 40위 -> 50위이므로 10계단 하락 (음수)
+        assertThat(result.getBoard().getRankChange()).isEqualTo(-10);
+        assertThat(result.getBoard().getRankChangeMessage()).isEqualTo("지난주보다 10계단 하락했어요");
     }
 
     @Test
@@ -111,6 +143,7 @@ class RankingServiceImplTest {
 
         // then
         assertThat(result.getBoard().getRankChange()).isNull();
+        assertThat(result.getBoard().getRankChangeMessage()).isNull();
         // 상위 퍼센트: 30 / 100 * 100 = 30(올림)
         assertThat(result.getBoard().getTopPercent()).isEqualTo(30);
     }
