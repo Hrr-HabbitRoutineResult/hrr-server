@@ -160,7 +160,7 @@ public class PointServiceImpl implements PointService {
 
     @Override
     @Transactional(readOnly = true)
-    public SliceResponseDto<PointHistoryResponseDto.HistoryDto> getMyPointHistory(User user, int page, int size) {
+    public PointHistoryResponseDto.PageDto getMyPointHistory(User user, int page, int size) {
         // 최근 3개월(당월 포함) 시작 시점 계산: 오늘이 7월이면 5월 1일 00:00부터
         LocalDateTime from = LocalDate.now()
                 .minusMonths(RECENT_MONTHS - 1)
@@ -171,7 +171,10 @@ public class PointServiceImpl implements PointService {
         Slice<PointHistory> slice = pointHistoryRepository.findMyPointHistory(user.getId(), from, pageable);
         Slice<PointHistoryResponseDto.HistoryDto> dtoSlice = slice.map(pointConverter::toHistoryDto);
 
-        return new SliceResponseDto<>(dtoSlice);
+        return PointHistoryResponseDto.PageDto.builder()
+                .totalPoints(user.getPoints())
+                .history(new SliceResponseDto<>(dtoSlice))
+                .build();
     }
 
     // 실제 포인트 적립 처리: 내역 저장 + User.points 증가
