@@ -23,6 +23,7 @@ import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.s3.S3UrlUtil;
+import com.hrr.backend.domain.point.service.PointService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class UserMissionServiceImpl implements UserMissionService {
 	private final UserFavorRepository userFavorRepository;
 
 	private final S3UrlUtil s3UrlUtil;
+    private final PointService pointService;
 
 	@Override
 	@Transactional
@@ -116,8 +118,14 @@ public class UserMissionServiceImpl implements UserMissionService {
 		UserMission userMission = userMissionRepository.findByUserAndDate(user, date).orElseThrow(()-> new GlobalException(
 			ErrorCode.RANDOM_MISSION_NOT_FOUND)
 		);
+        // 이미 완료 처리된 미션이면 재인증되어도 포인트를 중복 지급하지 않음
+        boolean alreadyCompleted = Boolean.TRUE.equals(userMission.getIsCompleted());
 		userMission.setImageKey(imageKey);
 		userMission.setIsCompleted(true);
+
+        if (!alreadyCompleted) {
+            pointService.earnRandomMissionPoint(user, userMission.getMission());
+        }
 	}
 
 	// 사용 빈도가 적을 것 같아 별도의 클래스가 아닌 private 메소드로 생성
