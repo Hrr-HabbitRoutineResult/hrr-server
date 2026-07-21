@@ -247,7 +247,7 @@ class NotificationIntegrationTest {
     @DisplayName("5. 챌린지 시작 하루 전 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
     void challengeStart_DisabledSetting_Test() {
         // given
-        User disabledUser = createUser("start_disabled_user", false);
+        User disabledUser = createUser("start_off", false);
         joinChallenge(disabledUser);
         userChallengeRepository.flush();
 
@@ -260,7 +260,7 @@ class NotificationIntegrationTest {
         transactionTemplate.executeWithoutResult(status -> {
             List<NotificationDelivery> deliveries = notificationRepository.findAll();
             assertThat(deliveries).hasSize(1);
-            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("start_disabled_user");
+            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("start_off");
             assertThat(deliveries.get(0).getEvent().getType().getTypeName())
                     .isEqualTo(NotificationTypeName.CHALLENGE_START);
         });
@@ -318,7 +318,7 @@ class NotificationIntegrationTest {
     @DisplayName("7. 챌린지 수정 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
     void challengeUpdated_DisabledSetting_Test() {
         // given
-        User disabledUser = createUser("updated_disabled_user", false);
+        User disabledUser = createUser("updated_off", false);
         joinChallenge(disabledUser);
         userChallengeRepository.flush();
 
@@ -331,7 +331,7 @@ class NotificationIntegrationTest {
         transactionTemplate.executeWithoutResult(status -> {
             List<NotificationDelivery> deliveries = notificationRepository.findAll();
             assertThat(deliveries).hasSize(1);
-            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("updated_disabled_user");
+            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("updated_off");
             assertThat(deliveries.get(0).getEvent().getType().getTypeName())
                     .isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
         });
