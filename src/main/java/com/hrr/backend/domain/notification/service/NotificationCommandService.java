@@ -3,6 +3,7 @@ package com.hrr.backend.domain.notification.service;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import java.time.LocalDate;
 
@@ -15,4 +16,7 @@ public interface NotificationCommandService {
 
     // 챌린지 연장 응답 결과 발송
     void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event);
+
+    // 팔로우 생성 알림 발송
+    void sendFollowCreatedNotification(FollowCreatedEvent event);
 }
