@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.dto.RoundDecisionRequestDto;
 import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto;
@@ -24,7 +23,6 @@ import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.round.service.RoundDecisionServiceImpl;
 import com.hrr.backend.domain.round.service.RoundDropServiceImpl;
 import com.hrr.backend.domain.round.service.RoundLifecycleServiceImpl;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
@@ -38,7 +36,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -51,7 +48,6 @@ class RoundFlowUnitTest {
     @Mock RoundRecordRepository roundRecordRepository;
     @Mock RoundConverter roundConverter;
     @Mock TransactionTemplate transactionTemplate;
-    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks RoundDecisionServiceImpl roundDecisionService;
     @InjectMocks RoundDropServiceImpl roundDropService;
@@ -118,12 +114,9 @@ class RoundFlowUnitTest {
         Round currentRound = mock(Round.class);
         UserChallenge uc = mock(UserChallenge.class);
         RoundRecord rr = mock(RoundRecord.class);
-        User user = mock(User.class);
-
         when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
         when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-        when(uc.getUser()).thenReturn(user);
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
 
@@ -141,7 +134,6 @@ class RoundFlowUnitTest {
         assertThat(response).isNotNull();
         assertThat(response.isResponded()).isTrue();
         verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
-        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
     }
 
     @Test
@@ -159,12 +151,9 @@ class RoundFlowUnitTest {
         Round currentRound = mock(Round.class);
         UserChallenge uc = mock(UserChallenge.class);
         RoundRecord rr = mock(RoundRecord.class);
-        User user = mock(User.class);
-
         when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
         when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-        when(uc.getUser()).thenReturn(user);
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
 
@@ -182,7 +171,6 @@ class RoundFlowUnitTest {
         assertThat(response).isNotNull();
         assertThat(response.isResponded()).isTrue();
         verify(rr).updateNextRoundIntent(NextRoundIntent.STOP);
-        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
     }
 
     @Test
@@ -236,12 +224,9 @@ class RoundFlowUnitTest {
         Round currentRound = mock(Round.class);
         UserChallenge uc = mock(UserChallenge.class);
         RoundRecord rr = mock(RoundRecord.class);
-        User user = mock(User.class);
-
         when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
         when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-        when(uc.getUser()).thenReturn(user);
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
 
@@ -262,7 +247,6 @@ class RoundFlowUnitTest {
         assertThat(response.isResponded()).isTrue();
 
         verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
-        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
     }
 
     // =========================================================================
@@ -353,12 +337,9 @@ class RoundFlowUnitTest {
         Round currentRound = mock(Round.class);
         UserChallenge uc = mock(UserChallenge.class);
         RoundRecord rr = mock(RoundRecord.class);
-        User user = mock(User.class);
-
         when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(challenge));
         when(userChallengeRepository.findByUserIdAndChallengeId(userId, challengeId)).thenReturn(Optional.of(uc));
         when(uc.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-        when(uc.getUser()).thenReturn(user);
         when(challenge.getCurrentRound()).thenReturn(currentRound);
         when(currentRound.getId()).thenReturn(100L);
 
@@ -378,10 +359,7 @@ class RoundFlowUnitTest {
         // 1. DB 업데이트 확인
         verify(rr).updateNextRoundIntent(NextRoundIntent.CONTINUE);
 
-        // 2. 이벤트 발행 확인
-        verify(eventPublisher).publishEvent(any(ChallengeExtensionResponseEvent.class));
-
-        // 3. 응답 DTO 검증
+        // 2. 응답 DTO 검증
         assertThat(response).isNotNull();
         assertThat(response.roundId()).isEqualTo(100L);
         assertThat(response.intent()).isEqualTo(NextRoundIntent.CONTINUE);

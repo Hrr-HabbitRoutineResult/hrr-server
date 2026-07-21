@@ -8,7 +8,6 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
@@ -16,7 +15,6 @@ import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
-import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
@@ -200,30 +198,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("4. 연장 응답 결과: 개별 유저에게 성공 알림이 발송된다")
-    void challengeExtensionResponse_Integration_Test() throws InterruptedException {
-        // given
-        User user = createUser("responder", true);
-        createRoundRecord(joinChallenge(user));
-        roundRecordRepository.flush();
-
-        ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(
-                testRound.getId(), user, NextRoundIntent.CONTINUE);
-
-        // when
-        eventListener.handleChallengeExtensionResponseEvent(event);
-        Thread.sleep(1500);
-
-        // then
-        transactionTemplate.executeWithoutResult(status -> {
-            assertThat(notificationRepository.findAll()).hasSize(1);
-            assertThat(notificationRepository.findAll().get(0).getEvent().getType().getTypeName())
-                    .isEqualTo(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS);
-        });
-    }
-
-    @Test
-    @DisplayName("5. 챌린지 시작 하루 전 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
+    @DisplayName("4. 챌린지 시작 하루 전 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
     void challengeStart_Integration_Test() {
         // given
         User u1 = createUser("start_user1", true);
@@ -269,7 +244,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("6. 챌린지 시작 하루 전 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
+    @DisplayName("5. 챌린지 시작 하루 전 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
     void challengeStart_DisabledSetting_Test() {
         // given
         User disabledUser = createUser("start_disabled_user", false);
@@ -294,7 +269,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("7. 챌린지 수정 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
+    @DisplayName("6. 챌린지 수정 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
     void challengeUpdated_Integration_Test() {
         // given
         User u1 = createUser("updated_user1", true);
@@ -340,7 +315,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("8. 챌린지 수정 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
+    @DisplayName("7. 챌린지 수정 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
     void challengeUpdated_DisabledSetting_Test() {
         // given
         User disabledUser = createUser("updated_disabled_user", false);
@@ -365,7 +340,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("9. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
+    @DisplayName("8. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
     void notificationIdempotency_Test() {
         // given
         User user = createUser("idempotent_user", true);
@@ -389,7 +364,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("10. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
+    @DisplayName("9. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
     void multipleVerificationDeadlines_Test() {
         // given
         User user = createUser("multi_user", true);
@@ -409,30 +384,6 @@ class NotificationIntegrationTest {
         // then: 타입이 다르므로 Event 2개, Delivery 2개 생성
         transactionTemplate.executeWithoutResult(status -> {
             assertThat(notificationEventRepository.findAll()).hasSize(2);
-            assertThat(notificationRepository.findAll()).hasSize(2);
-        });
-    }
-
-    @Test
-    @DisplayName("11. 연장 응답 다중 사용자: Event는 1개만 생성되고 Delivery는 각각 생성된다")
-    void challengeExtensionResponse_MultipleUsers_Test() throws InterruptedException {
-        // given
-        User user1 = createUser("user1", true);
-        User user2 = createUser("user2", true);
-        createRoundRecord(joinChallenge(user1));
-        createRoundRecord(joinChallenge(user2));
-        roundRecordRepository.flush();
-
-        // when
-        eventListener.handleChallengeExtensionResponseEvent(
-                new ChallengeExtensionResponseEvent(testRound.getId(), user1, NextRoundIntent.CONTINUE));
-        eventListener.handleChallengeExtensionResponseEvent(
-                new ChallengeExtensionResponseEvent(testRound.getId(), user2, NextRoundIntent.CONTINUE));
-        Thread.sleep(1500);
-
-        // then
-        transactionTemplate.executeWithoutResult(status -> {
-            assertThat(notificationEventRepository.findAll()).hasSize(1);
             assertThat(notificationRepository.findAll()).hasSize(2);
         });
     }
