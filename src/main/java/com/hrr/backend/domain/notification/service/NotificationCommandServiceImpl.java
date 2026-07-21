@@ -7,15 +7,11 @@ import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.*;
 import com.hrr.backend.domain.notification.event.*;
 import com.hrr.backend.domain.notification.repository.*;
-import com.hrr.backend.domain.notification.service.helper.NotificationEventHelper;
 import com.hrr.backend.domain.round.entity.*;
-import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
-import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
@@ -42,10 +38,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final NotificationTypeRepository typeRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
     private final UserChallengeRepository userChallengeRepository;
     private final ApplicationEventPublisher eventPublisher;
-    private final NotificationEventHelper eventHelper;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -233,54 +227,6 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
             if (!pushTargets.isEmpty()) {
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
-        }
-    }
-
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event) {
-        Long roundId = event.roundId();
-        User user = userRepository.findById(event.user().getId())
-                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
-        LocalDate today = LocalDate.now();
-
-        // 멱등성 체크
-        if (notificationRepository.existsResponseNotification(user, ResourceType.ROUND, roundId,
-                List.of(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS, NotificationTypeName.CHALLENGE_EXTENSION_CANCEL))) {
-            return;
-        }
-
-        NotificationTypeName typeName = (event.intent() == NextRoundIntent.CONTINUE)
-                ? NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS : NotificationTypeName.CHALLENGE_EXTENSION_CANCEL;
-
-        Round round = roundRepository.findById(roundId).orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
-        Challenge challenge = round.getChallenge();
-        NotificationType type = typeRepository.findByTypeName(typeName).orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
-
-        String title = (typeName == NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
-                ? String.format("%s 챌린지가 연장되었어요", challenge.getTitle()) : String.format("%s 챌린지를 마무리해요", challenge.getTitle());
-        String message = (typeName == NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
-                ? "다음 라운드에서도 루틴을 이어가요" : "챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요";
-
-        NotificationEvent notificationEvent = eventHelper.getOrCreateSharedEvent(
-                ResourceType.ROUND, roundId, type, title, message, today,
-                () -> createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId, title, message, today)
-        );
-
-        NotificationEvent mergedEvent = eventRepository.findById(notificationEvent.getId()).orElseThrow();
-
-        NotificationDelivery delivery = NotificationDelivery.builder()
-                .event(mergedEvent)
-                .receiver(user)
-                .isRead(false)
-                .build();
-
-        // 내역 저장
-        notificationRepository.save(delivery);
-
-        // 푸시 발송 여부만 결정
-        if (user.getNotificationSetting().isChallengeEnabled()) {
-            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), mergedEvent));
         }
     }
 

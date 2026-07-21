@@ -1,7 +1,6 @@
 package com.hrr.backend.domain.notification.listener;
 
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
@@ -52,15 +51,4 @@ public class NotificationEventListener {
         notificationCommandService.sendChallengeUpdatedNotification(event);
     }
 
-    /**
-     * 챌린지 연장 응답 결과 이벤트 핸들러
-     * 사용자의 선택(연장/취소)에 따른 결과를 비동기로 발송
-     */
-    @Async("getAsyncExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleChallengeExtensionResponseEvent(ChallengeExtensionResponseEvent event) {
-        log.info("[알림 이벤트 리스너] 챌린지 연장 응답 결과 알림 처리 시작 | RoundId={}, UserId={}",
-                event.roundId(), event.user().getId());
-        notificationCommandService.sendChallengeExtensionResponseNotification(event);
-    }
 }
