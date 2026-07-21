@@ -1,0 +1,308 @@
+package com.hrr.backend.domain.point.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.point.converter.PointConverter;
+import com.hrr.backend.domain.point.entity.PointHistory;
+import com.hrr.backend.domain.point.entity.enums.PointType;
+import com.hrr.backend.domain.point.repository.PointHistoryRepository;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
+import com.hrr.backend.domain.user.entity.RandomMission;
+import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.verification.repository.VerificationAbsenceLogRepository;
+import com.hrr.backend.global.common.enums.ChallengeDays;
+
+@ExtendWith(MockitoExtension.class)
+class PointServiceImplTest {
+
+    @InjectMocks
+    private PointServiceImpl pointService;
+
+    @Mock
+    private PointHistoryRepository pointHistoryRepository;
+    @Mock
+    private RoundRecordRepository roundRecordRepository;
+    @Mock
+    private VerificationAbsenceLogRepository verificationAbsenceLogRepository;
+    @Mock
+    private PointConverter pointConverter;
+
+    @Test
+    @DisplayName("챌린지 첫 인증 포인트는 아직 지급된 적 없으면 1P 적립되고 유저 포인트가 증가한다")
+    void earnFirstVerificationPoint_awardsPoint_whenNotAlreadyAwarded() {
+        // given
+        User user = User.builder().id(1L).points(0L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+
+        given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge))
+                .willReturn(false);
+
+        // when
+        pointService.earnFirstVerificationPoint(user, challenge);
+
+        // then
+        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
+        assertThat(user.getPoints()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("챌린지 첫 인증 포인트는 이미 지급된 적 있으면 중복 지급되지 않는다")
+    void earnFirstVerificationPoint_doesNothing_whenAlreadyAwarded() {
+        // given
+        User user = User.builder().id(1L).points(5L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+
+        given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge))
+                .willReturn(true);
+
+        // when
+        pointService.earnFirstVerificationPoint(user, challenge);
+
+        // then
+        verify(pointHistoryRepository, never()).save(any());
+        assertThat(user.getPoints()).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("랜덤미션 참여 포인트는 호출될 때마다 1P 적립된다 (일 1회 제한은 호출부 책임)")
+    void earnRandomMissionPoint_awardsPoint() {
+        // given
+        User user = User.builder().id(1L).points(0L).build();
+        RandomMission mission = RandomMission.builder().id(100L).title("t").content("c").build();
+
+        // when
+        pointService.earnRandomMissionPoint(user, mission);
+
+        // then
+        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
+        assertThat(user.getPoints()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("챌린지 마스터 포인트는 참여 라운드 수가 정확히 3이 되는 순간 5P 지급된다")
+    void checkAndEarnChallengeMasterPoint_awards_whenRoundCountIsExactlyThree() {
+        // given
+        User user = User.builder().id(1L).points(0L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).challenge(challenge).build();
+
+        given(roundRecordRepository.countByUserChallengeId(50L)).willReturn(3L);
+        given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.CHALLENGE_MASTER, challenge))
+                .willReturn(false);
+
+        // when
+        pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
+
+        // then
+        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
+        assertThat(user.getPoints()).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("챌린지 마스터 포인트는 참여 라운드 수가 3이 아니면 지급되지 않는다")
+    void checkAndEarnChallengeMasterPoint_doesNotAward_whenRoundCountNotThree() {
+        // given
+        User user = User.builder().id(1L).points(0L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).challenge(challenge).build();
+
+        given(roundRecordRepository.countByUserChallengeId(50L)).willReturn(4L);
+
+        // when
+        pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
+
+        // then
+        verify(pointHistoryRepository, never()).save(any());
+        assertThat(user.getPoints()).isZero();
+    }
+
+    @Test
+    @DisplayName("챌린지 마스터 포인트는 이미 지급된 적 있으면 중복 지급되지 않는다")
+    void checkAndEarnChallengeMasterPoint_doesNotAward_whenAlreadyAwarded() {
+        // given
+        User user = User.builder().id(1L).points(0L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).challenge(challenge).build();
+
+        given(roundRecordRepository.countByUserChallengeId(50L)).willReturn(3L);
+        given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.CHALLENGE_MASTER, challenge))
+                .willReturn(true);
+
+        // when
+        pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
+
+        // then
+        verify(pointHistoryRepository, never()).save(any());
+        assertThat(user.getPoints()).isZero();
+    }
+
+    @Test
+    @DisplayName("주차 퍼펙트 포인트는 그 주의 마지막 인증일에 결석이 없으면 지급된다")
+    void checkAndEarnWeeklyPerfectPoint_awards_whenLastDayAndNoAbsence() {
+        // given: 라운드 시작일은 월요일(2026-07-06), 인증 요일은 월/수/금
+        LocalDate roundStart = LocalDate.of(2026, 7, 6); // Monday
+        LocalDate roundEnd = roundStart.plusWeeks(3).minusDays(1);
+
+        Challenge challenge = Challenge.builder()
+                .id(10L)
+                .challengeDays(List.of(
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.MONDAY).build(),
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.WEDNESDAY).build(),
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.FRIDAY).build()
+                ))
+                .build();
+
+        Round round = Round.builder().id(20L).startDate(roundStart).endDate(roundEnd).build();
+        RoundRecord roundRecord = RoundRecord.builder().id(30L).build();
+        User user = User.builder().id(1L).points(0L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).build();
+
+        // 1주차 마지막 인증일 = 7/10(금)
+        LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+
+        given(verificationAbsenceLogRepository.countByRoundRecordIdAndAbsenceDateBetween(
+                eq(30L), eq(roundStart), eq(roundStart.plusDays(6))
+        )).willReturn(0L);
+        given(pointHistoryRepository.existsByUserAndPointTypeAndRound(user, PointType.WEEK1_PERFECT, round))
+                .willReturn(false);
+
+        // when
+        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
+
+        // then
+        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
+        assertThat(user.getPoints()).isEqualTo(1L); // WEEK1_PERFECT = 1P
+    }
+
+    @Test
+    @DisplayName("주차 퍼펙트 포인트는 마지막 인증일이 아니면 판단하지 않고 지급하지 않는다")
+    void checkAndEarnWeeklyPerfectPoint_doesNotAward_whenNotLastVerificationDay() {
+        // given
+        LocalDate roundStart = LocalDate.of(2026, 7, 6);
+        LocalDate roundEnd = roundStart.plusWeeks(3).minusDays(1);
+
+        Challenge challenge = Challenge.builder()
+                .id(10L)
+                .challengeDays(List.of(
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.MONDAY).build(),
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.WEDNESDAY).build(),
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.FRIDAY).build()
+                ))
+                .build();
+
+        Round round = Round.builder().id(20L).startDate(roundStart).endDate(roundEnd).build();
+        RoundRecord roundRecord = RoundRecord.builder().id(30L).build();
+        User user = User.builder().id(1L).points(0L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).build();
+
+        // 1주차 인증일이지만 마지막 날(금)이 아닌 수요일(7/8)에 인증
+        LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 8, 10, 0);
+
+        // when
+        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
+
+        // then: 마지막 날이 아니므로 결석 조회조차 하지 않고 즉시 반환
+        verify(verificationAbsenceLogRepository, never())
+                .countByRoundRecordIdAndAbsenceDateBetween(any(), any(), any());
+        verify(pointHistoryRepository, never()).save(any());
+        assertThat(user.getPoints()).isZero();
+    }
+
+    @Test
+    @DisplayName("주차 퍼펙트 포인트는 그 주에 결석 기록이 있으면 지급되지 않는다")
+    void checkAndEarnWeeklyPerfectPoint_doesNotAward_whenAbsenceExistsInWeek() {
+        // given
+        LocalDate roundStart = LocalDate.of(2026, 7, 6);
+        LocalDate roundEnd = roundStart.plusWeeks(3).minusDays(1);
+
+        Challenge challenge = Challenge.builder()
+                .id(10L)
+                .challengeDays(List.of(
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.MONDAY).build(),
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.WEDNESDAY).build(),
+                        ChallengeDayJoin.builder().dayOfWeek(ChallengeDays.FRIDAY).build()
+                ))
+                .build();
+
+        Round round = Round.builder().id(20L).startDate(roundStart).endDate(roundEnd).build();
+        RoundRecord roundRecord = RoundRecord.builder().id(30L).build();
+        User user = User.builder().id(1L).points(0L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).build();
+
+        LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 10, 10, 0); // 1주차 마지막 인증일(금)
+
+        given(verificationAbsenceLogRepository.countByRoundRecordIdAndAbsenceDateBetween(
+                eq(30L), eq(roundStart), eq(roundStart.plusDays(6))
+        )).willReturn(1L); // 결석 1회 존재
+
+        // when
+        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
+
+        // then
+        verify(pointHistoryRepository, never()).save(any());
+        assertThat(user.getPoints()).isZero();
+    }
+
+    @Test
+    @DisplayName("무결석 완주 포인트는 결석이 없는 참여자에게만 지급되고, 이미 지급된 참여자는 건너뛴다")
+    void checkAndEarnFlawlessRoundPoints_awardsOnlyForZeroAbsenceAndNotAlreadyAwarded() {
+        // given
+        Challenge challenge = Challenge.builder().id(10L).build();
+        Round endedRound = Round.builder().id(20L).build();
+
+        User noAbsenceUser = User.builder().id(1L).points(0L).build();
+        UserChallenge ucNoAbsence = UserChallenge.builder().id(51L).user(noAbsenceUser).challenge(challenge).build();
+        RoundRecord rrNoAbsence = RoundRecord.builder().id(31L).userChallenge(ucNoAbsence).build();
+
+        User hasAbsenceUser = User.builder().id(2L).points(0L).build();
+        UserChallenge ucHasAbsence = UserChallenge.builder().id(52L).user(hasAbsenceUser).challenge(challenge).build();
+        RoundRecord rrHasAbsence = RoundRecord.builder().id(32L).userChallenge(ucHasAbsence).build();
+
+        User alreadyAwardedUser = User.builder().id(3L).points(0L).build();
+        UserChallenge ucAlreadyAwarded = UserChallenge.builder().id(53L).user(alreadyAwardedUser).challenge(challenge).build();
+        RoundRecord rrAlreadyAwarded = RoundRecord.builder().id(33L).userChallenge(ucAlreadyAwarded).build();
+
+        given(roundRecordRepository.findAllByRoundIdWithUserAndChallenge(20L))
+                .willReturn(List.of(rrNoAbsence, rrHasAbsence, rrAlreadyAwarded));
+
+        given(verificationAbsenceLogRepository.countByRoundRecordId(31L)).willReturn(0L);
+        given(verificationAbsenceLogRepository.countByRoundRecordId(32L)).willReturn(1L);
+        given(verificationAbsenceLogRepository.countByRoundRecordId(33L)).willReturn(0L);
+
+        given(pointHistoryRepository.existsByUserAndPointTypeAndRound(noAbsenceUser, PointType.FLAWLESS_ROUND, endedRound))
+                .willReturn(false);
+        given(pointHistoryRepository.existsByUserAndPointTypeAndRound(alreadyAwardedUser, PointType.FLAWLESS_ROUND, endedRound))
+                .willReturn(true);
+
+        // when
+        pointService.checkAndEarnFlawlessRoundPoints(endedRound);
+
+        // then: 결석 없고 미지급 상태인 noAbsenceUser만 3P 적립
+        assertThat(noAbsenceUser.getPoints()).isEqualTo(3L);
+        assertThat(hasAbsenceUser.getPoints()).isZero();
+        assertThat(alreadyAwardedUser.getPoints()).isZero();
+        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
+    }
+}
