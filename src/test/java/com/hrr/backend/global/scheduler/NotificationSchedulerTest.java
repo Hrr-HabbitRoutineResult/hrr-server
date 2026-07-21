@@ -1,14 +1,11 @@
 package com.hrr.backend.global.scheduler;
 
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
-import com.hrr.backend.domain.round.entity.Round;
-import com.hrr.backend.domain.round.entity.RoundRecord;
-import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
+import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
+import com.hrr.backend.domain.notification.service.NotificationCommandService;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
-import com.hrr.backend.domain.user.entity.User;
-import com.hrr.backend.domain.user.entity.UserChallenge;
-import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +28,9 @@ class NotificationSchedulerTest {
     private NotificationScheduler notificationScheduler;
 
     @Mock
+    private ChallengeRepository challengeRepository;
+
+    @Mock
     private RoundRepository roundRepository;
 
     @Mock
@@ -39,51 +39,43 @@ class NotificationSchedulerTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private NotificationCommandService notificationCommandService;
+
     @Test
-    @DisplayName("결과 알림 스케줄러: 대상 라운드의 참여자 전원에게 이벤트를 발행한다")
-    void scheduleChallengeExtensionResultNotifications_Success() {
+    @DisplayName("챌린지 시작 알림 스케줄러: 내일 시작하는 챌린지마다 이벤트를 발행한다")
+    void scheduleChallengeStartNotifications_Success() {
         // given
-        // 결정 기간 종료 후(endDate - 1) 시점을 테스트하기 위해 대상 날짜 설정
-        LocalDate targetEndDate = LocalDate.now().plusDays(1);
-        Round round = mock(Round.class);
-        given(round.getId()).willReturn(100L);
-
-        // 종료 예정 라운드 조회 모킹
-        given(roundRepository.findAllByEndDate(targetEndDate)).willReturn(List.of(round));
-
-        User user = User.builder().id(1L).build();
-        RoundRecord record = mock(RoundRecord.class);
-        UserChallenge uc = mock(UserChallenge.class);
-
-        given(record.getUserChallenge()).willReturn(uc);
-        given(uc.getUser()).willReturn(user);
-        given(record.getNextRoundIntent()).willReturn(NextRoundIntent.CONTINUE);
-
-        // 해당 라운드 참여자 목록 조회 모킹
-        given(roundRecordRepository.findAllByRoundWithUserAndSetting(round, ChallengeJoinStatus.JOINED))
-                .willReturn(List.of(record));
+        LocalDate targetDate = LocalDate.now().plusDays(1);
+        Challenge challenge = mock(Challenge.class);
+        given(challenge.getId()).willReturn(10L);
+        given(challengeRepository.findAllByStartDateGreaterThanEqualAndStartDateLessThan(
+                targetDate.atStartOfDay(),
+                targetDate.plusDays(1).atStartOfDay()
+        )).willReturn(List.of(challenge));
 
         // when
-        notificationScheduler.scheduleChallengeExtensionResultNotifications();
+        notificationScheduler.scheduleChallengeStartNotifications();
 
         // then
-        // 참여자 수(1명)만큼 이벤트가 발행되었는지 검증
-        verify(eventPublisher, times(1)).publishEvent(any(ChallengeExtensionResponseEvent.class));
+        verify(eventPublisher, times(1)).publishEvent(any(ChallengeStartEvent.class));
     }
 
     @Test
-    @DisplayName("결과 알림 스케줄러: 대상 라운드가 없으면 이벤트를 발행하지 않는다")
-    void scheduleChallengeExtensionResultNotifications_NoRounds() {
+    @DisplayName("챌린지 시작 알림 스케줄러: 내일 시작하는 챌린지가 없으면 이벤트를 발행하지 않는다")
+    void scheduleChallengeStartNotifications_NoChallenges() {
         // given
-        LocalDate targetEndDate = LocalDate.now().plusDays(1);
-        given(roundRepository.findAllByEndDate(targetEndDate)).willReturn(List.of());
+        LocalDate targetDate = LocalDate.now().plusDays(1);
+        given(challengeRepository.findAllByStartDateGreaterThanEqualAndStartDateLessThan(
+                targetDate.atStartOfDay(),
+                targetDate.plusDays(1).atStartOfDay()
+        )).willReturn(List.of());
 
         // when
-        notificationScheduler.scheduleChallengeExtensionResultNotifications();
+        notificationScheduler.scheduleChallengeStartNotifications();
 
         // then
-        // 라운드가 없으므로 참여자 조회나 이벤트 발행이 일어나지 않아야 함
-        verify(roundRecordRepository, never()).findAllByRoundWithUserAndSetting(any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }
+
 }

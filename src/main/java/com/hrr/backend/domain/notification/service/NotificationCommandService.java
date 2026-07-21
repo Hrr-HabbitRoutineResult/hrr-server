@@ -3,9 +3,10 @@ package com.hrr.backend.domain.notification.service;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
+import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
+import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import java.time.LocalDate;
@@ -16,9 +17,6 @@ public interface NotificationCommandService {
 
     // 챌린지 연장 안내 발송
     void sendChallengeExtensionNotification(ChallengeExtensionEvent event);
-
-    // 챌린지 연장 응답 결과 발송
-    void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event);
 
     // 인증 댓글 생성 알림 발송
     void sendCommentCreatedNotification(CommentCreatedEvent event);
@@ -31,4 +29,11 @@ public interface NotificationCommandService {
 
     // 팔로우 생성 알림 발송
     void sendFollowCreatedNotification(FollowCreatedEvent event);
+
+    // 챌린지 시작 하루 전 안내 발송
+    void sendChallengeStartNotification(ChallengeStartEvent event);
+
+    // 챌린지 수정 안내 발송
+    void sendChallengeUpdatedNotification(ChallengeUpdatedEvent event);
+
 }

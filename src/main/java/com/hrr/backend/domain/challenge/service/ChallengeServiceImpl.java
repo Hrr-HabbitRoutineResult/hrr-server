@@ -21,6 +21,7 @@ import com.hrr.backend.domain.challenge.event.ChallengeCreatedEvent;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
+import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
@@ -700,6 +701,9 @@ public class ChallengeServiceImpl implements ChallengeService {
         eventPublisher.publishEvent(
                 new ChallengeCreatedEvent(challenge.getId(), updatedChallengeText)
         );
+
+		// 챌린지 수정이 완료된 후 참가자 알림 생성을 위해 이벤트 발행
+        eventPublisher.publishEvent(new ChallengeUpdatedEvent(challenge.getId()));
 
         return challengeConverter.toUpdateResponseDto(challenge);
     }

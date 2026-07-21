@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.notification.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
@@ -10,10 +11,9 @@ import com.hrr.backend.domain.notification.event.*;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.notification.service.helper.NotificationEventHelper;
 import com.hrr.backend.domain.round.entity.*;
-import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.*;
-import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -39,13 +39,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationCommandServiceImpl implements NotificationCommandService {
 
+    private final ChallengeRepository challengeRepository;
     private final RoundRepository roundRepository;
     private final RoundRecordRepository roundRecordRepository;
     private final NotificationTypeRepository typeRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
     private final UserChallengeRepository userChallengeRepository;
+    private final UserRepository userRepository;
     private final VerificationRepository verificationRepository;
     private final CommentRepository commentRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -309,49 +310,98 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event) {
-        Long roundId = event.roundId();
-        User user = userRepository.findById(event.user().getId())
-                .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+    public void sendChallengeStartNotification(ChallengeStartEvent event) {
+        Long challengeId = event.challengeId();
         LocalDate today = LocalDate.now();
 
         // 멱등성 체크
-        if (notificationRepository.existsResponseNotification(user, ResourceType.ROUND, roundId,
-                List.of(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS, NotificationTypeName.CHALLENGE_EXTENSION_CANCEL))) {
+        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+                ResourceType.CHALLENGE, challengeId, NotificationTypeName.CHALLENGE_START, today)) {
             return;
         }
 
-        NotificationTypeName typeName = (event.intent() == NextRoundIntent.CONTINUE)
-                ? NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS : NotificationTypeName.CHALLENGE_EXTENSION_CANCEL;
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_START)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
 
-        Round round = roundRepository.findById(roundId).orElseThrow(() -> new GlobalException(ErrorCode.ROUND_NOT_FOUND));
-        Challenge challenge = round.getChallenge();
-        NotificationType type = typeRepository.findByTypeName(typeName).orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+        String title = String.format("%s D-1", challenge.getTitle());
+        String message = String.format("내가 참여한 %s 챌린지가 내일 새로 시작해요", challenge.getTitle());
+        NotificationEvent notificationEvent = createChallengeEvent(
+                type, NotificationCategory.CHALLENGE, challenge, title, message, today);
 
-        String title = (typeName == NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
-                ? String.format("%s 챌린지가 연장되었어요", challenge.getTitle()) : String.format("%s 챌린지를 마무리해요", challenge.getTitle());
-        String message = (typeName == NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS)
-                ? "다음 라운드에서도 루틴을 이어가요" : "챌린지가 예정대로 종료돼요. 그동안 수고 많으셨어요";
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 챌린지 시작 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            return;
+        }
 
-        NotificationEvent notificationEvent = eventHelper.getOrCreateSharedEvent(
-                ResourceType.ROUND, roundId, type, title, message, today,
-                () -> createEvent(type, NotificationCategory.CHALLENGE, challenge, roundId, title, message, today)
-        );
+        List<UserChallenge> participants = userChallengeRepository.findAllByChallengeIdAndStatusWithUserAndSetting(
+                challengeId, ChallengeJoinStatus.JOINED);
 
-        NotificationEvent mergedEvent = eventRepository.findById(notificationEvent.getId()).orElseThrow();
+        // 내역 생성
+        List<NotificationDelivery> allDeliveries = createDeliveriesForChallengeParticipants(participants, notificationEvent);
 
-        NotificationDelivery delivery = NotificationDelivery.builder()
-                .event(mergedEvent)
-                .receiver(user)
-                .isRead(false)
-                .build();
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
 
-        // 내역 저장
-        notificationRepository.save(delivery);
+            // 푸시 발송만 설정 확인
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
+                    .toList();
 
-        // 푸시 발송 여부만 결정
-        if (user.getNotificationSetting().isChallengeEnabled()) {
-            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), mergedEvent));
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendChallengeUpdatedNotification(ChallengeUpdatedEvent event) {
+        Long challengeId = event.challengeId();
+        LocalDate today = LocalDate.now();
+
+        // 멱등성 체크
+        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+                ResourceType.CHALLENGE, challengeId, NotificationTypeName.CHALLENGE_UPDATED, today)) {
+            return;
+        }
+
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_UPDATED)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        NotificationEvent notificationEvent = createChallengeEvent(
+                type, NotificationCategory.CHALLENGE, challenge,
+                challenge.getTitle(), "챌린지가 수정되었어요! 지금 확인해보세요.", today);
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 챌린지 수정 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            return;
+        }
+
+        List<UserChallenge> participants = userChallengeRepository.findAllByChallengeIdAndStatusWithUserAndSetting(
+                challengeId, ChallengeJoinStatus.JOINED);
+
+        // 내역 생성
+        List<NotificationDelivery> allDeliveries = createDeliveriesForChallengeParticipants(participants, notificationEvent);
+
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
+            // 푸시 발송만 설정 확인
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
         }
     }
 
@@ -421,11 +471,37 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .build();
     }
 
+    private NotificationEvent createChallengeEvent(NotificationType type, NotificationCategory category, Challenge challenge,
+                                                   String title, String message, LocalDate createdDate) {
+        return NotificationEvent.builder()
+                .type(type)
+                .category(category)
+                .targetType(ResourceType.CHALLENGE)
+                .targetId(challenge.getId())
+                .contextType(ResourceType.CHALLENGE)
+                .contextId(challenge.getId())
+                .title(title)
+                .message(message)
+                .imageKey(challenge.getImageKey())
+                .createdDate(createdDate)
+                .build();
+    }
+
     private List<NotificationDelivery> createDeliveries(List<RoundRecord> records, NotificationEvent event) {
         return records.stream()
                 .map(r -> NotificationDelivery.builder()
                         .event(event)
                         .receiver(r.getUserChallenge().getUser())
+                        .isRead(false)
+                        .build())
+                .toList();
+    }
+
+    private List<NotificationDelivery> createDeliveriesForChallengeParticipants(List<UserChallenge> participants, NotificationEvent event) {
+        return participants.stream()
+                .map(uc -> NotificationDelivery.builder()
+                        .event(event)
+                        .receiver(uc.getUser())
                         .isRead(false)
                         .build())
                 .toList();
