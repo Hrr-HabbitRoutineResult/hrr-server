@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.hrr.backend.domain.point.entity.enums.PointType;
 
+import com.hrr.backend.global.response.SliceResponseDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +12,20 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 public class PointHistoryResponseDto {
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "포인트 누적 현황 조회 응답 DTO")
+    public static class PageDto {
+
+        @Schema(description = "현재 보유 포인트 (실시간)", example = "100")
+        private Long totalPoints;
+
+        @Schema(description = "포인트 적립 내역 (최근 3개월, 무한 스크롤)")
+        private SliceResponseDto<HistoryDto> history;
+    }
 
     @Getter
     @Builder
