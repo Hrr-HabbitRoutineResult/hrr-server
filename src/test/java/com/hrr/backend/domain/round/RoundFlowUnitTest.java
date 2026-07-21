@@ -36,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -48,6 +49,7 @@ class RoundFlowUnitTest {
     @Mock RoundRecordRepository roundRecordRepository;
     @Mock RoundConverter roundConverter;
     @Mock TransactionTemplate transactionTemplate;
+    @Mock ApplicationEventPublisher publisher;
 
     @InjectMocks RoundDecisionServiceImpl roundDecisionService;
     @InjectMocks RoundDropServiceImpl roundDropService;
