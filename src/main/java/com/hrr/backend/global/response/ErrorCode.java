@@ -174,6 +174,9 @@ COMMENT_ADOPTED_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "COMMENT4009", "채택된 
     // search
     MIGRATION_REDIS_TO_DB_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5001", "redis에서 DB로 로그를 저장하는 데 실패했습니다."),
     COUNTING_LOG_TABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "SEARCH5002", "집계가 실패하였습니다."),
+
+    // ranking
+    RANKING_SNAPSHOT_NOT_FOUND(HttpStatus.NOT_FOUND, "RANKING4041", "아직 생성된 랭킹 정보가 없습니다."),
 	;
 
     private final HttpStatus status;
