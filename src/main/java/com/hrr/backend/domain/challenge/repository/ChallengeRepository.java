@@ -6,7 +6,9 @@ import java.util.Optional;
 
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,6 +39,17 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 			LocalDateTime startInclusive,
 			LocalDateTime endExclusive
 	);
+
+	/**
+	 * 챌린지 참가 처리 시 참가자 수 정합성 보장을 위한 비관적 락 조회
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("""
+		SELECT c
+		FROM Challenge c
+		WHERE c.id = :challengeId
+	""")
+	Optional<Challenge> findByIdForUpdate(@Param("challengeId") Long challengeId);
 
 	/**
 	 * 기준 시각 이전(포함)의 UPCOMING 챌린지 ID 조회

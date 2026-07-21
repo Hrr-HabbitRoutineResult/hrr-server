@@ -133,4 +133,35 @@ public class Challenge extends BaseEntity {
         this.status = status;
     }
 
+    // 챌린지 수정 기능 - 챌린지 정보 수정 메서드
+    public void update(
+            String title,
+            String description,
+            Boolean isPublic,
+            String password,
+            Boolean isViewerMode,
+            Integer maxParticipants,
+            String rule,
+            LocalTime verifyStartTime,
+            LocalTime verifyEndTime,
+            LocalDateTime startDate,
+            com.hrr.backend.global.common.enums.VerificationType verificationType,
+            com.hrr.backend.global.common.enums.Category category,
+            String imageKey
+    ) {
+        this.title = title;
+        this.description = description;
+        this.isPublic = isPublic;
+        this.password = password;
+        this.isViewerMode = isViewerMode;
+        this.maxParticipants = maxParticipants;
+        this.rule = rule;
+        this.verifyStartTime = verifyStartTime;
+        this.verifyEndTime = verifyEndTime;
+        this.startDate = startDate;
+        this.verificationType = verificationType;
+        this.category = category;
+        this.imageKey = imageKey;
+    }
+
 }
