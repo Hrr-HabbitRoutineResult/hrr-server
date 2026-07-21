@@ -1,0 +1,28 @@
+ALTER TABLE notification_event
+    MODIFY COLUMN category ENUM(
+    'BADGE',
+    'CHALLENGE',
+    'FOLLOW',
+    'VERIFICATION'
+    ) NOT NULL;
+
+ALTER TABLE notification_type
+    MODIFY COLUMN type_name ENUM(
+    'CHALLENGE_EXTENSION',
+    'CHALLENGE_EXTENSION_SUCCESS',
+    'CHALLENGE_EXTENSION_CANCEL',
+    'VERIFICATION_DEADLINE_3H',
+    'VERIFICATION_DEADLINE_1H',
+    'VERIFICATION_DEADLINE_NOW',
+    'COMMENT_CREATED',
+    'QUESTION_VERIFICATION',
+    'WEAK_VERIFICATION_WARNING'
+    ) NOT NULL;
+
+INSERT INTO notification_type (type_name, default_enabled, is_mandatory, created_at)
+VALUES
+    ('COMMENT_CREATED', 1, 0, NOW()),
+    ('QUESTION_VERIFICATION', 1, 0, NOW()),
+    ('WEAK_VERIFICATION_WARNING', 1, 0, NOW())
+    ON DUPLICATE KEY UPDATE
+                         updated_at = NOW();

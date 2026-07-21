@@ -20,6 +20,7 @@ public interface NotificationRepository extends JpaRepository<NotificationDelive
 
     @Query("SELECT nd FROM NotificationDelivery nd " +
             "JOIN FETCH nd.event e " +
+            "JOIN FETCH e.type " +
             "WHERE nd.receiver = :user " +
             "AND (:category IS NULL OR e.category = :category) " +
             "ORDER BY nd.createdAt DESC") // 최신순 정렬
