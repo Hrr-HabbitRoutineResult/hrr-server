@@ -106,6 +106,7 @@ public class FollowService {
         followCountService.syncCounts(currentUserId);
         followCountService.syncCounts(followedUserId);
 
+        // 팔로우가 실제로 성립된 경우에만 알림 이벤트 발행
         if (status == FollowStatus.APPROVED) {
             eventPublisher.publishEvent(new FollowCreatedEvent(currentUser, followedUser));
         }
