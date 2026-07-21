@@ -45,4 +45,11 @@ public class Round extends BaseEntity {
     @Column(nullable = false)
     private LocalDate endDate;
 
+    // 챌린지 수정 기능 - 챌린지 시작일 변경 시 1라운드 startDate/endDate 갱신
+    // startDate 변경 시 endDate도 ROUND_WEEKS(3주) 기준으로 재계산
+    public void updateStartDate(LocalDate newStartDate) {
+        this.startDate = newStartDate;
+        this.endDate = newStartDate.plusWeeks(Challenge.ROUND_WEEKS).minusDays(1);
+
+    }
 }

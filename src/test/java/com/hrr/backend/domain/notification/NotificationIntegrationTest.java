@@ -9,6 +9,8 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
+import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
 import com.hrr.backend.domain.notification.repository.*;
@@ -297,6 +299,111 @@ class NotificationIntegrationTest {
         transactionTemplate.executeWithoutResult(status -> {
             assertThat(notificationEventRepository.findAll()).hasSize(1);
             assertThat(notificationRepository.findAll()).hasSize(2);
+        });
+    }
+
+    @Test
+    @DisplayName("8. 질문 인증 생성 알림: 작성자를 제외한 동일 챌린지 JOINED 참여자에게 알림이 저장된다")
+    void questionVerificationCreated_Integration_Test() throws InterruptedException {
+        // given
+        User author = createUser("question_author", true);
+        User joinedReceiver = createUser("joined_receiver", true);
+        User disabledReceiver = createUser("disabled", false);
+        User droppedUser = createUser("dropped_user", true);
+
+        RoundRecord authorRecord = createRoundRecord(joinChallenge(author));
+        joinChallenge(joinedReceiver);
+        joinChallenge(disabledReceiver);
+        userChallengeRepository.save(UserChallenge.builder()
+                .user(droppedUser)
+                .challenge(testChallenge)
+                .status(ChallengeJoinStatus.DROPPED)
+                .build());
+
+        Verification questionVerification = verificationRepository.save(Verification.builder()
+                .roundRecord(authorRecord)
+                .userChallenge(authorRecord.getUserChallenge())
+                .roundId(testRound.getId())
+                .title("질문입니다")
+                .content("내용")
+                .isQuestion(true)
+                .status(VerificationStatus.COMPLETED)
+                .build());
+        verificationRepository.flush();
+
+        // when
+        eventListener.handleQuestionVerificationCreatedEvent(
+                new QuestionVerificationCreatedEvent(questionVerification.getId(), author.getId()));
+        Thread.sleep(1500);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.QUESTION_VERIFICATION);
+            assertThat(notificationEvent.getActor().getId()).isEqualTo(author.getId());
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.VERIFICATION);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(questionVerification.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getContextId()).isEqualTo(questionVerification.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("새로운 질문이 등록되었어요");
+            assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에 새로운 질문 인증글이 등록되었어요");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+
+            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getReceiver().getName())
+                    .containsExactlyInAnyOrder("joined_receiver", "disabled")
+                    .doesNotContain("question_author", "dropped_user");
+        });
+    }
+
+    @Test
+    @DisplayName("9. 부실 인증 경고 알림: 경고를 받은 사용자에게만 알림이 저장된다")
+    void weakVerificationWarning_Integration_Test() throws InterruptedException {
+        // given
+        User warnedUser = createUser("warned_user", true);
+        RoundRecord warnedRecord = createRoundRecord(joinChallenge(warnedUser));
+        Verification weakVerification = verificationRepository.save(Verification.builder()
+                .roundRecord(warnedRecord)
+                .userChallenge(warnedRecord.getUserChallenge())
+                .roundId(testRound.getId())
+                .title("부실 인증")
+                .content("내용")
+                .isQuestion(false)
+                .status(VerificationStatus.COMPLETED)
+                .build());
+        verificationRepository.flush();
+
+        // when
+        eventListener.handleWeakVerificationWarningEvent(
+                new WeakVerificationWarningEvent(weakVerification.getId(), warnedUser.getId()));
+        Thread.sleep(1500);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.WEAK_VERIFICATION_WARNING);
+            assertThat(notificationEvent.getActor()).isNull();
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.VERIFICATION);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(weakVerification.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getContextId()).isEqualTo(weakVerification.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("챌린지 부실 인증 경고");
+            assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에서 부실 인증 경고가 적립되었어요");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getId()).isEqualTo(warnedUser.getId());
         });
     }
 

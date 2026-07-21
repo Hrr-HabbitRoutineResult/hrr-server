@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -55,6 +56,7 @@ class CommentServiceTest {
         @Mock private UserBlockRepository userBlockRepository;
         @Mock private UserChallengeRepository userChallengeRepository;
         @Mock private S3UrlUtil s3UrlUtil;
+        @Mock private ApplicationEventPublisher eventPublisher;
 
         @BeforeEach
         void setUp() {
@@ -68,7 +70,8 @@ class CommentServiceTest {
                     userRepository,
                     commentConverter,
                     userBlockRepository,
-                    userChallengeRepository
+                    userChallengeRepository,
+                    eventPublisher
             );
         }
 
