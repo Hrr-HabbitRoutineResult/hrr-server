@@ -61,6 +61,9 @@ public class RankingResponseDto {
         @Schema(description = "직전 스냅샷 대비 등수 변화값. 양수=상승한 계단 수, 음수=하락한 계단 수, 0=변동없음, null=비교할 이전 데이터 없음(첫 주)", example = "5")
         private Integer rankChange;
 
+        @Schema(description = "등수 변화 문구. 이전 데이터가 없으면 null (이 경우 프론트에서 관련 문구 자체를 노출하지 않아야 함)", example = "지난주보다 5계단 상승했어요")
+        private String rankChangeMessage;
+
         @Schema(description = "내 포인트 (스냅샷 기준)", example = "100")
         private Long myPoints;
 
