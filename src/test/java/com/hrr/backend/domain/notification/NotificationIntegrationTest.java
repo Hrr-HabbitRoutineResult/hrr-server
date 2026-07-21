@@ -408,7 +408,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("8. 팔로우 알림: 공개 계정 팔로우 성립 시 이벤트 기반으로 알림과 푸시 이벤트가 생성된다")
+    @DisplayName("10. 팔로우 알림: 공개 계정 팔로우 성립 시 이벤트 기반으로 알림과 푸시 이벤트가 생성된다")
     void followCreated_Integration_Test() throws InterruptedException {
         // given
         User actor = createUser("follow_actor", true);
@@ -444,11 +444,11 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("9. 팔로우 알림: 팔로우 설정이 꺼져도 내역은 저장되고 FCM만 발행하지 않는다")
+    @DisplayName("11. 팔로우 알림: 팔로우 설정이 꺼져도 내역은 저장되고 FCM만 발행하지 않는다")
     void followCreated_DisabledSetting_Test() {
         // given
-        User actor = createUser("follow_disabled_actor", true);
-        User receiver = createUser("follow_disabled_receiver", false);
+        User actor = createUser("follow_actor", true);
+        User receiver = createUser("follow_receiver", false);
         applicationEvents.clear();
 
         // when
