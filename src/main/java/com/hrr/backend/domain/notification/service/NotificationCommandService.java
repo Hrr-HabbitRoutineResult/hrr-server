@@ -4,6 +4,7 @@ import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
+import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import java.time.LocalDate;
 
@@ -16,6 +17,9 @@ public interface NotificationCommandService {
 
     // 챌린지 시작 하루 전 안내 발송
     void sendChallengeStartNotification(ChallengeStartEvent event);
+
+    // 챌린지 수정 안내 발송
+    void sendChallengeUpdatedNotification(ChallengeUpdatedEvent event);
 
     // 챌린지 연장 응답 결과 발송
     void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event);

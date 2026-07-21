@@ -190,6 +190,54 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendChallengeUpdatedNotification(ChallengeUpdatedEvent event) {
+        Long challengeId = event.challengeId();
+        LocalDate today = LocalDate.now();
+
+        // 멱등성 체크
+        if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
+                ResourceType.CHALLENGE, challengeId, NotificationTypeName.CHALLENGE_UPDATED, today)) {
+            return;
+        }
+
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_UPDATED)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        NotificationEvent notificationEvent = createChallengeEvent(
+                type, NotificationCategory.CHALLENGE, challenge,
+                challenge.getTitle(), "챌린지가 수정되었어요! 지금 확인해보세요.", today);
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 챌린지 수정 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            return;
+        }
+
+        List<UserChallenge> participants = userChallengeRepository.findAllByChallengeIdAndStatusWithUserAndSetting(
+                challengeId, ChallengeJoinStatus.JOINED);
+
+        // 내역 생성
+        List<NotificationDelivery> allDeliveries = createDeliveriesForChallengeParticipants(participants, notificationEvent);
+
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
+            // 푸시 발송만 설정 확인
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendChallengeExtensionResponseNotification(ChallengeExtensionResponseEvent event) {
         Long roundId = event.roundId();
         User user = userRepository.findById(event.user().getId())
