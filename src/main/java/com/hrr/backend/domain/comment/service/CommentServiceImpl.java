@@ -123,6 +123,7 @@ public class CommentServiceImpl implements CommentService {
 
         commentRepository.save(comment);
 
+        // 댓글 저장과 알림 생성을 분리하기 위해 이벤트 발행
         eventPublisher.publishEvent(new CommentCreatedEvent(
                 verificationId,
                 comment.getId(),

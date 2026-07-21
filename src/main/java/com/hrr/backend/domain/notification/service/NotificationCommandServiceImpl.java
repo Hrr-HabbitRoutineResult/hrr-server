@@ -101,6 +101,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // 알림 저장 실패가 원본 비즈니스 트랜잭션에 영향을 주지 않도록 별도 트랜잭션 사용
     public void sendCommentCreatedNotification(CommentCreatedEvent event) {
         Verification verification = verificationRepository.findById(event.verificationId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
@@ -108,6 +109,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 .orElseThrow(() -> new GlobalException(ErrorCode.COMMENT_NOT_FOUND));
 
         User receiver = verification.getUserChallenge().getUser();
+        // 자신의 인증에 직접 댓글을 작성한 경우 알림 미발송
         if (receiver.getId().equals(event.actorId())) {
             return;
         }
@@ -190,6 +192,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 userChallengeRepository.findAllByChallengeIdAndStatusWithUserAndSetting(
                         challenge.getId(), ChallengeJoinStatus.JOINED);
 
+        // 질문 작성자는 제외하고 같은 챌린지 참여자에게만 알림 생성
         List<NotificationDelivery> allDeliveries = joinedUserChallenges.stream()
                 .map(UserChallenge::getUser)
                 .filter(receiver -> !receiver.getId().equals(event.actorId()))
