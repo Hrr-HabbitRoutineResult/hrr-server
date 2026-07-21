@@ -179,6 +179,7 @@ COMMENT_ADOPTED_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "COMMENT4009", "채택된 
 
     // ranking
     RANKING_SNAPSHOT_NOT_FOUND(HttpStatus.NOT_FOUND, "RANKING4041", "아직 생성된 랭킹 정보가 없습니다."),
+    RANKING_MY_SNAPSHOT_NOT_FOUND(HttpStatus.NOT_FOUND, "RANKING4042", "내 랭킹 정보가 없습니다.")
 	;
 
     private final HttpStatus status;
