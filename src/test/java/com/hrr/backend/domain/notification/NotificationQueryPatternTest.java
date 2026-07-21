@@ -229,7 +229,7 @@ class NotificationQueryPatternTest {
 
     private NotificationCategory categoryOf(NotificationTypeName typeName) {
         return switch (typeName) {
-            case CHALLENGE_EXTENSION, CHALLENGE_EXTENSION_SUCCESS, CHALLENGE_EXTENSION_CANCEL ->
+            case CHALLENGE_EXTENSION, CHALLENGE_EXTENSION_SUCCESS, CHALLENGE_EXTENSION_CANCEL, CHALLENGE_START ->
                     NotificationCategory.CHALLENGE;
             case VERIFICATION_DEADLINE_3H, VERIFICATION_DEADLINE_1H, VERIFICATION_DEADLINE_NOW ->
                     NotificationCategory.VERIFICATION;
