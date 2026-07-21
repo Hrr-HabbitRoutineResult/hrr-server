@@ -36,7 +36,7 @@ public class PointController {
             summary = "포인트 누적 현황 조회",
             description = "현재 로그인한 사용자의 최근 3개월(당월 포함) 포인트 적립 내역을 최신순으로 조회합니다."
     )
-    public ApiResponse<SliceResponseDto<PointHistoryResponseDto.HistoryDto>> getMyPointHistory(
+    public ApiResponse<PointHistoryResponseDto.PageDto> getMyPointHistory(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails customUserDetails,
 
@@ -48,7 +48,7 @@ public class PointController {
             @Min(1) @Max(100)
             @Parameter(description = "페이지당 데이터 개수", example = "20") int size
     ) {
-        SliceResponseDto<PointHistoryResponseDto.HistoryDto> response =
+        PointHistoryResponseDto.PageDto response =
                 pointService.getMyPointHistory(customUserDetails.getUser(), page - 1, size);
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
