@@ -10,6 +10,7 @@ import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
+import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
@@ -250,7 +251,7 @@ class NotificationIntegrationTest {
             assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.CHALLENGE);
             assertThat(notificationEvent.getContextId()).isEqualTo(testChallenge.getId());
             assertThat(notificationEvent.getTitle()).isEqualTo("테스트 챌린지 D-1");
-            assertThat(notificationEvent.getMessage()).isEqualTo("내가 찜한 테스트 챌린지 챌린지가 내일 새로 시작해요");
+            assertThat(notificationEvent.getMessage()).isEqualTo("내가 참여한 테스트 챌린지 챌린지가 내일 새로 시작해요");
             assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
             assertThat(notificationEvent.getCreatedDate()).isEqualTo(LocalDate.now());
 
@@ -293,7 +294,78 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("7. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
+    @DisplayName("7. 챌린지 수정 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
+    void challengeUpdated_Integration_Test() {
+        // given
+        User u1 = createUser("updated_user1", true);
+        User u2 = createUser("updated_user2", true);
+        joinChallenge(u1);
+        joinChallenge(u2);
+        userChallengeRepository.flush();
+
+        ChallengeUpdatedEvent event = new ChallengeUpdatedEvent(testChallenge.getId());
+
+        // when
+        notificationCommandService.sendChallengeUpdatedNotification(event);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.CHALLENGE);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getContextId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("테스트 챌린지");
+            assertThat(notificationEvent.getMessage()).isEqualTo("챌린지가 수정되었어요! 지금 확인해보세요.");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+            assertThat(notificationEvent.getCreatedDate()).isEqualTo(LocalDate.now());
+
+            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getEvent().getId())
+                    .containsOnly(notificationEvent.getId());
+        });
+
+        List<FcmPushSendEvent> pushEvents = applicationEvents.stream(FcmPushSendEvent.class).toList();
+        assertThat(pushEvents).hasSize(1);
+        assertThat(pushEvents.get(0).deliveries()).hasSize(2);
+        assertThat(pushEvents.get(0).notificationEvent().getType().getTypeName())
+                .isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
+    }
+
+    @Test
+    @DisplayName("8. 챌린지 수정 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
+    void challengeUpdated_DisabledSetting_Test() {
+        // given
+        User disabledUser = createUser("updated_disabled_user", false);
+        joinChallenge(disabledUser);
+        userChallengeRepository.flush();
+
+        ChallengeUpdatedEvent event = new ChallengeUpdatedEvent(testChallenge.getId());
+
+        // when
+        notificationCommandService.sendChallengeUpdatedNotification(event);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("updated_disabled_user");
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
+        });
+
+        assertThat(applicationEvents.stream(FcmPushSendEvent.class)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("9. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
     void notificationIdempotency_Test() {
         // given
         User user = createUser("idempotent_user", true);
@@ -317,7 +389,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("8. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
+    @DisplayName("10. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
     void multipleVerificationDeadlines_Test() {
         // given
         User user = createUser("multi_user", true);
@@ -342,7 +414,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("9. 연장 응답 다중 사용자: Event는 1개만 생성되고 Delivery는 각각 생성된다")
+    @DisplayName("11. 연장 응답 다중 사용자: Event는 1개만 생성되고 Delivery는 각각 생성된다")
     void challengeExtensionResponse_MultipleUsers_Test() throws InterruptedException {
         // given
         User user1 = createUser("user1", true);
