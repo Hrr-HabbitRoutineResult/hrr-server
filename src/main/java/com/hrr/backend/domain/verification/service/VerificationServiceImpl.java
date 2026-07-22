@@ -1,5 +1,6 @@
 package com.hrr.backend.domain.verification.service;
-
+import com.hrr.backend.domain.point.event.VerificationPointTriggerEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -237,10 +238,7 @@ public class VerificationServiceImpl implements VerificationService {
             roundRecord.increaseVerificationCount();
             publishQuestionVerificationCreatedEventIfNeeded(savedVerification, userId);
             //포인트 기능
-            pointService.earnFirstVerificationPoint(user, challenge, savedVerification);
-            pointService.checkAndEarnWeeklyPerfectPoint(
-                    userChallenge, roundRecord, round, challenge, savedVerification.getCreatedAt(), savedVerification
-            );
+            eventPublisher.publishEvent(new VerificationPointTriggerEvent(savedVerification.getId()));
             return verificationConverter.toResponseDto(savedVerification);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 중복된 인증 생성이 시도될 경우 에러 반환
@@ -294,10 +292,7 @@ public class VerificationServiceImpl implements VerificationService {
             roundRecord.increaseVerificationCount();
             publishQuestionVerificationCreatedEventIfNeeded(saved, userId);
             //포인트 기능
-            pointService.earnFirstVerificationPoint(user, challenge, saved);
-            pointService.checkAndEarnWeeklyPerfectPoint(
-                    userChallenge, roundRecord, round, challenge, saved.getCreatedAt(), saved
-            );
+            eventPublisher.publishEvent(new VerificationPointTriggerEvent(saved.getId()));
             return verificationConverter.toResponseDto(saved);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 중복된 인증 생성이 시도될 경우 에러 반환

@@ -42,7 +42,7 @@ import com.hrr.backend.global.common.enums.ChallengeDays;
 @ExtendWith(MockitoExtension.class)
 class PointServiceImplTest {
 
-    @InjectMocks
+    @Mock
     private PointServiceImpl pointService;
 
     @Mock
@@ -57,6 +57,9 @@ class PointServiceImplTest {
     private PointAwardExecutor pointAwardExecutor;
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("챌린지 첫 인증 포인트는 아직 지급된 적 없으면 PointAwardExecutor를 호출한다")
