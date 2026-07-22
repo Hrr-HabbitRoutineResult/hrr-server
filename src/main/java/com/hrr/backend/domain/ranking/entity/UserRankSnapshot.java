@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.ranking.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.BaseEntity;
@@ -52,4 +53,7 @@ public class UserRankSnapshot extends BaseEntity {
     // 스냅샷 기준일 (매주 월요일)
     @Column(name = "snapshot_date", nullable = false)
     private LocalDate snapshotDate;
+
+    @Column(name = "achieved_at")
+    private LocalDateTime achievedAt;
 }

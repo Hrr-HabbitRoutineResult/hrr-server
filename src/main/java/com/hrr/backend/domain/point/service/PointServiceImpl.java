@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -46,6 +47,7 @@ public class PointServiceImpl implements PointService {
     private final RoundRecordRepository roundRecordRepository;
     private final VerificationAbsenceLogRepository verificationAbsenceLogRepository;
     private final PointConverter pointConverter;
+    private final PointAwardExecutor pointAwardExecutor;
 
     @Override
     @Transactional
@@ -177,11 +179,14 @@ public class PointServiceImpl implements PointService {
                 .build();
     }
 
-    // 실제 포인트 적립 처리: 내역 저장 + User.points 증가
+    // 실제 포인트 적립 처리: PointAwardExecutor(REQUIRES_NEW)에 위임하여 독립 트랜잭션으로 처리
     private void awardPoint(User user, PointType type, Challenge challenge, Round round, RandomMission randomMission) {
-        PointHistory history = PointHistory.of(user, type, challenge, round, randomMission);
-        pointHistoryRepository.save(history);
-        user.increasePoints(type.getPoints());
+        try {
+            pointAwardExecutor.execute(user, type, challenge, round, randomMission);
+        } catch (DataIntegrityViolationException e) {
+            // 동시 요청 등으로 인해 DB 유니크 제약에 걸린 경우 - 이미 지급된 것으로 간주하고 조용히 무시(멱등 처리)
+            log.info("[Point] 유니크 제약으로 인해 중복 지급을 건너뜁니다. userId={}, type={}", user.getId(), type);
+        }
     }
 
     private PointType resolveWeekPointType(int weekIndex) {

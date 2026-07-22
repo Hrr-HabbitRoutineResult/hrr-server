@@ -1,9 +1,11 @@
 package com.hrr.backend.domain.point.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,11 +20,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.point.converter.PointConverter;
-import com.hrr.backend.domain.point.entity.PointHistory;
 import com.hrr.backend.domain.point.entity.enums.PointType;
 import com.hrr.backend.domain.point.repository.PointHistoryRepository;
 import com.hrr.backend.domain.round.entity.Round;
@@ -48,9 +50,11 @@ class PointServiceImplTest {
     private VerificationAbsenceLogRepository verificationAbsenceLogRepository;
     @Mock
     private PointConverter pointConverter;
+    @Mock
+    private PointAwardExecutor pointAwardExecutor;
 
     @Test
-    @DisplayName("챌린지 첫 인증 포인트는 아직 지급된 적 없으면 1P 적립되고 유저 포인트가 증가한다")
+    @DisplayName("챌린지 첫 인증 포인트는 아직 지급된 적 없으면 PointAwardExecutor를 호출한다")
     void earnFirstVerificationPoint_awardsPoint_whenNotAlreadyAwarded() {
         // given
         User user = User.builder().id(1L).points(0L).build();
@@ -63,12 +67,12 @@ class PointServiceImplTest {
         pointService.earnFirstVerificationPoint(user, challenge);
 
         // then
-        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
-        assertThat(user.getPoints()).isEqualTo(1L);
+        verify(pointAwardExecutor, times(1))
+                .execute(user, PointType.FIRST_VERIFICATION, challenge, null, null);
     }
 
     @Test
-    @DisplayName("챌린지 첫 인증 포인트는 이미 지급된 적 있으면 중복 지급되지 않는다")
+    @DisplayName("챌린지 첫 인증 포인트는 이미 지급된 적 있으면 PointAwardExecutor를 호출하지 않는다")
     void earnFirstVerificationPoint_doesNothing_whenAlreadyAwarded() {
         // given
         User user = User.builder().id(1L).points(5L).build();
@@ -81,12 +85,11 @@ class PointServiceImplTest {
         pointService.earnFirstVerificationPoint(user, challenge);
 
         // then
-        verify(pointHistoryRepository, never()).save(any());
-        assertThat(user.getPoints()).isEqualTo(5L);
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("랜덤미션 참여 포인트는 호출될 때마다 1P 적립된다 (일 1회 제한은 호출부 책임)")
+    @DisplayName("랜덤미션 참여 포인트는 호출될 때마다 PointAwardExecutor를 호출한다 (일 1회 제한은 호출부 책임)")
     void earnRandomMissionPoint_awardsPoint() {
         // given
         User user = User.builder().id(1L).points(0L).build();
@@ -96,12 +99,12 @@ class PointServiceImplTest {
         pointService.earnRandomMissionPoint(user, mission);
 
         // then
-        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
-        assertThat(user.getPoints()).isEqualTo(1L);
+        verify(pointAwardExecutor, times(1))
+                .execute(user, PointType.RANDOM_MISSION, null, null, mission);
     }
 
     @Test
-    @DisplayName("챌린지 마스터 포인트는 참여 라운드 수가 정확히 3이 되는 순간 5P 지급된다")
+    @DisplayName("챌린지 마스터 포인트는 참여 라운드 수가 정확히 3이 되는 순간 PointAwardExecutor를 호출한다")
     void checkAndEarnChallengeMasterPoint_awards_whenRoundCountIsExactlyThree() {
         // given
         User user = User.builder().id(1L).points(0L).build();
@@ -116,8 +119,8 @@ class PointServiceImplTest {
         pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
 
         // then
-        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
-        assertThat(user.getPoints()).isEqualTo(5L);
+        verify(pointAwardExecutor, times(1))
+                .execute(user, PointType.CHALLENGE_MASTER, challenge, null, null);
     }
 
     @Test
@@ -134,8 +137,7 @@ class PointServiceImplTest {
         pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
 
         // then
-        verify(pointHistoryRepository, never()).save(any());
-        assertThat(user.getPoints()).isZero();
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -154,12 +156,11 @@ class PointServiceImplTest {
         pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
 
         // then
-        verify(pointHistoryRepository, never()).save(any());
-        assertThat(user.getPoints()).isZero();
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("주차 퍼펙트 포인트는 그 주의 마지막 인증일에 결석이 없으면 지급된다")
+    @DisplayName("주차 퍼펙트 포인트는 그 주의 마지막 인증일에 결석이 없으면 PointAwardExecutor를 호출한다")
     void checkAndEarnWeeklyPerfectPoint_awards_whenLastDayAndNoAbsence() {
         // given: 라운드 시작일은 월요일(2026-07-06), 인증 요일은 월/수/금
         LocalDate roundStart = LocalDate.of(2026, 7, 6); // Monday
@@ -192,8 +193,8 @@ class PointServiceImplTest {
         pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
 
         // then
-        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
-        assertThat(user.getPoints()).isEqualTo(1L); // WEEK1_PERFECT = 1P
+        verify(pointAwardExecutor, times(1))
+                .execute(user, PointType.WEEK1_PERFECT, challenge, round, null);
     }
 
     @Test
@@ -226,8 +227,7 @@ class PointServiceImplTest {
         // then: 마지막 날이 아니므로 결석 조회조차 하지 않고 즉시 반환
         verify(verificationAbsenceLogRepository, never())
                 .countByRoundRecordIdAndAbsenceDateBetween(any(), any(), any());
-        verify(pointHistoryRepository, never()).save(any());
-        assertThat(user.getPoints()).isZero();
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -261,8 +261,7 @@ class PointServiceImplTest {
         pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
 
         // then
-        verify(pointHistoryRepository, never()).save(any());
-        assertThat(user.getPoints()).isZero();
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -299,10 +298,29 @@ class PointServiceImplTest {
         // when
         pointService.checkAndEarnFlawlessRoundPoints(endedRound);
 
-        // then: 결석 없고 미지급 상태인 noAbsenceUser만 3P 적립
-        assertThat(noAbsenceUser.getPoints()).isEqualTo(3L);
-        assertThat(hasAbsenceUser.getPoints()).isZero();
-        assertThat(alreadyAwardedUser.getPoints()).isZero();
-        verify(pointHistoryRepository, times(1)).save(any(PointHistory.class));
+        // then: 결석 없고 미지급 상태인 noAbsenceUser에 대해서만 호출
+        verify(pointAwardExecutor, times(1))
+                .execute(noAbsenceUser, PointType.FLAWLESS_ROUND, challenge, endedRound, null);
+        verify(pointAwardExecutor, never())
+                .execute(eq(hasAbsenceUser), any(), any(), any(), any());
+        verify(pointAwardExecutor, never())
+                .execute(eq(alreadyAwardedUser), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("동시 요청 등으로 PointAwardExecutor가 유니크 제약 위반 예외를 던져도, 상위 로직은 예외 없이 정상 종료된다")
+    void earnFirstVerificationPoint_silentlyIgnoresDataIntegrityViolation() {
+        // given
+        User user = User.builder().id(1L).points(0L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+
+        given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge))
+                .willReturn(false);
+        willThrow(new DataIntegrityViolationException("duplicate"))
+                .given(pointAwardExecutor).execute(user, PointType.FIRST_VERIFICATION, challenge, null, null);
+
+        // when & then: 예외가 밖으로 전파되지 않아야 함 (동시성으로 인한 중복은 정상 케이스로 흡수)
+        assertThatCode(() -> pointService.earnFirstVerificationPoint(user, challenge))
+                .doesNotThrowAnyException();
     }
 }

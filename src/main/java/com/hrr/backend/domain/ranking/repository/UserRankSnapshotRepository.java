@@ -22,7 +22,7 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
     @Query("SELECT s FROM UserRankSnapshot s " +
             "JOIN FETCH s.user " +
             "WHERE s.snapshotDate = :snapshotDate " +
-            "ORDER BY s.ranking ASC")
+            "ORDER BY s.ranking ASC, CASE WHEN s.achievedAt IS NULL THEN 1 ELSE 0 END ASC, s.achievedAt ASC")
     List<UserRankSnapshot> findTopByRanking(@Param("snapshotDate") LocalDate snapshotDate, Pageable pageable);
 
     // 특정 유저의 특정 스냅샷일 기록 조회
@@ -42,17 +42,22 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
     /** 매주 월요일 00시, 전체 ACTIVE 유저를 대상으로 포인트 내림차순 등수를 계산하여 스냅샷 테이블에 UPSERT*/
     @Modifying
     @Query(value = """
-		INSERT INTO user_rank_snapshot (user_id, ranking, points, total_user_count, snapshot_date, created_at, updated_at)
+		INSERT INTO user_rank_snapshot (user_id, ranking, points, total_user_count, snapshot_date, achieved_at, created_at, updated_at)
 		SELECT
 		    t.id,
-		    RANK() OVER (ORDER BY t.points DESC, t.id ASC),
+		    RANK() OVER (ORDER BY t.points DESC),
 		    t.points,
 		    t.total_count,
 		    :snapshotDate,
+		    t.achieved_at,
 		    NOW(),
 		    NOW()
 		FROM (
-		    SELECT u.id, u.points, COUNT(*) OVER () AS total_count
+		    SELECT
+		        u.id,
+		        u.points,
+		        COUNT(*) OVER () AS total_count,
+		        (SELECT MAX(ph.created_at) FROM point_history ph WHERE ph.user_id = u.id) AS achieved_at
 		    FROM user u
 		    WHERE u.status = 'ACTIVE'
 		) t
@@ -60,6 +65,7 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
 		    ranking = VALUES(ranking),
 		    points = VALUES(points),
 		    total_user_count = VALUES(total_user_count),
+		    achieved_at = VALUES(achieved_at),
 		    updated_at = NOW()
 		""", nativeQuery = true)
     int upsertWeeklySnapshot(@Param("snapshotDate") LocalDate snapshotDate);
