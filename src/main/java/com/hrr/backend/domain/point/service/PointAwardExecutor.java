@@ -12,6 +12,8 @@ import com.hrr.backend.domain.point.repository.PointHistoryRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.RandomMission;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.verification.entity.Verification;
 
 import lombok.RequiredArgsConstructor;
 
@@ -34,10 +36,18 @@ public class PointAwardExecutor {
     private final UserRepository userRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void execute(User user, PointType type, Challenge challenge, Round round, RandomMission randomMission) {
-        PointHistory history = PointHistory.of(user, type, challenge, round, randomMission);
+    public void execute(
+            User user,
+            PointType type,
+            Challenge challenge,
+            Round round,
+            RandomMission randomMission,
+            Verification verification
+    ) {
+        PointHistory history = PointHistory.of(user, type, challenge, round, randomMission, verification);
         pointHistoryRepository.save(history);
         pointHistoryRepository.flush(); // UNIQUE 제약 위반을 이 독립 트랜잭션 안에서 즉시 확인
+
         userRepository.increasePoints(user.getId(), type.getPoints());
     }
 }
