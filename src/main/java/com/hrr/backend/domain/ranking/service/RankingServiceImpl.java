@@ -2,6 +2,7 @@ package com.hrr.backend.domain.ranking.service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -39,9 +40,19 @@ public class RankingServiceImpl implements RankingService {
                 latestSnapshotDate, PageRequest.of(0, TOP_N)
         );
 
-        UserRankSnapshot mySnapshot = userRankSnapshotRepository
-                .findByUserIdAndSnapshotDate(user.getId(), latestSnapshotDate)
-                .orElseThrow(() -> new GlobalException(ErrorCode.RANKING_MY_SNAPSHOT_NOT_FOUND));
+        Optional<UserRankSnapshot> mySnapshotOpt = userRankSnapshotRepository
+                .findByUserIdAndSnapshotDate(user.getId(), latestSnapshotDate);
+
+        if (mySnapshotOpt.isEmpty()) {
+            Integer totalUserCount = topRankers.stream()
+                    .findFirst()
+                    .map(UserRankSnapshot::getTotalUserCount)
+                    .orElse(null);
+
+            return rankingConverter.toUnrankedBoardDto(user, topRankers, totalUserCount, latestSnapshotDate);
+        }
+
+        UserRankSnapshot mySnapshot = mySnapshotOpt.get();
 
         // 직전 스냅샷과 비교하여 등수 변화 계산 (없으면 null = 비교 데이터 없음)
         Integer rankChange = userRankSnapshotRepository
