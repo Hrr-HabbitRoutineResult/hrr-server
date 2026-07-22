@@ -1,0 +1,40 @@
+package com.hrr.backend.global.scheduler;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class ModelServerWarmupScheduler {
+
+	@Value("${model.api.health-url}")
+	private String healthUrl;
+
+	@Qualifier("modelApiRestTemplate")
+	private final RestTemplate restTemplate;
+
+	/**
+	 * 추천/임베딩 모델 서버(Lambda)를 주기적으로 호출해 콜드 스타트로 스케일 인되지 않도록 유지한다.
+	 * 스케줄러 공용 스레드를 막지 않도록 @Async로 실행하며, 콜드 스타트에 걸려도
+	 * modelApiRestTemplate의 넉넉한 타임아웃 안에서 워밍업이 끝까지 완료되게 둔다.
+	 */
+	@Async
+	@Scheduled(cron = "0 0/5 * * * *", zone = "Asia/Seoul")
+	public void warmUpModelServer() {
+		try {
+			restTemplate.getForObject(healthUrl, String.class);
+			log.info("[ModelServerWarmup] 워밍업 핑 성공. url={}", healthUrl);
+		} catch (RestClientException e) {
+			log.warn("[ModelServerWarmup] 워밍업 핑 실패. url={}, error={}", healthUrl, e.getMessage());
+		}
+	}
+}
