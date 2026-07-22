@@ -5,6 +5,7 @@ import com.hrr.backend.domain.challenge.dto.EmbeddingResponseDto;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
@@ -18,6 +19,7 @@ public class EmbeddingClient {
     @Value("${model.api.embedding-url}")
     private String embeddingUrl;
 
+    @Qualifier("modelApiRestTemplate")
     private final RestTemplate restTemplate;
 
     public float[] getEmbedding(String text) {
