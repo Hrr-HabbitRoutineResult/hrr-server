@@ -28,6 +28,7 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationAbsenceLogRepository;
+import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.response.SliceResponseDto;
 
@@ -51,6 +52,7 @@ public class PointServiceImpl implements PointService {
     private final PointConverter pointConverter;
     private final PointAwardExecutor pointAwardExecutor;
     private final UserRepository userRepository;
+    private final VerificationRepository verificationRepository;
 
     @Override
     @Transactional
@@ -179,12 +181,40 @@ public class PointServiceImpl implements PointService {
 
         User user = verification.getRoundRecord().getUserChallenge().getUser();
 
-        // 인증 삭제와 같은 트랜잭션 안에서 호출되어, 인증 삭제와 포인트 회수가 함께 성공/실패한다.
+        // point_history 먼저 삭제(FK 제약상 verification 삭제보다 먼저 처리되어야 함) + 유저 포인트 원자적 차감
+        // 이 메서드는 인증 삭제와 같은 트랜잭션 안에서 호출되어, 인증 삭제와 포인트 회수가 함께 성공/실패한다.
         pointHistoryRepository.deleteAll(histories);
         userRepository.decreasePoints(user.getId(), totalToRevoke);
 
         log.info("[Point] 인증 삭제로 인한 포인트 회수. verificationId={}, userId={}, 회수 포인트={}",
                 verification.getId(), user.getId(), totalToRevoke);
+    }
+
+    /**
+     * 인증글 생성 트랜잭션이 커밋된 이후(AFTER_COMMIT)에 호출되는 진입점.
+     * verificationId로 인증글을 다시 조회한 뒤, 첫 인증 포인트 + 주차 퍼펙트 포인트 지급 로직을 그대로 재사용한다.
+     * 이 시점엔 인증글이 이미 커밋되어 있어서, point_history.verification_id FK 저장 시
+     * (REQUIRES_NEW로 분리된) PointAwardExecutor가 아직 커밋되지 않은 부모 행을 기다리며
+     * 락 대기/타임아웃에 빠지는 문제가 없다.
+     */
+    @Override
+    @Transactional
+    public void awardVerificationTriggeredPoints(Long verificationId) {
+        Verification verification = verificationRepository.findById(verificationId).orElse(null);
+        if (verification == null) {
+            // 매우 드문 케이스(조회 사이 삭제 등) - 조용히 무시
+            log.warn("[Point] 포인트 지급 대상 인증글을 찾을 수 없습니다. verificationId={}", verificationId);
+            return;
+        }
+
+        RoundRecord roundRecord = verification.getRoundRecord();
+        UserChallenge userChallenge = roundRecord.getUserChallenge();
+        User user = userChallenge.getUser();
+        Challenge challenge = userChallenge.getChallenge();
+        Round round = roundRecord.getRound();
+
+        earnFirstVerificationPoint(user, challenge, verification);
+        checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verification.getCreatedAt(), verification);
     }
 
     @Override

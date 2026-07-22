@@ -10,6 +10,7 @@ import com.hrr.backend.domain.user.entity.RandomMission;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 public interface PointService {
@@ -38,6 +39,8 @@ public interface PointService {
 
     // 특정 인증글로 인해 지급된 포인트(FIRST_VERIFICATION, WEEKx_PERFECT)를 전부 찾아 삭제하고, 유저 포인트를 그만큼 원자적으로 차감
     void revokePointsForVerification(Verification verification);
+
+    void awardVerificationTriggeredPoints(Long verificationId);
 
     // 내 포인트 적립 내역 조회 (최근 3개월, 무한 스크롤) + 현재 보유 포인트
     PointHistoryResponseDto.PageDto getMyPointHistory(User user, int page, int size);
