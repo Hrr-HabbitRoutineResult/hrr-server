@@ -8,19 +8,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ModelServerWarmupScheduler {
 
 	@Value("${model.api.health-url}")
 	private String healthUrl;
 
-	@Qualifier("modelApiRestTemplate")
 	private final RestTemplate restTemplate;
+
+	public ModelServerWarmupScheduler(@Qualifier("modelApiRestTemplate") RestTemplate restTemplate) {
+		this.restTemplate = restTemplate;
+	}
 
 	/**
 	 * 추천/임베딩 모델 서버(Lambda)를 주기적으로 호출해 콜드 스타트로 스케일 인되지 않도록 유지한다.
