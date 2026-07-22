@@ -15,6 +15,7 @@ public enum SuccessCode implements BaseCode {
 
     // challenge
     CHALLENGE_UPDATE_OK(HttpStatus.OK, "CHALLENGE2001", "챌린지가 성공적으로 수정되었습니다."),
+    CHALLENGE_LEAVE_OK(HttpStatus.OK, "CHALLENGE2002", "챌린지에서 나갔습니다."),
 
     // comment
     COMMENT_POST_OK(HttpStatus.OK, "COMMENT2001","댓글이 작성되었습니다."),

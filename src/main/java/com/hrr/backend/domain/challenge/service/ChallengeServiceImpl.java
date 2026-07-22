@@ -203,10 +203,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 버튼 상태 결정
 		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
 
+        // 현재 유저가 방장인지 여부
+        boolean isOwner = Objects.equals(owner != null ? owner.getId() : null, user.getId());
+
 		// DTO 변환 및 반환
 		return challengeConverter.toHeaderInfoDto(
 				challenge, owner, isOwnerActive, startDate, endDate, remainDays,
-				isParticipant, isLiked, buttonStatus
+				isParticipant, isLiked, buttonStatus,
+                isOwner
 		);
 	}
 
@@ -496,6 +500,60 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toJoinResponseDto(challenge);
 	}
 
+    // 챌린지 나가기
+    @Override
+    @Transactional
+    public ChallengeResponseDto.LeaveChallengeDto leaveChallenge(User user, Long challengeId) {
+        // 참가자 수 정합성 보장을 위한 락 조회 (참가 로직과 동일)
+        Challenge challenge = findChallengeForUpdate(challengeId);
+
+        // 내 참여 정보 조회
+        UserChallenge userChallenge = userChallengeRepository.findByUserAndChallenge(user, challenge)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        // 비즈니스 룰 검증 (방장 여부, 참여 상태, 시작일 전 여부)
+        validateLeaveRequest(challenge, userChallenge);
+
+        // 현재 라운드의 내 RoundRecord 삭제 (아직 시작 전이라 라운드는 1개, 인증 기록도 없음)
+        Round currentRound = challenge.getCurrentRound();
+        if (currentRound != null) {
+            roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, currentRound.getId())
+                    .ifPresent(roundRecordRepository::delete);
+        }
+
+        // UserChallenge 삭제 (상태값으로 남기지 않고 참가 이력 자체를 제거)
+        userChallengeRepository.delete(userChallenge);
+
+        // 참가자 수 감소 (참가 로직의 반대)
+        challenge.decreaseCurrentParticipants();
+
+        // challenge_statics 재집계 (JOINED 기준 전체 재계산이라 join과 동일하게 재사용 가능)
+        challengeStaticsService.updateChallengeStatics(challenge);
+
+        return challengeConverter.toLeaveResponseDto(challenge);
+    }
+
+    /**
+     * 챌린지 나가기 요청에 대한 비즈니스 검증 로직
+     * - 참여 상태(JOINED)가 아니면 나가기 불가
+     * - 방장(OWNER)은 나가기 불가
+     * - 챌린지가 시작 전(UPCOMING)일 때만 나가기 가능
+     */
+    private void validateLeaveRequest(Challenge challenge, UserChallenge userChallenge) {
+
+        // 참여 중(JOINED) 상태가 아니면 나가기 불가
+        if (userChallenge.getStatus() != ChallengeJoinStatus.JOINED) {
+            throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
+        }
+
+        // 방장은 나가기 불가 (수정/삭제만 가능)
+        if (userChallenge.getRole() == UserChallengeRole.OWNER) {
+            throw new GlobalException(ErrorCode.CHALLENGE_LEAVE_FORBIDDEN_OWNER);
+        }
+
+        validateBeforeStartDate(challenge, ErrorCode.CHALLENGE_LEAVE_PERIOD_EXPIRED);
+    }
+
 	private void createRoundRecordOrFail(Challenge challenge, UserChallenge userChallenge) {
 		Round currentRound = challenge.getCurrentRound(); //
 
@@ -638,6 +696,23 @@ public class ChallengeServiceImpl implements ChallengeService {
 				})
 				.toList();
 	}
+
+    // 챌린지 수정용 상세 정보 조회
+    @Override
+    @Transactional(readOnly = true)
+    public ChallengeResponseDto.EditInfoDto getChallengeEditInfo(User user, Long challengeId) {
+        // 챌린지 조회 (요일 정보 포함)
+        Challenge challenge = findChallengeWithDays(challengeId);
+
+        // 방장 권한 검증 (updateChallenge와 동일한 검증 재사용)
+        validateOwner(user, challengeId);
+
+        // 수정 가능 기간 검증 (한국 시간 기준: 시작일 전날 23:59:59까지, updateChallenge와 동일한 검증 재사용)
+        validateUpdatePeriod(challenge);
+
+        return challengeConverter.toEditInfoDto(challenge);
+    }
+
     @Override
     @Transactional
     public ChallengeResponseDto.UpdateChallengeDto updateChallenge(
@@ -660,7 +735,7 @@ public class ChallengeServiceImpl implements ChallengeService {
         // 공개/비공개 처리
         boolean isPublic = req.getIsPublic();
         boolean isViewerMode = isPublic && req.getIsViewerMode();
-        String password = isPublic ? null : req.getPassword();
+        String password = resolveUpdatedPassword(challenge, req);
 
         // Challenge 필드 업데이트
         challenge.update(
@@ -733,14 +808,26 @@ public class ChallengeServiceImpl implements ChallengeService {
      */
     private void validateUpdatePeriod(Challenge challenge) {
         // 한국 시간 기준 현재 날짜
+        validateBeforeStartDate(challenge, ErrorCode.CHALLENGE_UPDATE_PERIOD_EXPIRED);
+    }
+
+    /**
+     * 챌린지 시작일 전(KST 기준)인지 검증하는 공통 헬퍼
+     * - 수정(update), 나가기(leave) 등 "챌린지 시작일 전까지만 가능한" 액션에서 공통으로 사용
+     * - challenge.getStatus()(UPCOMING/ONGOING 등)는 ChallengeScheduler의 일배치(자정)로만 갱신되어
+     *   실제 날짜와 시간차가 생길 수 있으므로, 상태값 대신 KST 날짜를 startDate와 직접 비교한다.
+     * - 한국 시간(KST, Asia/Seoul) 기준, 시작일 전날 23:59:59까지만 허용, 시작일 당일부터 예외 발생
+     */
+    private void validateBeforeStartDate(Challenge challenge, ErrorCode errorCode) {
+        // 한국 시간 기준 현재 날짜
         LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
         // 챌린지 시작일 (startDate는 LocalDateTime으로 저장되어 있으므로 toLocalDate() 변환)
         LocalDate startDate = challenge.getStartDate().toLocalDate();
 
-        // 시작일 당일 또는 이후라면 수정 불가
+        // 시작일 당일 또는 이후라면 예외 발생
         if (!todayKst.isBefore(startDate)) {
-            throw new GlobalException(ErrorCode.CHALLENGE_UPDATE_PERIOD_EXPIRED);
+            throw new GlobalException(errorCode);
         }
     }
 
@@ -771,10 +858,21 @@ public class ChallengeServiceImpl implements ChallengeService {
 
         // 공개/비공개 및 비밀번호, 관찰자 모드 검증
         if (!req.getIsPublic()) {
-            // 비공개인데 비밀번호가 없거나 4자리 숫자가 아닌 경우
-            if (req.getPassword() == null || !req.getPassword().matches("^\\d{4}$")) {
+            boolean isPasswordProvided = req.getPassword() != null && !req.getPassword().isBlank();
+            boolean hadPasswordBefore = !challenge.getIsPublic()
+                    && challenge.getPassword() != null
+                    && !challenge.getPassword().isBlank();
+
+            if (isPasswordProvided) {
+                // 새 비밀번호를 입력한 경우 형식 검증 (4자리 숫자)
+                if (!req.getPassword().matches("^\\d{4}$")) {
+                    throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED);
+                }
+            } else if (!hadPasswordBefore) {
+                // 미입력인데 기존 비밀번호도 없는 경우(신규로 비공개 전환 등)는 비밀번호 필수
                 throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED);
             }
+            // 미입력 + 기존 비밀번호 있음 -> 기존 비밀번호를 유지하므로 통과
             // 비공개 챌린지인데 관찰자 모드를 설정한 경우
             if (req.getIsViewerMode()) {
                 throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED);
@@ -785,6 +883,20 @@ public class ChallengeServiceImpl implements ChallengeService {
                 throw new GlobalException(ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT);
             }
         }
+    }
+
+    /**
+     * 챌린지 수정 기능 - 수정 요청의 비밀번호 필드를 실제 저장할 비밀번호로 변환
+     * - 공개 전환 시 비밀번호는 null
+     * - 비공개이면서 새 비밀번호가 입력된 경우 그 값으로 교체 (형식은 validateUpdateRequest에서 이미 검증됨)
+     * - 비공개이면서 비밀번호 미입력인 경우 기존 비밀번호 유지 (validateUpdateRequest를 통과했다면 기존 비밀번호가 반드시 존재함)
+     */
+    private String resolveUpdatedPassword(Challenge challenge, ChallengeRequestDto.UpdateChallengeDto req) {
+        if (req.getIsPublic()) {
+            return null;
+        }
+        boolean isPasswordProvided = req.getPassword() != null && !req.getPassword().isBlank();
+        return isPasswordProvided ? req.getPassword() : challenge.getPassword();
     }
 
 	/**

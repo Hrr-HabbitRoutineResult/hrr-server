@@ -213,4 +213,38 @@ public class ChallengeController {
                 challengeService.updateChallenge(userDetails.getUser(), challengeId, request)
         );
     }
+
+    @GetMapping("/{challengeId}/edit-info")
+    @Operation(
+            summary = "챌린지 수정용 상세 정보 조회",
+            description = "챌린지 수정 화면 진입 시 기존 값을 채우기 위한 전체 정보를 조회합니다. "
+                    + "방장만 조회 가능하며, 챌린지 시작일 전날까지만 조회할 수 있습니다."
+    )
+    public ApiResponse<ChallengeResponseDto.EditInfoDto> getChallengeEditInfo(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable("challengeId") Long challengeId
+    ) {
+        ChallengeResponseDto.EditInfoDto response = challengeService.getChallengeEditInfo(
+                userDetails.getUser(),
+                challengeId
+        );
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @Operation(
+            summary = "챌린지 나가기",
+            description = "참가 중인 챌린지에서 나갑니다. 방장은 나갈 수 없으며, 챌린지 시작일 전까지만 가능합니다."
+    )
+    @PostMapping("/{challengeId}/leave")
+    public ApiResponse<ChallengeResponseDto.LeaveChallengeDto> leaveChallenge(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable("challengeId") Long challengeId
+    ) {
+        return ApiResponse.onSuccess(
+                SuccessCode.CHALLENGE_LEAVE_OK,
+                challengeService.leaveChallenge(userDetails.getUser(), challengeId)
+        );
+    }
 }

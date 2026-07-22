@@ -113,8 +113,8 @@ public class ChallengeRequestDto {
         @NotNull(message = "isPublic은 필수입니다.")
         private Boolean isPublic;
 
-        @Schema(description = "비공개 비밀번호 (4자리 숫자). 공개 챌린지라면 null 가능", example = "1234")
-        @Pattern(regexp = "^\\d{4}$", message = "비밀번호는 4자리 숫자여야 합니다.")
+        @Schema(description = "비공개 비밀번호 (4자리 숫자). 공개 챌린지라면 null 가능. 비공개 챌린지에서 비워두면 기존 비밀번호가 유지됩니다.", example = "1234")
+        @Pattern(regexp = "^$|^\\d{4}$", message = "비밀번호는 4자리 숫자여야 합니다.")
         private String password;
 
         @Schema(description = "챌린지 카테고리", example = "HEALTH")
