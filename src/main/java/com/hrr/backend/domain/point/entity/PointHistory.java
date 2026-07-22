@@ -5,6 +5,7 @@ import com.hrr.backend.domain.point.entity.enums.PointType;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.RandomMission;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -53,8 +54,12 @@ public class PointHistory extends BaseEntity {
     @JoinColumn(name = "random_mission_id")
     private RandomMission randomMission;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verification_id")
+    private Verification verification;
+
     /** 포인트 적립 기록 생성 팩토리 메서드 */
-    public static PointHistory of(User user, PointType pointType, Challenge challenge, Round round, RandomMission randomMission) {
+    public static PointHistory of(User user, PointType pointType, Challenge challenge, Round round, RandomMission randomMission, Verification verification) {
         return PointHistory.builder()
                 .user(user)
                 .pointType(pointType)
@@ -62,6 +67,7 @@ public class PointHistory extends BaseEntity {
                 .challenge(challenge)
                 .round(round)
                 .randomMission(randomMission)
+                .verification(verification)
                 .build();
     }
 }
