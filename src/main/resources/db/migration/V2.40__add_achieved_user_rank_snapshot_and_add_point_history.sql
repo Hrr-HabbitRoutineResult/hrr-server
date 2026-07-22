@@ -67,16 +67,6 @@ ALTER TABLE `point_history`
     ADD CONSTRAINT `uk_point_history_round_scope`
         UNIQUE (`user_id`, `point_type`, `round_id`);
 
-    -- 5. 랜덤 미션 단위 중복 지급 방지 유니크 제약
-    IF NOT EXISTS (
-        SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'point_history'
-          AND INDEX_NAME = 'uk_point_history_random_mission_scope'
-    ) THEN
-        ALTER TABLE `point_history`
-                ADD CONSTRAINT `uk_point_history_random_mission_scope`
-                    UNIQUE (`user_id`, `point_type`, `random_mission_id`);
 END IF;
 END$$
 
