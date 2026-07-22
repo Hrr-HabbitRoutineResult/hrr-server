@@ -548,10 +548,7 @@ public class ChallengeServiceImpl implements ChallengeService {
             throw new GlobalException(ErrorCode.CHALLENGE_LEAVE_FORBIDDEN_OWNER);
         }
 
-        // 챌린지 시작 전(UPCOMING)까지만 나가기 가능
-        if (challenge.getStatus() != ChallengeStatus.UPCOMING) {
-            throw new GlobalException(ErrorCode.CHALLENGE_LEAVE_PERIOD_EXPIRED);
-        }
+        validateBeforeStartDate(challenge, ErrorCode.CHALLENGE_LEAVE_PERIOD_EXPIRED);
     }
 
 	private void createRoundRecordOrFail(Challenge challenge, UserChallenge userChallenge) {
@@ -806,14 +803,26 @@ public class ChallengeServiceImpl implements ChallengeService {
      */
     private void validateUpdatePeriod(Challenge challenge) {
         // 한국 시간 기준 현재 날짜
+        validateBeforeStartDate(challenge, ErrorCode.CHALLENGE_UPDATE_PERIOD_EXPIRED);
+    }
+
+    /**
+     * 챌린지 시작일 전(KST 기준)인지 검증하는 공통 헬퍼
+     * - 수정(update), 나가기(leave) 등 "챌린지 시작일 전까지만 가능한" 액션에서 공통으로 사용
+     * - challenge.getStatus()(UPCOMING/ONGOING 등)는 ChallengeScheduler의 일배치(자정)로만 갱신되어
+     *   실제 날짜와 시간차가 생길 수 있으므로, 상태값 대신 KST 날짜를 startDate와 직접 비교한다.
+     * - 한국 시간(KST, Asia/Seoul) 기준, 시작일 전날 23:59:59까지만 허용, 시작일 당일부터 예외 발생
+     */
+    private void validateBeforeStartDate(Challenge challenge, ErrorCode errorCode) {
+        // 한국 시간 기준 현재 날짜
         LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
         // 챌린지 시작일 (startDate는 LocalDateTime으로 저장되어 있으므로 toLocalDate() 변환)
         LocalDate startDate = challenge.getStartDate().toLocalDate();
 
-        // 시작일 당일 또는 이후라면 수정 불가
+        // 시작일 당일 또는 이후라면 예외 발생
         if (!todayKst.isBefore(startDate)) {
-            throw new GlobalException(ErrorCode.CHALLENGE_UPDATE_PERIOD_EXPIRED);
+            throw new GlobalException(errorCode);
         }
     }
 
