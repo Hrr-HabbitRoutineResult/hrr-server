@@ -213,4 +213,20 @@ public class ChallengeController {
                 challengeService.updateChallenge(userDetails.getUser(), challengeId, request)
         );
     }
+
+    @Operation(
+            summary = "챌린지 나가기",
+            description = "참가 중인 챌린지에서 나갑니다. 방장은 나갈 수 없으며, 챌린지 시작일 전까지만 가능합니다."
+    )
+    @PostMapping("/{challengeId}/leave")
+    public ApiResponse<ChallengeResponseDto.LeaveChallengeDto> leaveChallenge(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable("challengeId") Long challengeId
+    ) {
+        return ApiResponse.onSuccess(
+                SuccessCode.CHALLENGE_LEAVE_OK,
+                challengeService.leaveChallenge(userDetails.getUser(), challengeId)
+        );
+    }
 }
