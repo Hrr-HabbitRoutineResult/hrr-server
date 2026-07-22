@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.point.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -21,6 +22,9 @@ public interface PointHistoryRepository extends JpaRepository<PointHistory, Long
 
     // 라운드 단위 중복 지급 방지 체크용 (FLAWLESS_ROUND, WEEKx_PERFECT)
     boolean existsByUserAndPointTypeAndRound(User user, PointType pointType, Round round);
+
+    // 특정 인증글로 인해 지급된 포인트 내역 전체 조회
+    List<PointHistory> findAllByVerificationId(Long verificationId);
 
     /** 내 포인트 적립 내역 조회 */
     @Query("SELECT p FROM PointHistory p " +
