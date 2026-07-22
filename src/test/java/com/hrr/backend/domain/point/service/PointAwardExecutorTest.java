@@ -43,8 +43,8 @@ class PointAwardExecutorTest {
         given(pointHistoryRepository.save(any(PointHistory.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
-        // when
-        pointAwardExecutor.execute(user, PointType.FIRST_VERIFICATION, challenge, null, null);
+        // when (verification은 이 케이스에서 null - FIRST_VERIFICATION이지만 연결 인증글 없이 호출된 예시)
+        pointAwardExecutor.execute(user, PointType.FIRST_VERIFICATION, challenge, null, null, null);
 
         // then: 저장 -> flush -> DB 원자 증가 순서로 호출되어야 함
         InOrder inOrder = Mockito.inOrder(pointHistoryRepository, userRepository);

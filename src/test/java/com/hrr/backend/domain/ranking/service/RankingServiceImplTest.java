@@ -56,6 +56,41 @@ class RankingServiceImplTest {
     }
 
     @Test
+    @DisplayName("전체 스냅샷은 있지만 내 스냅샷이 없으면(신규 가입자 등) 에러 대신 null 필드로 응답한다")
+    void getMyRankingBoard_returnsNullFields_whenMySnapshotMissing() {
+        // given
+        rankingService = new RankingServiceImpl(userRankSnapshotRepository, rankingConverter);
+
+        User user = User.builder().id(1L).nickname("신규유저").points(0L).build();
+        LocalDate latest = LocalDate.of(2026, 7, 20);
+
+        User topUser = User.builder().id(9101L).nickname("라인").points(2700L).build();
+        UserRankSnapshot topSnapshot = UserRankSnapshot.builder()
+                .id(1L).user(topUser).ranking(1).points(2700L).totalUserCount(132).snapshotDate(latest)
+                .build();
+
+        given(userRankSnapshotRepository.findLatestSnapshotDate()).willReturn(Optional.of(latest));
+        given(userRankSnapshotRepository.findTopByRanking(eq(latest), any())).willReturn(List.of(topSnapshot));
+        given(userRankSnapshotRepository.findByUserIdAndSnapshotDate(1L, latest)).willReturn(Optional.empty());
+
+        // when
+        RankingResponseDto.BoardDto result = rankingService.getMyRankingBoard(user);
+
+        // then: 에러 없이 200 응답, 나와 관련된 필드는 전부 null
+        assertThat(result.getBoard().getMyRank()).isNull();
+        assertThat(result.getBoard().getTopPercent()).isNull();
+        assertThat(result.getBoard().getRankChange()).isNull();
+        assertThat(result.getBoard().getRankChangeMessage()).isNull();
+        assertThat(result.getBoard().getMyPoints()).isNull();
+        // 상위 5명은 그대로 노출되고, 전체 인원수는 상위 랭커의 스냅샷 값에서 가져옴
+        assertThat(result.getBoard().getTopRankers()).hasSize(1);
+        assertThat(result.getBoard().getTotalUserCount()).isEqualTo(132);
+        assertThat(result.getBoard().getSnapshotDate()).isEqualTo(latest);
+        // 상단 프로필 영역은 실시간 값 그대로 노출
+        assertThat(result.getMyProfile().getNickname()).isEqualTo("신규유저");
+    }
+
+    @Test
     @DisplayName("직전 스냅샷이 있으면 등수 변화(rankChange)가 계산된다 - 등수가 낮아지면(숫자가 작아지면) 상승")
     void getMyRankingBoard_calculatesPositiveRankChange_whenRankImproved() {
         // given

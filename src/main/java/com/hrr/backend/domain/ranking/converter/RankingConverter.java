@@ -84,6 +84,14 @@ public class RankingConverter {
                 .build();
     }
 
+    private RankingResponseDto.MyProfileDto toMyProfileDto(User user) {
+        return RankingResponseDto.MyProfileDto.builder()
+                .nickname(user.getDisplayNickname())
+                .profileImage(s3UrlUtil.toFullUrl(user.getProfileImage()))
+                .points(user.getPoints())
+                .build();
+    }
+
     private RankingResponseDto.RankingEntryDto toRankingEntryDto(UserRankSnapshot snapshot) {
         User rankedUser = snapshot.getUser();
         return RankingResponseDto.RankingEntryDto.builder()

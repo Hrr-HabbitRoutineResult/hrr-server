@@ -1,8 +1,8 @@
 package com.hrr.backend.domain.point.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -25,6 +25,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.point.converter.PointConverter;
+import com.hrr.backend.domain.point.entity.PointHistory;
 import com.hrr.backend.domain.point.entity.enums.PointType;
 import com.hrr.backend.domain.point.repository.PointHistoryRepository;
 import com.hrr.backend.domain.round.entity.Round;
@@ -33,6 +34,8 @@ import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.RandomMission;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationAbsenceLogRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
@@ -52,6 +55,8 @@ class PointServiceImplTest {
     private PointConverter pointConverter;
     @Mock
     private PointAwardExecutor pointAwardExecutor;
+    @Mock
+    private UserRepository userRepository;
 
     @Test
     @DisplayName("챌린지 첫 인증 포인트는 아직 지급된 적 없으면 PointAwardExecutor를 호출한다")
@@ -59,16 +64,17 @@ class PointServiceImplTest {
         // given
         User user = User.builder().id(1L).points(0L).build();
         Challenge challenge = Challenge.builder().id(10L).build();
+        Verification verification = Verification.builder().id(500L).build();
 
         given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge))
                 .willReturn(false);
 
         // when
-        pointService.earnFirstVerificationPoint(user, challenge);
+        pointService.earnFirstVerificationPoint(user, challenge, verification);
 
         // then
         verify(pointAwardExecutor, times(1))
-                .execute(user, PointType.FIRST_VERIFICATION, challenge, null, null);
+                .execute(user, PointType.FIRST_VERIFICATION, challenge, null, null, verification);
     }
 
     @Test
@@ -77,15 +83,16 @@ class PointServiceImplTest {
         // given
         User user = User.builder().id(1L).points(5L).build();
         Challenge challenge = Challenge.builder().id(10L).build();
+        Verification verification = Verification.builder().id(500L).build();
 
         given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge))
                 .willReturn(true);
 
         // when
-        pointService.earnFirstVerificationPoint(user, challenge);
+        pointService.earnFirstVerificationPoint(user, challenge, verification);
 
         // then
-        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -100,7 +107,7 @@ class PointServiceImplTest {
 
         // then
         verify(pointAwardExecutor, times(1))
-                .execute(user, PointType.RANDOM_MISSION, null, null, mission);
+                .execute(user, PointType.RANDOM_MISSION, null, null, mission, null);
     }
 
     @Test
@@ -120,7 +127,7 @@ class PointServiceImplTest {
 
         // then
         verify(pointAwardExecutor, times(1))
-                .execute(user, PointType.CHALLENGE_MASTER, challenge, null, null);
+                .execute(user, PointType.CHALLENGE_MASTER, challenge, null, null, null);
     }
 
     @Test
@@ -137,7 +144,7 @@ class PointServiceImplTest {
         pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
 
         // then
-        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -156,11 +163,11 @@ class PointServiceImplTest {
         pointService.checkAndEarnChallengeMasterPoint(user, challenge, userChallenge);
 
         // then
-        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("주차 퍼펙트 포인트는 그 주의 마지막 인증일에 결석이 없으면 PointAwardExecutor를 호출한다")
+    @DisplayName("주차 퍼펙트 포인트는 그 주의 마지막 인증일에 결석이 없으면 PointAwardExecutor를 호출한다 (트리거 인증글도 함께 전달)")
     void checkAndEarnWeeklyPerfectPoint_awards_whenLastDayAndNoAbsence() {
         // given: 라운드 시작일은 월요일(2026-07-06), 인증 요일은 월/수/금
         LocalDate roundStart = LocalDate.of(2026, 7, 6); // Monday
@@ -179,6 +186,7 @@ class PointServiceImplTest {
         RoundRecord roundRecord = RoundRecord.builder().id(30L).build();
         User user = User.builder().id(1L).points(0L).build();
         UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).build();
+        Verification verification = Verification.builder().id(700L).build();
 
         // 1주차 마지막 인증일 = 7/10(금)
         LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
@@ -190,11 +198,11 @@ class PointServiceImplTest {
                 .willReturn(false);
 
         // when
-        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
+        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt, verification);
 
         // then
         verify(pointAwardExecutor, times(1))
-                .execute(user, PointType.WEEK1_PERFECT, challenge, round, null);
+                .execute(user, PointType.WEEK1_PERFECT, challenge, round, null, verification);
     }
 
     @Test
@@ -217,17 +225,18 @@ class PointServiceImplTest {
         RoundRecord roundRecord = RoundRecord.builder().id(30L).build();
         User user = User.builder().id(1L).points(0L).build();
         UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).build();
+        Verification verification = Verification.builder().id(700L).build();
 
         // 1주차 인증일이지만 마지막 날(금)이 아닌 수요일(7/8)에 인증
         LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 8, 10, 0);
 
         // when
-        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
+        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt, verification);
 
         // then: 마지막 날이 아니므로 결석 조회조차 하지 않고 즉시 반환
         verify(verificationAbsenceLogRepository, never())
                 .countByRoundRecordIdAndAbsenceDateBetween(any(), any(), any());
-        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -250,6 +259,7 @@ class PointServiceImplTest {
         RoundRecord roundRecord = RoundRecord.builder().id(30L).build();
         User user = User.builder().id(1L).points(0L).build();
         UserChallenge userChallenge = UserChallenge.builder().id(50L).user(user).build();
+        Verification verification = Verification.builder().id(700L).build();
 
         LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 10, 10, 0); // 1주차 마지막 인증일(금)
 
@@ -258,10 +268,10 @@ class PointServiceImplTest {
         )).willReturn(1L); // 결석 1회 존재
 
         // when
-        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt);
+        pointService.checkAndEarnWeeklyPerfectPoint(userChallenge, roundRecord, round, challenge, verifiedAt, verification);
 
         // then
-        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any());
+        verify(pointAwardExecutor, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -298,13 +308,13 @@ class PointServiceImplTest {
         // when
         pointService.checkAndEarnFlawlessRoundPoints(endedRound);
 
-        // then: 결석 없고 미지급 상태인 noAbsenceUser에 대해서만 호출
+        // then: 결석 없고 미지급 상태인 noAbsenceUser에 대해서만 호출 (verification은 항상 null)
         verify(pointAwardExecutor, times(1))
-                .execute(noAbsenceUser, PointType.FLAWLESS_ROUND, challenge, endedRound, null);
+                .execute(noAbsenceUser, PointType.FLAWLESS_ROUND, challenge, endedRound, null, null);
         verify(pointAwardExecutor, never())
-                .execute(eq(hasAbsenceUser), any(), any(), any(), any());
+                .execute(eq(hasAbsenceUser), any(), any(), any(), any(), any());
         verify(pointAwardExecutor, never())
-                .execute(eq(alreadyAwardedUser), any(), any(), any(), any());
+                .execute(eq(alreadyAwardedUser), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -313,14 +323,61 @@ class PointServiceImplTest {
         // given
         User user = User.builder().id(1L).points(0L).build();
         Challenge challenge = Challenge.builder().id(10L).build();
+        Verification verification = Verification.builder().id(700L).build();
 
         given(pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge))
                 .willReturn(false);
         willThrow(new DataIntegrityViolationException("duplicate"))
-                .given(pointAwardExecutor).execute(user, PointType.FIRST_VERIFICATION, challenge, null, null);
+                .given(pointAwardExecutor).execute(user, PointType.FIRST_VERIFICATION, challenge, null, null, verification);
 
         // when & then: 예외가 밖으로 전파되지 않아야 함 (동시성으로 인한 중복은 정상 케이스로 흡수)
-        assertThatCode(() -> pointService.earnFirstVerificationPoint(user, challenge))
+        assertThatCode(() -> pointService.earnFirstVerificationPoint(user, challenge, verification))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("revokePointsForVerification: 그 인증글로 지급된 포인트가 있으면 전부 삭제하고 유저 포인트를 합계만큼 원자적으로 차감한다")
+    void revokePointsForVerification_deletesHistoriesAndDecreasesUserPoints() {
+        // given
+        User owner = User.builder().id(1L).points(10L).build();
+        Challenge challenge = Challenge.builder().id(10L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(owner).challenge(challenge).build();
+        RoundRecord roundRecord = RoundRecord.builder().id(30L).userChallenge(userChallenge).build();
+        Verification verification = Verification.builder().id(999L).roundRecord(roundRecord).build();
+
+        PointHistory firstVerificationHistory = PointHistory.builder()
+                .id(1L).points(1).pointType(PointType.FIRST_VERIFICATION).build();
+        PointHistory weekPerfectHistory = PointHistory.builder()
+                .id(2L).points(3).pointType(PointType.WEEK1_PERFECT).build();
+
+        given(pointHistoryRepository.findAllByVerificationId(999L))
+                .willReturn(List.of(firstVerificationHistory, weekPerfectHistory));
+
+        // when
+        pointService.revokePointsForVerification(verification);
+
+        // then: 1P + 3P = 4P 회수
+        verify(pointHistoryRepository, times(1))
+                .deleteAll(List.of(firstVerificationHistory, weekPerfectHistory));
+        verify(userRepository, times(1)).decreasePoints(1L, 4L);
+    }
+
+    @Test
+    @DisplayName("revokePointsForVerification: 그 인증글로 지급된 포인트가 없으면 아무 것도 하지 않는다")
+    void revokePointsForVerification_doesNothing_whenNoLinkedHistory() {
+        // given
+        User owner = User.builder().id(1L).points(10L).build();
+        UserChallenge userChallenge = UserChallenge.builder().id(50L).user(owner).build();
+        RoundRecord roundRecord = RoundRecord.builder().id(30L).userChallenge(userChallenge).build();
+        Verification verification = Verification.builder().id(999L).roundRecord(roundRecord).build();
+
+        given(pointHistoryRepository.findAllByVerificationId(999L)).willReturn(List.of());
+
+        // when
+        pointService.revokePointsForVerification(verification);
+
+        // then
+        verify(pointHistoryRepository, never()).deleteAll(any());
+        verify(userRepository, never()).decreasePoints(any(), anyLong());
     }
 }
