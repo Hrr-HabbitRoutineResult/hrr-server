@@ -25,6 +25,8 @@ import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.RandomMission;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.repository.VerificationAbsenceLogRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.response.SliceResponseDto;
@@ -48,20 +50,21 @@ public class PointServiceImpl implements PointService {
     private final VerificationAbsenceLogRepository verificationAbsenceLogRepository;
     private final PointConverter pointConverter;
     private final PointAwardExecutor pointAwardExecutor;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
-    public void earnFirstVerificationPoint(User user, Challenge challenge) {
+    public void earnFirstVerificationPoint(User user, Challenge challenge, Verification verification) {
         if (pointHistoryRepository.existsByUserAndPointTypeAndChallenge(user, PointType.FIRST_VERIFICATION, challenge)) {
             return;
         }
-        awardPoint(user, PointType.FIRST_VERIFICATION, challenge, null, null);
+        awardPoint(user, PointType.FIRST_VERIFICATION, challenge, null, null, verification);
     }
 
     @Override
     @Transactional
     public void earnRandomMissionPoint(User user, RandomMission randomMission) {
-        awardPoint(user, PointType.RANDOM_MISSION, null, null, randomMission);
+        awardPoint(user, PointType.RANDOM_MISSION, null, null, randomMission, null);
     }
 
     @Override
@@ -84,7 +87,7 @@ public class PointServiceImpl implements PointService {
                     continue; // 이미 지급됨 (재처리 대비 방어)
                 }
 
-                awardPoint(user, PointType.FLAWLESS_ROUND, challenge, endedRound, null);
+                awardPoint(user, PointType.FLAWLESS_ROUND, challenge, endedRound, null, null);
             } catch (Exception e) {
                 log.error("[Point] 무결석 완주 포인트 지급 실패. roundRecordId={}", record.getId(), e);
             }
@@ -105,7 +108,7 @@ public class PointServiceImpl implements PointService {
             return;
         }
 
-        awardPoint(user, PointType.CHALLENGE_MASTER, challenge, null, null);
+        awardPoint(user, PointType.CHALLENGE_MASTER, challenge, null, null, null);
     }
 
     @Override
@@ -115,7 +118,8 @@ public class PointServiceImpl implements PointService {
             RoundRecord roundRecord,
             Round round,
             Challenge challenge,
-            LocalDateTime verifiedAt
+            LocalDateTime verifiedAt,
+            Verification verification
     ) {
         LocalDate verifiedDate = verifiedAt.toLocalDate();
         LocalDate roundStart = round.getStartDate();
@@ -157,7 +161,30 @@ public class PointServiceImpl implements PointService {
             return; // 이미 지급됨 (재처리 대비 방어)
         }
 
-        awardPoint(userChallenge.getUser(), weekType, challenge, round, null);
+        awardPoint(userChallenge.getUser(), weekType, challenge, round, null, verification);
+    }
+
+    @Override
+    @Transactional
+    public void revokePointsForVerification(Verification verification) {
+        List<PointHistory> histories = pointHistoryRepository.findAllByVerificationId(verification.getId());
+
+        if (histories.isEmpty()) {
+            return; // 이 인증글로 지급된 포인트가 없으면 할 일 없음
+        }
+
+        long totalToRevoke = histories.stream()
+                .mapToLong(PointHistory::getPoints)
+                .sum();
+
+        User user = verification.getRoundRecord().getUserChallenge().getUser();
+
+        // 인증 삭제와 같은 트랜잭션 안에서 호출되어, 인증 삭제와 포인트 회수가 함께 성공/실패한다.
+        pointHistoryRepository.deleteAll(histories);
+        userRepository.decreasePoints(user.getId(), totalToRevoke);
+
+        log.info("[Point] 인증 삭제로 인한 포인트 회수. verificationId={}, userId={}, 회수 포인트={}",
+                verification.getId(), user.getId(), totalToRevoke);
     }
 
     @Override
@@ -180,9 +207,9 @@ public class PointServiceImpl implements PointService {
     }
 
     // 실제 포인트 적립 처리: PointAwardExecutor(REQUIRES_NEW)에 위임하여 독립 트랜잭션으로 처리
-    private void awardPoint(User user, PointType type, Challenge challenge, Round round, RandomMission randomMission) {
+    private void awardPoint(User user, PointType type, Challenge challenge, Round round, RandomMission randomMission, Verification verification) {
         try {
-            pointAwardExecutor.execute(user, type, challenge, round, randomMission);
+            pointAwardExecutor.execute(user, type, challenge, round, randomMission, verification);
         } catch (DataIntegrityViolationException e) {
             // 동시 요청 등으로 인해 DB 유니크 제약에 걸린 경우 - 이미 지급된 것으로 간주하고 조용히 무시(멱등 처리)
             log.info("[Point] 유니크 제약으로 인해 중복 지급을 건너뜁니다. userId={}, type={}", user.getId(), type);
