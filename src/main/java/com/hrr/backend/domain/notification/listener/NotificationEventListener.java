@@ -4,6 +4,7 @@ import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
+import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
 import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
@@ -53,6 +54,17 @@ public class NotificationEventListener {
     public void handleChallengeUpdatedEvent(ChallengeUpdatedEvent event) {
         log.info("[알림 이벤트 리스너] 챌린지 수정 알림 처리 시작 | ChallengeId={}", event.challengeId());
         notificationCommandService.sendChallengeUpdatedNotification(event);
+    }
+
+    /**
+     * 챌린지 빈자리 발생 이벤트 핸들러
+     * 정원 상태에서 참여자 이탈 후 비동기로 빈자리 알림을 생성
+     */
+    @Async("getAsyncExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleChallengeVacancyEvent(ChallengeVacancyEvent event) {
+        log.info("[알림 이벤트 리스너] 챌린지 빈자리 알림 처리 시작 | ChallengeId={}", event.challengeId());
+        notificationCommandService.sendChallengeVacancyNotification(event);
     }
 
     /**
