@@ -84,7 +84,7 @@ public class ChallengeConverter {
             long remainDays,
             boolean isParticipant,
             boolean isLiked,
-            ActionButtonStatus actionButtonStatus
+            ActionButtonStatus actionButtonStatus,
             boolean isOwner
     ) {
         // 방장 정보 마스킹: owner가 null(정보 삭제됨)이거나 비활성 상태(탈퇴 처리됨)인 경우 통합 처리
