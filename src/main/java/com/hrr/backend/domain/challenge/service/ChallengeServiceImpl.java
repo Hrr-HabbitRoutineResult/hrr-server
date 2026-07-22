@@ -200,10 +200,14 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 버튼 상태 결정
 		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
 
+        // 현재 유저가 방장인지 여부
+        boolean isOwner = (owner != null) && owner.getId().equals(user.getId());
+
 		// DTO 변환 및 반환
 		return challengeConverter.toHeaderInfoDto(
 				challenge, owner, isOwnerActive, startDate, endDate, remainDays,
-				isParticipant, isLiked, buttonStatus
+				isParticipant, isLiked, buttonStatus,
+                isOwner
 		);
 	}
 
@@ -493,6 +497,63 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toJoinResponseDto(challenge);
 	}
 
+    // 챌린지 나가기
+    @Override
+    @Transactional
+    public ChallengeResponseDto.LeaveChallengeDto leaveChallenge(User user, Long challengeId) {
+        // 참가자 수 정합성 보장을 위한 락 조회 (참가 로직과 동일)
+        Challenge challenge = findChallengeForUpdate(challengeId);
+
+        // 내 참여 정보 조회
+        UserChallenge userChallenge = userChallengeRepository.findByUserAndChallenge(user, challenge)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        // 비즈니스 룰 검증 (방장 여부, 참여 상태, 시작일 전 여부)
+        validateLeaveRequest(challenge, userChallenge);
+
+        // 현재 라운드의 내 RoundRecord 삭제 (아직 시작 전이라 라운드는 1개, 인증 기록도 없음)
+        Round currentRound = challenge.getCurrentRound();
+        if (currentRound != null) {
+            roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, currentRound.getId())
+                    .ifPresent(roundRecordRepository::delete);
+        }
+
+        // UserChallenge 삭제 (상태값으로 남기지 않고 참가 이력 자체를 제거)
+        userChallengeRepository.delete(userChallenge);
+
+        // 참가자 수 감소 (참가 로직의 반대)
+        challenge.decreaseCurrentParticipants();
+
+        // challenge_statics 재집계 (JOINED 기준 전체 재계산이라 join과 동일하게 재사용 가능)
+        challengeStaticsService.updateChallengeStatics(challenge);
+
+        return challengeConverter.toLeaveResponseDto(challenge);
+    }
+
+    /**
+     * 챌린지 나가기 요청에 대한 비즈니스 검증 로직
+     * - 참여 상태(JOINED)가 아니면 나가기 불가
+     * - 방장(OWNER)은 나가기 불가
+     * - 챌린지가 시작 전(UPCOMING)일 때만 나가기 가능
+     */
+    private void validateLeaveRequest(Challenge challenge, UserChallenge userChallenge) {
+
+        // 참여 중(JOINED) 상태가 아니면 나가기 불가
+        if (userChallenge.getStatus() != ChallengeJoinStatus.JOINED) {
+            throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
+        }
+
+        // 방장은 나가기 불가 (수정/삭제만 가능)
+        if (userChallenge.getRole() == UserChallengeRole.OWNER) {
+            throw new GlobalException(ErrorCode.CHALLENGE_LEAVE_FORBIDDEN_OWNER);
+        }
+
+        // 챌린지 시작 전(UPCOMING)까지만 나가기 가능
+        if (challenge.getStatus() != ChallengeStatus.UPCOMING) {
+            throw new GlobalException(ErrorCode.CHALLENGE_LEAVE_PERIOD_EXPIRED);
+        }
+    }
+
 	private void createRoundRecordOrFail(Challenge challenge, UserChallenge userChallenge) {
 		Round currentRound = challenge.getCurrentRound(); //
 
@@ -633,6 +694,23 @@ public class ChallengeServiceImpl implements ChallengeService {
 				})
 				.toList();
 	}
+
+    // 챌린지 수정용 상세 정보 조회
+    @Override
+    @Transactional(readOnly = true)
+    public ChallengeResponseDto.EditInfoDto getChallengeEditInfo(User user, Long challengeId) {
+        // 챌린지 조회 (요일 정보 포함)
+        Challenge challenge = findChallengeWithDays(challengeId);
+
+        // 방장 권한 검증 (updateChallenge와 동일한 검증 재사용)
+        validateOwner(user, challengeId);
+
+        // 수정 가능 기간 검증 (한국 시간 기준: 시작일 전날 23:59:59까지, updateChallenge와 동일한 검증 재사용)
+        validateUpdatePeriod(challenge);
+
+        return challengeConverter.toEditInfoDto(challenge);
+    }
+
     @Override
     @Transactional
     public ChallengeResponseDto.UpdateChallengeDto updateChallenge(
