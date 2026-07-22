@@ -42,7 +42,7 @@ import com.hrr.backend.global.common.enums.ChallengeDays;
 @ExtendWith(MockitoExtension.class)
 class PointServiceImplTest {
 
-    @Mock
+    @InjectMocks
     private PointServiceImpl pointService;
 
     @Mock
