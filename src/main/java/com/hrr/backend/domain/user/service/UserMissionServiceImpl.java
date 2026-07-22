@@ -115,9 +115,9 @@ public class UserMissionServiceImpl implements UserMissionService {
 	@Override
 	@Transactional
 	public void verifyRandomMission(User user, Long missionId, LocalDate date, String imageKey) {
-		UserMission userMission = userMissionRepository.findByUserAndDate(user, date).orElseThrow(()-> new GlobalException(
-			ErrorCode.RANDOM_MISSION_NOT_FOUND)
-		);
+        UserMission userMission = userMissionRepository.findByUserAndDateForUpdate(user, date).orElseThrow(()-> new GlobalException(
+                ErrorCode.RANDOM_MISSION_NOT_FOUND)
+        );
         // 이미 완료 처리된 미션이면 재인증되어도 포인트를 중복 지급하지 않음
         boolean alreadyCompleted = Boolean.TRUE.equals(userMission.getIsCompleted());
 		userMission.setImageKey(imageKey);
