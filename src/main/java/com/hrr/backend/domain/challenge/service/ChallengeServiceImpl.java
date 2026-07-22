@@ -730,7 +730,7 @@ public class ChallengeServiceImpl implements ChallengeService {
         // 공개/비공개 처리
         boolean isPublic = req.getIsPublic();
         boolean isViewerMode = isPublic && req.getIsViewerMode();
-        String password = isPublic ? null : req.getPassword();
+        String password = resolveUpdatedPassword(challenge, req);
 
         // Challenge 필드 업데이트
         challenge.update(
@@ -853,10 +853,21 @@ public class ChallengeServiceImpl implements ChallengeService {
 
         // 공개/비공개 및 비밀번호, 관찰자 모드 검증
         if (!req.getIsPublic()) {
-            // 비공개인데 비밀번호가 없거나 4자리 숫자가 아닌 경우
-            if (req.getPassword() == null || !req.getPassword().matches("^\\d{4}$")) {
+            boolean isPasswordProvided = req.getPassword() != null && !req.getPassword().isBlank();
+            boolean hadPasswordBefore = !challenge.getIsPublic()
+                    && challenge.getPassword() != null
+                    && !challenge.getPassword().isBlank();
+
+            if (isPasswordProvided) {
+                // 새 비밀번호를 입력한 경우 형식 검증 (4자리 숫자)
+                if (!req.getPassword().matches("^\\d{4}$")) {
+                    throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED);
+                }
+            } else if (!hadPasswordBefore) {
+                // 미입력인데 기존 비밀번호도 없는 경우(신규로 비공개 전환 등)는 비밀번호 필수
                 throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_PASSWORD_REQUIRED);
             }
+            // 미입력 + 기존 비밀번호 있음 -> 기존 비밀번호를 유지하므로 통과
             // 비공개 챌린지인데 관찰자 모드를 설정한 경우
             if (req.getIsViewerMode()) {
                 throw new GlobalException(ErrorCode.CHALLENGE_PRIVATE_VIEWER_MODE_NOT_ALLOWED);
@@ -867,6 +878,20 @@ public class ChallengeServiceImpl implements ChallengeService {
                 throw new GlobalException(ErrorCode.CHALLENGE_PUBLIC_PASSWORD_INPUT);
             }
         }
+    }
+
+    /**
+     * 챌린지 수정 기능 - 수정 요청의 비밀번호 필드를 실제 저장할 비밀번호로 변환
+     * - 공개 전환 시 비밀번호는 null
+     * - 비공개이면서 새 비밀번호가 입력된 경우 그 값으로 교체 (형식은 validateUpdateRequest에서 이미 검증됨)
+     * - 비공개이면서 비밀번호 미입력인 경우 기존 비밀번호 유지 (validateUpdateRequest를 통과했다면 기존 비밀번호가 반드시 존재함)
+     */
+    private String resolveUpdatedPassword(Challenge challenge, ChallengeRequestDto.UpdateChallengeDto req) {
+        if (req.getIsPublic()) {
+            return null;
+        }
+        boolean isPasswordProvided = req.getPassword() != null && !req.getPassword().isBlank();
+        return isPasswordProvided ? req.getPassword() : challenge.getPassword();
     }
 
 	/**

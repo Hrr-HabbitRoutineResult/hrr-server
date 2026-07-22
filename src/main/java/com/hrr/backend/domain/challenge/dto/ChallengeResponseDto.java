@@ -265,8 +265,8 @@ public class ChallengeResponseDto {
         @Schema(description = "공개 여부 (true: 공개, false: 비공개)", example = "true")
         private Boolean isPublic;
 
-        @Schema(description = "비공개 비밀번호 (4자리 숫자). 공개 챌린지라면 null", example = "1234")
-        private String password;
+        @Schema(description = "비공개 비밀번호 설정 여부 (true: 설정됨, false: 없음/공개 챌린지). 평문 비밀번호는 응답에 포함되지 않으며, 수정 시 비워두면 기존 비밀번호가 유지됩니다.", example = "true")
+        private Boolean hasPassword;
 
         @Schema(description = "챌린지 카테고리", example = "STUDY")
         private Category category;

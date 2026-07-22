@@ -195,7 +195,7 @@ public class ChallengeConverter {
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
                 .isPublic(challenge.getIsPublic())
-                .password(challenge.getPassword())
+                .hasPassword(challenge.getPassword() != null && !challenge.getPassword().isBlank())
                 .category(challenge.getCategory())
                 .verificationType(challenge.getVerificationType())
                 .startDate(challenge.getStartDate().toLocalDate())
