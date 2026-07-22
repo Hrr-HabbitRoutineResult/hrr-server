@@ -39,6 +39,10 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
             Pageable pageable
     );
 
+    // 특정 스냅샷일의 기존 행을 전부 삭제 (같은 트랜잭션에서 upsertWeeklySnapshot 이전에 호출하여 원자적 교체)
+    @Modifying
+    int deleteBySnapshotDate(LocalDate snapshotDate);
+
     /** 매주 월요일 00시, 전체 ACTIVE 유저를 대상으로 포인트 내림차순 등수를 계산하여 스냅샷 테이블에 UPSERT*/
     @Modifying
     @Query(value = """

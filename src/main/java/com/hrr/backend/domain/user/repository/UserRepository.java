@@ -32,4 +32,9 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
     @Query("UPDATE User u SET u.followingCount = u.followingCount - 1 " +
             "WHERE u.id IN :userIds AND u.followingCount > 0")
     void decrementFollowingCounts(@Param("userIds") List<Long> userIds);
+
+    // 포인트 원자적 증가 (PointAwardExecutor에서 REQUIRES_NEW 트랜잭션 내 point_history 저장과 함께 커밋되도록 사용)
+    @Modifying
+    @Query("UPDATE User u SET u.points = u.points + :amount WHERE u.id = :userId")
+    void increasePoints(@Param("userId") Long userId, @Param("amount") long amount);
 }
