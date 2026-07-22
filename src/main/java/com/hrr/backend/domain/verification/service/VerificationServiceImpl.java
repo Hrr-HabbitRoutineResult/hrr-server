@@ -237,9 +237,9 @@ public class VerificationServiceImpl implements VerificationService {
             roundRecord.increaseVerificationCount();
             publishQuestionVerificationCreatedEventIfNeeded(savedVerification, userId);
             //포인트 기능
-            pointService.earnFirstVerificationPoint(user, challenge);
+            pointService.earnFirstVerificationPoint(user, challenge, savedVerification);
             pointService.checkAndEarnWeeklyPerfectPoint(
-                    userChallenge, roundRecord, round, challenge, savedVerification.getCreatedAt()
+                    userChallenge, roundRecord, round, challenge, savedVerification.getCreatedAt(), savedVerification
             );
             return verificationConverter.toResponseDto(savedVerification);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -294,9 +294,9 @@ public class VerificationServiceImpl implements VerificationService {
             roundRecord.increaseVerificationCount();
             publishQuestionVerificationCreatedEventIfNeeded(saved, userId);
             //포인트 기능
-            pointService.earnFirstVerificationPoint(user, challenge);
+            pointService.earnFirstVerificationPoint(user, challenge, saved);
             pointService.checkAndEarnWeeklyPerfectPoint(
-                    userChallenge, roundRecord, round, challenge, saved.getCreatedAt()
+                    userChallenge, roundRecord, round, challenge, saved.getCreatedAt(), saved
             );
             return verificationConverter.toResponseDto(saved);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -621,6 +621,9 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 인증 요일 + 인증 시간대 안에서만 삭제 가능
         validateVerificationEditDeleteWindow(verification);
+
+        // point_history가 verification을 FK로 참조하므로, verification을 지우기 전에 먼저 회수 처리해야 함
+        pointService.revokePointsForVerification(verification);
 
         verificationRepository.delete(verification);
     }
