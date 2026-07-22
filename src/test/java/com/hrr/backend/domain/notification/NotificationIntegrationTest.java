@@ -390,8 +390,8 @@ class NotificationIntegrationTest {
             assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.CHALLENGE);
             assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.CHALLENGE);
             assertThat(notificationEvent.getTargetId()).isEqualTo(testChallenge.getId());
-            assertThat(notificationEvent.getContextType()).isNull();
-            assertThat(notificationEvent.getContextId()).isNull();
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getContextId()).isEqualTo(testChallenge.getId());
             assertThat(notificationEvent.getTitle()).isEqualTo("빈자리가 있어요");
             assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에 빈자리가 생겼어요!\n지금 바로 챌린지에 참여해보세요.");
 
