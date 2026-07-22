@@ -421,7 +421,7 @@ class ChallengeServiceInfoTest {
     }
 
     private void mockConverter(ActionButtonStatus expectedStatus) {
-        given(challengeConverter.toHeaderInfoDto(any(), any(), anyBoolean(), any(), any(), anyLong(), anyBoolean(), anyBoolean(), any()))
+        given(challengeConverter.toHeaderInfoDto(any(), any(), anyBoolean(), any(), any(), anyLong(), anyBoolean(), anyBoolean(), any(), anyBoolean()))
                 .willAnswer(invocation -> ChallengeResponseDto.HeaderInfoDto.builder()
                         .actionButtonStatus(invocation.getArgument(8))
                         .build());
