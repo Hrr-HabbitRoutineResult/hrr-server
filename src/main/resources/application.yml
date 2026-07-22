@@ -54,6 +54,7 @@ model:
   api:
     url: http://localhost:8000/recommend
     embedding-url: http://localhost:8000/embedding
+    health-url: http://localhost:8000/
 
 apple:
   team-id: ${APPLE_TEAM_ID}

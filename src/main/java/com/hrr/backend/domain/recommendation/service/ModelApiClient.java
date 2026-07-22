@@ -4,7 +4,7 @@ import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
 import com.hrr.backend.domain.recommendation.dto.request.ModelApiRequest;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -15,13 +15,16 @@ import org.springframework.web.client.RestTemplate;
 
 
 @Service
-@RequiredArgsConstructor
 public class ModelApiClient {
 
     @Value("${model.api.url}")
     private String modelApiUrl;
 
     private final RestTemplate restTemplate;
+
+    public ModelApiClient(@Qualifier("modelApiRestTemplate") RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     public ModelApiResponse requestRecommendations(ModelApiRequest request) {
         try {
