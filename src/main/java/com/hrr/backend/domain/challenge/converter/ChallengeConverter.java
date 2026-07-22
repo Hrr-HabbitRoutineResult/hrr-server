@@ -17,6 +17,7 @@ import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import com.hrr.backend.global.common.enums.VerificationType;
 
 @Component
 @RequiredArgsConstructor
@@ -84,6 +85,7 @@ public class ChallengeConverter {
             boolean isParticipant,
             boolean isLiked,
             ActionButtonStatus actionButtonStatus
+            boolean isOwner
     ) {
         // 방장 정보 마스킹: owner가 null(정보 삭제됨)이거나 비활성 상태(탈퇴 처리됨)인 경우 통합 처리
         String nickname;
@@ -119,6 +121,7 @@ public class ChallengeConverter {
                 .isPublic(challenge.getIsPublic())
                 .isObserverMode(challenge.getIsViewerMode())
                 .isParticipant(isParticipant)
+                .isOwner(isOwner)
                 .isLiked(isLiked)
                 .owner(ownerDto)
                 .actionButtonStatus(actionButtonStatus)
@@ -172,5 +175,38 @@ public class ChallengeConverter {
 
     public ChallengeResponseDto.UpdateChallengeDto toUpdateResponseDto(Challenge challenge) {
         return new ChallengeResponseDto.UpdateChallengeDto(challenge.getId());
+    }
+
+    public ChallengeResponseDto.LeaveChallengeDto toLeaveResponseDto(Challenge challenge) {
+        return new ChallengeResponseDto.LeaveChallengeDto(
+                challenge.getId(),
+                challenge.getCurrentParticipants()
+        );
+    }
+
+    public ChallengeResponseDto.EditInfoDto toEditInfoDto(Challenge challenge) {
+        // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환 (toProfileDto와 동일한 방식)
+        List<ChallengeDays> daysOfWeek = challenge.getChallengeDays().stream()
+                .map(ChallengeDayJoin::getDay)
+                .sorted()
+                .toList();
+
+        return ChallengeResponseDto.EditInfoDto.builder()
+                .title(challenge.getTitle())
+                .description(challenge.getDescription())
+                .isPublic(challenge.getIsPublic())
+                .password(challenge.getPassword())
+                .category(challenge.getCategory())
+                .verificationType(challenge.getVerificationType())
+                .startDate(challenge.getStartDate().toLocalDate())
+                .maxParticipants(challenge.getMaxParticipants())
+                .isViewerMode(challenge.getIsViewerMode())
+                .rule(challenge.getRule())
+                .verifyStartTime(challenge.getVerifyStartTime())
+                .verifyEndTime(challenge.getVerifyEndTime())
+                .daysOfWeek(daysOfWeek)
+                .imageKey(challenge.getImageKey())
+                .imageUrl(s3UrlUtil.toFullUrl(challenge.getImageKey()))
+                .build();
     }
 }
