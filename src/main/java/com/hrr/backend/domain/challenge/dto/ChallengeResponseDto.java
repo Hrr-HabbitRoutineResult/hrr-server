@@ -10,6 +10,7 @@ import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import com.hrr.backend.global.common.enums.VerificationType;
+import com.hrr.backend.global.common.enums.Category;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -155,6 +156,9 @@ public class ChallengeResponseDto {
 		@Schema(description = "현재 유저의 참여 여부", example = "true")
 		private Boolean isParticipant;
 
+        @Schema(description = "현재 유저가 방장인지 여부", example = "false")
+        private Boolean isOwner;
+
 		@Schema(description = "현재 유저의 좋아요(찜) 여부", example = "false")
 		private Boolean isLiked;
 
@@ -234,4 +238,67 @@ public class ChallengeResponseDto {
         private Long challengeId;
     }
 
+    @Getter
+    @AllArgsConstructor
+    @Schema(description = "챌린지 나가기 응답 DTO")
+    public static class LeaveChallengeDto {
+
+        @Schema(description = "나간 챌린지 ID", example = "1")
+        private Long challengeId;
+
+        @Schema(description = "나간 후 현재 인원 수", example = "9")
+        private Integer currentParticipantCount;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @Schema(description = "챌린지 수정용 상세 정보 응답 DTO (개설 화면 폼 채우기용)")
+    public static class EditInfoDto {
+
+        @Schema(description = "챌린지 제목", example = "백준 실버3 코테")
+        private String title;
+
+        @Schema(description = "챌린지 설명", example = "백준 실버3 매일 풀고 공유")
+        private String description;
+
+        @Schema(description = "공개 여부 (true: 공개, false: 비공개)", example = "true")
+        private Boolean isPublic;
+
+        @Schema(description = "비공개 비밀번호 설정 여부 (true: 설정됨, false: 없음/공개 챌린지). 평문 비밀번호는 응답에 포함되지 않으며, 수정 시 비워두면 기존 비밀번호가 유지됩니다.", example = "true")
+        private Boolean hasPassword;
+
+        @Schema(description = "챌린지 카테고리", example = "STUDY")
+        private Category category;
+
+        @Schema(description = "인증 방식", example = "PHOTO")
+        private VerificationType verificationType;
+
+        @Schema(description = "챌린지 시작일", example = "2025-11-24")
+        private LocalDate startDate;
+
+        @Schema(description = "최대 참여 인원", example = "10")
+        private Integer maxParticipants;
+
+        @Schema(description = "관찰자 모드 허용 여부", example = "true")
+        private Boolean isViewerMode;
+
+        @Schema(description = "챌린지 규칙", example = "하루에 1만 보 이상 걸은 스크린샷을 인증해야 합니다.")
+        private String rule;
+
+        @Schema(description = "인증 시작 시간", example = "10:00:00")
+        private LocalTime verifyStartTime;
+
+        @Schema(description = "인증 종료 시간", example = "18:00:00")
+        private LocalTime verifyEndTime;
+
+        @Schema(description = "인증 요일 목록", example = "[\"MONDAY\", \"THURSDAY\"]")
+        private List<ChallengeDays> daysOfWeek;
+
+        @Schema(description = "챌린지 이미지 Key", example = "challenges/uuid_image.jpg")
+        private String imageKey;
+
+        @Schema(description = "챌린지 이미지 미리보기 URL", example = "https://example.com/challenges/uuid_image.jpg")
+        private String imageUrl;
+    }
 }

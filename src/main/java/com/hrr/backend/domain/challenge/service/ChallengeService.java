@@ -70,4 +70,10 @@ public interface ChallengeService {
             Long challengeId,
             ChallengeRequestDto.UpdateChallengeDto requestDto
     );
+
+    // 챌린지 나가기 (방장 불가, 시작일 전까지만 가능)
+    ChallengeResponseDto.LeaveChallengeDto leaveChallenge(User user, Long challengeId);
+
+    // 챌린지 수정 화면 진입 시 폼을 채우기 위한 상세 정보 조회
+    ChallengeResponseDto.EditInfoDto getChallengeEditInfo(User user, Long challengeId);
 }
