@@ -201,7 +201,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
 
         // 현재 유저가 방장인지 여부
-        boolean isOwner = (owner != null) && owner.getId().equals(user.getId());
+        boolean isOwner = Objects.equals(owner != null ? owner.getId() : null, user.getId());
 
 		// DTO 변환 및 반환
 		return challengeConverter.toHeaderInfoDto(
