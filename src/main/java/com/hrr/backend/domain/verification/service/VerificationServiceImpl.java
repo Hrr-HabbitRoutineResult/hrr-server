@@ -18,7 +18,9 @@ import com.hrr.backend.domain.comment.dto.CommentResponseDto;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.comment.service.CommentService;
+import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
 import com.hrr.backend.domain.verification.dto.VerificationUpdateRequestDto;
+import org.springframework.context.ApplicationEventPublisher;
 import com.hrr.backend.domain.point.service.PointService;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -68,6 +70,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final CommentService commentService;
     private final CommentRepository commentRepository;
     private final UserBlockRepository userBlockRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final PointService pointService;
 
 
@@ -232,6 +235,7 @@ public class VerificationServiceImpl implements VerificationService {
             Verification savedVerification = verificationRepository.save(verification);
             verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
             roundRecord.increaseVerificationCount();
+            publishQuestionVerificationCreatedEventIfNeeded(savedVerification, userId);
             //포인트 기능
             pointService.earnFirstVerificationPoint(user, challenge);
             pointService.checkAndEarnWeeklyPerfectPoint(
@@ -288,6 +292,7 @@ public class VerificationServiceImpl implements VerificationService {
             Verification saved = verificationRepository.save(verification);
             verificationRepository.flush(); // DB 제약 조건 위반을 즉시 확인
             roundRecord.increaseVerificationCount();
+            publishQuestionVerificationCreatedEventIfNeeded(saved, userId);
             //포인트 기능
             pointService.earnFirstVerificationPoint(user, challenge);
             pointService.checkAndEarnWeeklyPerfectPoint(
@@ -346,6 +351,12 @@ public class VerificationServiceImpl implements VerificationService {
 
         if (alreadyVerified) {
             throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
+    }
+
+    private void publishQuestionVerificationCreatedEventIfNeeded(Verification verification, Long actorId) {
+        if (Boolean.TRUE.equals(verification.getIsQuestion())) {
+            eventPublisher.publishEvent(new QuestionVerificationCreatedEvent(verification.getId(), actorId));
         }
     }
 
@@ -791,4 +802,3 @@ public class VerificationServiceImpl implements VerificationService {
                 .build();
     }
 }
-

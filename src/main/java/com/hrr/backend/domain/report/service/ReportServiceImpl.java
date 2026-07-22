@@ -1,9 +1,11 @@
 package com.hrr.backend.domain.report.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.report.dto.ReportRequestDto;
 import com.hrr.backend.domain.report.entity.UserReport;
 import com.hrr.backend.domain.report.entity.VerificationPostReport;
@@ -43,6 +45,8 @@ public class ReportServiceImpl implements ReportService {
 
 	private final RoundRecordService roundRecordService;
 
+	private final ApplicationEventPublisher eventPublisher;
+
 	@Override
 	@Transactional
 	public void reportWeakVerification(User reporter,Long verificationId) {
@@ -81,7 +85,14 @@ public class ReportServiceImpl implements ReportService {
 		weakVerificationReportRepository.save(report);
 
 		// 경고 횟수를 업데이트 후 퇴출 여부를 결정하는 메소드 호출
+		int previousWarnCount = targetRecord.getWarnCount();
 		roundRecordService.synchronizeWarnCount(targetRecord.getId());
+		if (targetRecord.getWarnCount() > previousWarnCount) {
+			eventPublisher.publishEvent(new WeakVerificationWarningEvent(
+				targetVerification.getId(),
+				targetVerification.getUserChallenge().getUser().getId()
+			));
+		}
 	}
 
 	/**

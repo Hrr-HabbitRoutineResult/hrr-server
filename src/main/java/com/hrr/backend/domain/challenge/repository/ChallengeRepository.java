@@ -35,6 +35,11 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long>, Cha
 	@Query("SELECT c FROM Challenge c LEFT JOIN FETCH c.challengeDays WHERE c.id = :id")
 	Optional<Challenge> findByIdWithDays(@Param("id") Long id);
 
+	List<Challenge> findAllByStartDateGreaterThanEqualAndStartDateLessThan(
+			LocalDateTime startInclusive,
+			LocalDateTime endExclusive
+	);
+
 	/**
 	 * 챌린지 참가 처리 시 참가자 수 정합성 보장을 위한 비관적 락 조회
 	 */

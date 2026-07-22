@@ -6,6 +6,7 @@ import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.follow.service.FollowCountService;
+import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
@@ -14,6 +15,7 @@ import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -32,6 +34,7 @@ public class FollowService {
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
     private final FollowCountService followCountService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 사용자 팔로우 (공개 계정: 즉시 승인, 비공개 계정: 요청)
@@ -102,6 +105,11 @@ public class FollowService {
 
         followCountService.syncCounts(currentUserId);
         followCountService.syncCounts(followedUserId);
+
+        // 팔로우가 실제로 성립된 경우에만 알림 이벤트 발행
+        if (status == FollowStatus.APPROVED) {
+            eventPublisher.publishEvent(new FollowCreatedEvent(currentUser, followedUser));
+        }
 
         return FollowResponseDto.of(message, followedUserId, status);
     }
@@ -190,6 +198,8 @@ public class FollowService {
 
         followCountService.syncCounts(currentUserId);
         followCountService.syncCounts(requesterId);
+
+        eventPublisher.publishEvent(new FollowCreatedEvent(requester, currentUser));
 
         return FollowResponseDto.of("Follow request approved successfully", requesterId, FollowStatus.APPROVED);
     }

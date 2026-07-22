@@ -3,9 +3,7 @@ package com.hrr.backend.domain.round.service;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
 import com.hrr.backend.domain.round.dto.RoundDecisionResponseDto;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +29,6 @@ public class RoundDecisionServiceImpl implements RoundDecisionService {
     private final ChallengeRepository challengeRepository;
     private final UserChallengeRepository userChallengeRepository;
     private final RoundRecordRepository roundRecordRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -68,13 +65,6 @@ public class RoundDecisionServiceImpl implements RoundDecisionService {
         // rr은 영속 상태라 save 없어도 되지만, 명시적으로 해도 OK
         // roundRecordRepository.save(rr);
 
-        // 알림 이벤트 발행
-        // 비동기 리스너가 이 이벤트를 받아 SUCCESS 또는 CANCEL 알림을 생성
-        eventPublisher.publishEvent(new ChallengeExtensionResponseEvent(
-                currentRound.getId(),
-                uc.getUser(),
-                intent
-        ));
         // 응답 반환 (isResponded = true 포함)
         return RoundDecisionResponseDto.of(currentRound.getId(), intent);
     }

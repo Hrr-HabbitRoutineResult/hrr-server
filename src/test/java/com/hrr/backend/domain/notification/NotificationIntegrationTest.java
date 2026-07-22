@@ -2,16 +2,24 @@ package com.hrr.backend.domain.notification;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
 import com.hrr.backend.domain.notification.entity.*;
+import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
 import com.hrr.backend.domain.notification.entity.enums.NotificationTypeName;
+import com.hrr.backend.domain.notification.entity.enums.ResourceType;
 import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionResponseEvent;
+import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
+import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
+import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
+import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
+import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
+import com.hrr.backend.domain.follow.service.FollowService;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
-import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.User;
@@ -33,7 +41,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.PayloadApplicationEvent;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
@@ -47,11 +58,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@RecordApplicationEvents
 class NotificationIntegrationTest {
 
     @Autowired private NotificationScheduler notificationScheduler;
     @Autowired private NotificationCommandService notificationCommandService;
     @Autowired private NotificationEventListener eventListener;
+    @Autowired private FollowService followService;
+    @Autowired private FollowRepository followRepository;
     @Autowired private RoundRecordRepository roundRecordRepository;
     @Autowired private RoundRepository roundRepository;
     @Autowired private ChallengeRepository challengeRepository;
@@ -63,6 +77,7 @@ class NotificationIntegrationTest {
     @Autowired private NotificationTypeRepository notificationTypeRepository;
     @Autowired private NotificationSettingRepository notificationSettingRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private ApplicationEvents applicationEvents;
 
     private final LocalDate FIXED_DATE = LocalDate.of(2026, 3, 22);
     private final LocalDateTime FIXED_NOW = FIXED_DATE.atTime(10, 0);
@@ -109,6 +124,7 @@ class NotificationIntegrationTest {
         roundRepository.deleteAll();
         userChallengeRepository.deleteAll();
         challengeRepository.deleteAll();
+        followRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -191,30 +207,149 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("4. 연장 응답 결과: 개별 유저에게 성공 알림이 발송된다")
-    void challengeExtensionResponse_Integration_Test() throws InterruptedException {
+    @DisplayName("4. 챌린지 시작 하루 전 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
+    void challengeStart_Integration_Test() {
         // given
-        User user = createUser("responder", true);
-        createRoundRecord(joinChallenge(user));
-        roundRecordRepository.flush();
+        User u1 = createUser("start_user1", true);
+        User u2 = createUser("start_user2", true);
+        joinChallenge(u1);
+        joinChallenge(u2);
+        userChallengeRepository.flush();
 
-        ChallengeExtensionResponseEvent event = new ChallengeExtensionResponseEvent(
-                testRound.getId(), user, NextRoundIntent.CONTINUE);
+        ChallengeStartEvent event = new ChallengeStartEvent(testChallenge.getId());
 
         // when
-        eventListener.handleChallengeExtensionResponseEvent(event);
-        Thread.sleep(1500);
+        notificationCommandService.sendChallengeStartNotification(event);
 
         // then
         transactionTemplate.executeWithoutResult(status -> {
-            assertThat(notificationRepository.findAll()).hasSize(1);
-            assertThat(notificationRepository.findAll().get(0).getEvent().getType().getTypeName())
-                    .isEqualTo(NotificationTypeName.CHALLENGE_EXTENSION_SUCCESS);
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.CHALLENGE);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.CHALLENGE_START);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getContextId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("테스트 챌린지 D-1");
+            assertThat(notificationEvent.getMessage()).isEqualTo("내가 참여한 테스트 챌린지 챌린지가 내일 새로 시작해요");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+            assertThat(notificationEvent.getCreatedDate()).isEqualTo(LocalDate.now());
+
+            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getEvent().getId())
+                    .containsOnly(notificationEvent.getId());
         });
+
+        List<FcmPushSendEvent> pushEvents = applicationEvents.stream(FcmPushSendEvent.class).toList();
+        assertThat(pushEvents).hasSize(1);
+        assertThat(pushEvents.get(0).deliveries()).hasSize(2);
+        assertThat(pushEvents.get(0).notificationEvent().getType().getTypeName())
+                .isEqualTo(NotificationTypeName.CHALLENGE_START);
     }
 
     @Test
-    @DisplayName("5. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
+    @DisplayName("5. 챌린지 시작 하루 전 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
+    void challengeStart_DisabledSetting_Test() {
+        // given
+        User disabledUser = createUser("start_off", false);
+        joinChallenge(disabledUser);
+        userChallengeRepository.flush();
+
+        ChallengeStartEvent event = new ChallengeStartEvent(testChallenge.getId());
+
+        // when
+        notificationCommandService.sendChallengeStartNotification(event);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("start_off");
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.CHALLENGE_START);
+        });
+
+        assertThat(applicationEvents.stream(FcmPushSendEvent.class)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("6. 챌린지 수정 알림: 참여자 전원에게 내역을 저장하고 FCM 이벤트를 발행한다")
+    void challengeUpdated_Integration_Test() {
+        // given
+        User u1 = createUser("updated_user1", true);
+        User u2 = createUser("updated_user2", true);
+        joinChallenge(u1);
+        joinChallenge(u2);
+        userChallengeRepository.flush();
+
+        ChallengeUpdatedEvent event = new ChallengeUpdatedEvent(testChallenge.getId());
+
+        // when
+        notificationCommandService.sendChallengeUpdatedNotification(event);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.CHALLENGE);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getContextId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("테스트 챌린지");
+            assertThat(notificationEvent.getMessage()).isEqualTo("챌린지가 수정되었어요! 지금 확인해보세요.");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+            assertThat(notificationEvent.getCreatedDate()).isEqualTo(LocalDate.now());
+
+            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getEvent().getId())
+                    .containsOnly(notificationEvent.getId());
+        });
+
+        List<FcmPushSendEvent> pushEvents = applicationEvents.stream(FcmPushSendEvent.class).toList();
+        assertThat(pushEvents).hasSize(1);
+        assertThat(pushEvents.get(0).deliveries()).hasSize(2);
+        assertThat(pushEvents.get(0).notificationEvent().getType().getTypeName())
+                .isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
+    }
+
+    @Test
+    @DisplayName("7. 챌린지 수정 알림: 설정 OFF 유저도 내역은 저장되고 FCM은 발행되지 않는다")
+    void challengeUpdated_DisabledSetting_Test() {
+        // given
+        User disabledUser = createUser("updated_off", false);
+        joinChallenge(disabledUser);
+        userChallengeRepository.flush();
+
+        ChallengeUpdatedEvent event = new ChallengeUpdatedEvent(testChallenge.getId());
+
+        // when
+        notificationCommandService.sendChallengeUpdatedNotification(event);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getName()).isEqualTo("updated_off");
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.CHALLENGE_UPDATED);
+        });
+
+        assertThat(applicationEvents.stream(FcmPushSendEvent.class)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("8. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
     void notificationIdempotency_Test() {
         // given
         User user = createUser("idempotent_user", true);
@@ -238,7 +373,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("6. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
+    @DisplayName("9. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
     void multipleVerificationDeadlines_Test() {
         // given
         User user = createUser("multi_user", true);
@@ -263,31 +398,175 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("7. 연장 응답 다중 사용자: Event는 1개만 생성되고 Delivery는 각각 생성된다")
-    void challengeExtensionResponse_MultipleUsers_Test() throws InterruptedException {
+    @DisplayName("10. 질문 인증 생성 알림: 작성자를 제외한 동일 챌린지 JOINED 참여자에게 알림이 저장된다")
+    void questionVerificationCreated_Integration_Test() throws InterruptedException {
         // given
-        User user1 = createUser("user1", true);
-        User user2 = createUser("user2", true);
-        createRoundRecord(joinChallenge(user1));
-        createRoundRecord(joinChallenge(user2));
-        roundRecordRepository.flush();
+        User author = createUser("question_author", true);
+        User joinedReceiver = createUser("joined_receiver", true);
+        User disabledReceiver = createUser("disabled", false);
+        User droppedUser = createUser("dropped_user", true);
+
+        RoundRecord authorRecord = createRoundRecord(joinChallenge(author));
+        joinChallenge(joinedReceiver);
+        joinChallenge(disabledReceiver);
+        userChallengeRepository.save(UserChallenge.builder()
+                .user(droppedUser)
+                .challenge(testChallenge)
+                .status(ChallengeJoinStatus.DROPPED)
+                .build());
+
+        Verification questionVerification = verificationRepository.save(Verification.builder()
+                .roundRecord(authorRecord)
+                .userChallenge(authorRecord.getUserChallenge())
+                .roundId(testRound.getId())
+                .title("질문입니다")
+                .content("내용")
+                .isQuestion(true)
+                .status(VerificationStatus.COMPLETED)
+                .build());
+        verificationRepository.flush();
 
         // when
-        eventListener.handleChallengeExtensionResponseEvent(
-                new ChallengeExtensionResponseEvent(testRound.getId(), user1, NextRoundIntent.CONTINUE));
-        eventListener.handleChallengeExtensionResponseEvent(
-                new ChallengeExtensionResponseEvent(testRound.getId(), user2, NextRoundIntent.CONTINUE));
+        eventListener.handleQuestionVerificationCreatedEvent(
+                new QuestionVerificationCreatedEvent(questionVerification.getId(), author.getId()));
         Thread.sleep(1500);
 
         // then
         transactionTemplate.executeWithoutResult(status -> {
-            assertThat(notificationEventRepository.findAll()).hasSize(1);
-            assertThat(notificationRepository.findAll()).hasSize(2);
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.QUESTION_VERIFICATION);
+            assertThat(notificationEvent.getActor().getId()).isEqualTo(author.getId());
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.VERIFICATION);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(questionVerification.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getContextId()).isEqualTo(questionVerification.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("새로운 질문이 등록되었어요");
+            assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에 새로운 질문 인증글이 등록되었어요");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+
+            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getReceiver().getName())
+                    .containsExactlyInAnyOrder("joined_receiver", "disabled")
+                    .doesNotContain("question_author", "dropped_user");
         });
     }
 
+    @Test
+    @DisplayName("11. 부실 인증 경고 알림: 경고를 받은 사용자에게만 알림이 저장된다")
+    void weakVerificationWarning_Integration_Test() throws InterruptedException {
+        // given
+        User warnedUser = createUser("warned_user", true);
+        RoundRecord warnedRecord = createRoundRecord(joinChallenge(warnedUser));
+        Verification weakVerification = verificationRepository.save(Verification.builder()
+                .roundRecord(warnedRecord)
+                .userChallenge(warnedRecord.getUserChallenge())
+                .roundId(testRound.getId())
+                .title("부실 인증")
+                .content("내용")
+                .isQuestion(false)
+                .status(VerificationStatus.COMPLETED)
+                .build());
+        verificationRepository.flush();
+
+        // when
+        eventListener.handleWeakVerificationWarningEvent(
+                new WeakVerificationWarningEvent(weakVerification.getId(), warnedUser.getId()));
+        Thread.sleep(1500);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.WEAK_VERIFICATION_WARNING);
+            assertThat(notificationEvent.getActor()).isNull();
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.VERIFICATION);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(weakVerification.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.VERIFICATION);
+            assertThat(notificationEvent.getContextId()).isEqualTo(weakVerification.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("챌린지 부실 인증 경고");
+            assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에서 부실 인증 경고가 적립되었어요");
+            assertThat(notificationEvent.getImageKey()).isEqualTo("test-image-key");
+
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getId()).isEqualTo(warnedUser.getId());
+        });
+    }
+
+    @Test
+    @DisplayName("12. 팔로우 알림: 공개 계정 팔로우 성립 시 이벤트 기반으로 알림과 푸시 이벤트가 생성된다")
+    void followCreated_Integration_Test() throws InterruptedException {
+        // given
+        User actor = createUser("follow_actor", true);
+        User receiver = createUser("follow_receiver", true);
+        applicationEvents.clear();
+
+        // when
+        followService.followUser(actor.getId(), receiver.getId());
+        Thread.sleep(1500);
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+
+            NotificationDelivery delivery = deliveries.get(0);
+            NotificationEvent event = delivery.getEvent();
+            assertThat(delivery.getReceiver().getId()).isEqualTo(receiver.getId());
+            assertThat(event.getType().getTypeName()).isEqualTo(NotificationTypeName.FOLLOW_CREATED);
+            assertThat(event.getCategory()).isEqualTo(NotificationCategory.FOLLOW);
+            assertThat(event.getTargetType()).isEqualTo(ResourceType.USER);
+            assertThat(event.getTargetId()).isEqualTo(actor.getId());
+            assertThat(event.getContextType()).isEqualTo(ResourceType.USER);
+            assertThat(event.getContextId()).isEqualTo(actor.getId());
+            assertThat(event.getActor().getId()).isEqualTo(actor.getId());
+            assertThat(event.getTitle()).isEqualTo("새로운 팔로워가 있어요");
+            assertThat(event.getMessage()).isEqualTo("follow_actor_nick 님이 회원님을 팔로우하기 시작했어요");
+            assertThat(event.getImageKey()).isEqualTo("follow_actor-profile-image");
+        });
+
+        assertThat(countPayloadEvents(FollowCreatedEvent.class)).isEqualTo(1);
+        assertThat(countPayloadEvents(FcmPushSendEvent.class)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("13. 팔로우 알림: 팔로우 설정이 꺼져도 내역은 저장되고 FCM만 발행하지 않는다")
+    void followCreated_DisabledSetting_Test() {
+        // given
+        User actor = createUser("follow_actor", true);
+        User receiver = createUser("follow_receiver", false);
+        applicationEvents.clear();
+
+        // when
+        notificationCommandService.sendFollowCreatedNotification(new FollowCreatedEvent(actor, receiver));
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+            assertThat(deliveries).hasSize(1);
+            assertThat(deliveries.get(0).getReceiver().getId()).isEqualTo(receiver.getId());
+            assertThat(deliveries.get(0).getEvent().getType().getTypeName())
+                    .isEqualTo(NotificationTypeName.FOLLOW_CREATED);
+        });
+        assertThat(countPayloadEvents(FcmPushSendEvent.class)).isZero();
+    }
+
     private User createUser(String name, boolean enabled) {
-        User user = userRepository.save(User.builder().name(name).nickname(name + "_nick").isPublic(true).build());
+        User user = userRepository.save(User.builder()
+                .name(name)
+                .nickname(name + "_nick")
+                .profileImage(name + "-profile-image")
+                .isPublic(true)
+                .build());
         notificationSettingRepository.save(NotificationSetting.builder()
                 .user(user).isVerificationEnabled(enabled).isChallengeEnabled(enabled).isFollowEnabled(enabled).isBadgeEnabled(enabled).build());
         return user;
@@ -304,5 +583,13 @@ class NotificationIntegrationTest {
     private void saveVerification(RoundRecord rr, VerificationStatus status) {
         verificationRepository.save(Verification.builder().roundRecord(rr).userChallenge(rr.getUserChallenge())
                 .roundId(testRound.getId()).status(status).build());
+    }
+
+    private long countPayloadEvents(Class<?> payloadType) {
+        return applicationEvents.stream()
+                .filter(PayloadApplicationEvent.class::isInstance)
+                .map(PayloadApplicationEvent.class::cast)
+                .filter(event -> payloadType.isInstance(event.getPayload()))
+                .count();
     }
 }
