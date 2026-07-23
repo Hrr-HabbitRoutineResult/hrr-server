@@ -44,7 +44,7 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
     int deleteBySnapshotDate(LocalDate snapshotDate);
 
     /** 매주 월요일 00시, 전체 ACTIVE 유저를 대상으로 포인트 내림차순 등수를 계산하여 스냅샷 테이블에 UPSERT*/
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
 		INSERT INTO user_rank_snapshot (user_id, ranking, points, total_user_count, snapshot_date, achieved_at, created_at, updated_at)
 		SELECT
