@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.global.util.ChallengeVerificationWindowUtil;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.point.converter.PointConverter;
 import com.hrr.backend.domain.point.dto.PointHistoryResponseDto;
@@ -123,7 +124,7 @@ public class PointServiceImpl implements PointService {
             LocalDateTime verifiedAt,
             Verification verification
     ) {
-        LocalDate verifiedDate = verifiedAt.toLocalDate();
+        LocalDate verifiedDate = ChallengeVerificationWindowUtil.getWindowAnchorDate(challenge, verifiedAt);
         LocalDate roundStart = round.getStartDate();
 
         long daysFromStart = ChronoUnit.DAYS.between(roundStart, verifiedDate);

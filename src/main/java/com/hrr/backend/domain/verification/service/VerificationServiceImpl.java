@@ -11,6 +11,7 @@ import java.util.List;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.hrr.backend.global.util.ChallengeVerificationWindowUtil;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
@@ -324,17 +325,6 @@ public class VerificationServiceImpl implements VerificationService {
         // 4) 해당 윈도우 날짜의 시작/종료 시간 계산
         LocalDateTime windowStart = LocalDateTime.of(currentWindowDate, challenge.getVerifyStartTime());
         LocalDateTime windowEnd = LocalDateTime.of(currentWindowDate, challenge.getVerifyEndTime());
-
-        // 자정 넘어가는 케이스 처리
-        if (challenge.getVerifyStartTime().isAfter(challenge.getVerifyEndTime())) {
-            // 현재가 시작 시간 이후라면 (22:00~23:59)
-            if (!now.toLocalTime().isBefore(challenge.getVerifyStartTime())) {
-                windowEnd = LocalDateTime.of(currentWindowDate.plusDays(1), challenge.getVerifyEndTime());
-            } else {
-                // 현재가 종료 시간 이전이라면 (00:00~02:00)
-                windowStart = LocalDateTime.of(currentWindowDate.minusDays(1), challenge.getVerifyStartTime());
-            }
-        }
 
         // 5) 해당 시간대에 이미 완료된 인증이 있는지 확인
         boolean alreadyVerified = verificationRepository.existsTodayVerification(
