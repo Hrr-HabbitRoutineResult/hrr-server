@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
@@ -199,7 +200,7 @@ public class PointServiceImpl implements PointService {
      * 락 대기/타임아웃에 빠지는 문제가 없다.
      */
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void awardVerificationTriggeredPoints(Long verificationId) {
         Verification verification = verificationRepository.findById(verificationId).orElse(null);
         if (verification == null) {

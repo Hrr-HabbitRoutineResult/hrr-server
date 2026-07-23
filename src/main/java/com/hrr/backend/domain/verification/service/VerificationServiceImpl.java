@@ -315,13 +315,12 @@ public class VerificationServiceImpl implements VerificationService {
         }
 
         // 2) 현재 시간이 인증 시간대 내인지 확인
-        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+        if (!ChallengeVerificationWindowUtil.isWithinVerificationTime(challenge, now.toLocalTime())) {
             throw new GlobalException(ErrorCode.VERIFICATION_TIME_INVALID);
         }
 
         // 3) 현재 인증 윈도우의 기준 날짜 계산
-        LocalDate currentWindowDate = getWindowAnchorDate(challenge, now);
-
+        LocalDate currentWindowDate = ChallengeVerificationWindowUtil.getWindowAnchorDate(challenge, now);
         // 4) 해당 윈도우 날짜의 시작/종료 시간 계산
         LocalDateTime windowStart = LocalDateTime.of(currentWindowDate, challenge.getVerifyStartTime());
         LocalDateTime windowEnd = LocalDateTime.of(currentWindowDate, challenge.getVerifyEndTime());
@@ -363,7 +362,7 @@ public class VerificationServiceImpl implements VerificationService {
         }
 
         // 현재 시간이 인증 시간대 내인지 체크
-        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+        if (!ChallengeVerificationWindowUtil.isWithinVerificationTime(challenge, now.toLocalTime())) {
             return null;
         }
 
@@ -645,7 +644,6 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     // 수정/삭제 시간 제한 로직 (최소 범위)
-
     private void validateVerificationEditDeleteWindow(Verification verification) {
         Challenge challenge = verification.getRoundRecord()
                 .getRound()
@@ -654,12 +652,12 @@ public class VerificationServiceImpl implements VerificationService {
         LocalDateTime now = LocalDateTime.now();
 
         // 1) 지금이 "인증 시간대"가 아니면 수정/삭제 불가
-        if (!isWithinVerificationTime(challenge, now.toLocalTime())) {
+        if (!ChallengeVerificationWindowUtil.isWithinVerificationTime(challenge, now.toLocalTime())) {
             throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
         }
 
         // 2) 지금 인증 윈도우가 어느 "인증 요일(기준 날짜)"에 속하는지 계산
-        LocalDate currentWindowDate = getWindowAnchorDate(challenge, now);
+        LocalDate currentWindowDate = ChallengeVerificationWindowUtil.getWindowAnchorDate(challenge, now);
 
         // 3) 그 날짜가 챌린지의 인증 요일에 포함되지 않으면 불가
         if (!isVerificationDay(challenge, currentWindowDate)) {
@@ -667,49 +665,10 @@ public class VerificationServiceImpl implements VerificationService {
         }
 
         // 4) 이 인증글이 "현재 인증 윈도우"에 속하는 글이 아니면 불가
-        LocalDate postWindowDate = getWindowAnchorDate(challenge, verification.getCreatedAt());
+        LocalDate postWindowDate = ChallengeVerificationWindowUtil.getWindowAnchorDate(challenge, verification.getCreatedAt());
         if (!postWindowDate.equals(currentWindowDate)) {
             throw new GlobalException(ErrorCode.VERIFICATION_EDIT_DELETE_NOT_ALLOWED);
         }
-    }
-
-    /**
-     * 인증 시간대 포함 여부 (start <= end 일반 케이스 + start > end 자정 넘어가는 케이스 대응)
-     */
-    private boolean isWithinVerificationTime(Challenge challenge, LocalTime now) {
-        LocalTime start = challenge.getVerifyStartTime();
-        LocalTime end = challenge.getVerifyEndTime();
-
-        // 일반 케이스: 09:00 ~ 22:00
-        if (start.isBefore(end) || start.equals(end)) {
-            return !now.isBefore(start) && !now.isAfter(end);
-        }
-
-        // 자정 넘어가는 케이스: 22:00 ~ 02:00
-        return !now.isBefore(start) || !now.isAfter(end);
-    }
-
-    /**
-     * "인증 윈도우 기준 날짜(anchor date)" 계산
-     * - 일반 케이스(start<=end): anchor = 해당 시각의 날짜
-     * - 자정 넘어가는 케이스(start>end):
-     *    - 22:00~23:59 -> anchor = 오늘
-     *    - 00:00~02:00 -> anchor = 어제(시작 요일 기준)
-     */
-    private LocalDate getWindowAnchorDate(Challenge challenge, LocalDateTime dateTime) {
-        LocalTime start = challenge.getVerifyStartTime();
-        LocalTime end = challenge.getVerifyEndTime();
-
-        if (start.isBefore(end) || start.equals(end)) {
-            return dateTime.toLocalDate();
-        }
-
-        // overnight
-        LocalTime t = dateTime.toLocalTime();
-        if (!t.isBefore(start)) {
-            return dateTime.toLocalDate();
-        }
-        return dateTime.toLocalDate().minusDays(1);
     }
 
     /**
