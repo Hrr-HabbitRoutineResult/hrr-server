@@ -445,7 +445,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         }
 
         List<ChallengeWait> waits = challengeWaitRepository.findReceiversByChallengeIdExcludingStatuses(
-                challengeId, List.of(ChallengeJoinStatus.JOINED, ChallengeJoinStatus.DROPPED));
+                challengeId, List.of(ChallengeJoinStatus.JOINED, ChallengeJoinStatus.CANCELLED));
 
         List<NotificationDelivery> allDeliveries = waits.stream()
                 .map(ChallengeWait::getUser)

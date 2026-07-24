@@ -363,14 +363,18 @@ class NotificationIntegrationTest {
         User enabledWaiter = createUser("vacancy_on", true);
         User disabledWaiter = createUser("vacancy_off", false);
         User joinedWaiter = createUser("vacancy_joined", true);
+        User cancelledWaiter = createUser("vacancy_cncl", true);
         User droppedWaiter = createUser("vacancy_dropped", true);
 
         challengeWaitRepository.save(ChallengeWait.builder().user(enabledWaiter).challenge(testChallenge).build());
         challengeWaitRepository.save(ChallengeWait.builder().user(disabledWaiter).challenge(testChallenge).build());
         challengeWaitRepository.save(ChallengeWait.builder().user(joinedWaiter).challenge(testChallenge).build());
+        challengeWaitRepository.save(ChallengeWait.builder().user(cancelledWaiter).challenge(testChallenge).build());
         challengeWaitRepository.save(ChallengeWait.builder().user(droppedWaiter).challenge(testChallenge).build());
         userChallengeRepository.save(UserChallenge.builder()
                 .user(joinedWaiter).challenge(testChallenge).status(ChallengeJoinStatus.JOINED).build());
+        userChallengeRepository.save(UserChallenge.builder()
+                .user(cancelledWaiter).challenge(testChallenge).status(ChallengeJoinStatus.CANCELLED).build());
         userChallengeRepository.save(UserChallenge.builder()
                 .user(droppedWaiter).challenge(testChallenge).status(ChallengeJoinStatus.DROPPED).build());
         challengeWaitRepository.flush();
@@ -395,16 +399,18 @@ class NotificationIntegrationTest {
             assertThat(notificationEvent.getTitle()).isEqualTo("빈자리가 있어요");
             assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에 빈자리가 생겼어요!\n지금 바로 챌린지에 참여해보세요.");
 
-            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries).hasSize(3);
             assertThat(deliveries)
                     .extracting(delivery -> delivery.getReceiver().getName())
-                    .containsExactlyInAnyOrder("vacancy_on", "vacancy_off");
+                    .containsExactlyInAnyOrder("vacancy_on", "vacancy_off", "vacancy_dropped");
         });
 
         List<FcmPushSendEvent> pushEvents = applicationEvents.stream(FcmPushSendEvent.class).toList();
         assertThat(pushEvents).hasSize(1);
-        assertThat(pushEvents.get(0).deliveries()).hasSize(1);
-        assertThat(pushEvents.get(0).deliveries().get(0).getReceiver().getName()).isEqualTo("vacancy_on");
+        assertThat(pushEvents.get(0).deliveries()).hasSize(2);
+        assertThat(pushEvents.get(0).deliveries())
+                .extracting(delivery -> delivery.getReceiver().getName())
+                .containsExactlyInAnyOrder("vacancy_on", "vacancy_dropped");
     }
 
     @Test
