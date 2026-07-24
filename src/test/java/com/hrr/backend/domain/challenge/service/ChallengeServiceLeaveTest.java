@@ -47,7 +47,7 @@ class ChallengeServiceLeaveTest {
     private ChallengeServiceImpl challengeService;
 
     @Test
-    @DisplayName("정원이 꽉 찬 챌린지에서 참여자가 나가면 DROPPED 처리 후 빈자리 이벤트를 발행한다")
+    @DisplayName("정원이 꽉 찬 시작 전 챌린지에서 참여자가 나가면 CANCELLED 처리 후 빈자리 이벤트를 발행한다")
     void leaveChallenge_PublishesVacancyEvent_WhenFullChallengeBecomesVacant() {
         User user = User.builder().name("user").nickname("user_nick").build();
         Challenge challenge = createChallenge(30, 30);
@@ -66,7 +66,7 @@ class ChallengeServiceLeaveTest {
 
         challengeService.leaveChallenge(user, 1L);
 
-        assertThat(userChallenge.getStatus()).isEqualTo(ChallengeJoinStatus.DROPPED);
+        assertThat(userChallenge.getStatus()).isEqualTo(ChallengeJoinStatus.CANCELLED);
         assertThat(challenge.getCurrentParticipants()).isEqualTo(29);
 
         ArgumentCaptor<ChallengeVacancyEvent> captor = ArgumentCaptor.forClass(ChallengeVacancyEvent.class);
@@ -94,7 +94,7 @@ class ChallengeServiceLeaveTest {
 
         challengeService.leaveChallenge(user, 1L);
 
-        assertThat(userChallenge.getStatus()).isEqualTo(ChallengeJoinStatus.DROPPED);
+        assertThat(userChallenge.getStatus()).isEqualTo(ChallengeJoinStatus.CANCELLED);
         assertThat(challenge.getCurrentParticipants()).isEqualTo(27);
         verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any(ChallengeVacancyEvent.class));
     }

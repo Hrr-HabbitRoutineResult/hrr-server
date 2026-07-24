@@ -69,7 +69,7 @@ class ChallengeServiceJoinTest {
     void join_NewUser_Success() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(anyLong())).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(challenge));
         given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.empty());
 
         UserChallenge newUc = mock(UserChallenge.class);
@@ -89,10 +89,31 @@ class ChallengeServiceJoinTest {
     void join_DroppedUser_Success() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(anyLong())).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(challenge));
 
         UserChallenge existingUc = mock(UserChallenge.class);
         given(existingUc.getStatus()).willReturn(ChallengeJoinStatus.DROPPED);
+        given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.of(existingUc));
+
+        given(challengeConverter.toJoinResponseDto(challenge)).willReturn(mock(ChallengeResponseDto.JoinChallengeDto.class));
+
+        // [When]
+        challengeService.joinChallenge(user, challengeId, joinReq);
+
+        // [Then]
+        verify(existingUc, times(1)).updateStatus(ChallengeJoinStatus.JOINED);
+        verify(userChallengeRepository, never()).save(any(UserChallenge.class));
+    }
+
+    @Test
+    @DisplayName("가입 상황 2-1: 시작 전 나간(CANCELLED) 유저 재참여 -> updateStatus() 호출 및 save() 미호출")
+    void join_CancelledUser_Success() {
+        // [Given]
+        Long challengeId = 1L;
+        given(challengeRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(challenge));
+
+        UserChallenge existingUc = mock(UserChallenge.class);
+        given(existingUc.getStatus()).willReturn(ChallengeJoinStatus.CANCELLED);
         given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.of(existingUc));
 
         given(challengeConverter.toJoinResponseDto(challenge)).willReturn(mock(ChallengeResponseDto.JoinChallengeDto.class));
@@ -110,7 +131,7 @@ class ChallengeServiceJoinTest {
     void join_KickedUser_Throws_Exception() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(challengeId)).willReturn(Optional.of(challenge));
 
         UserChallenge kickedUc = mock(UserChallenge.class);
         given(kickedUc.getStatus()).willReturn(ChallengeJoinStatus.KICKED);
@@ -128,7 +149,7 @@ class ChallengeServiceJoinTest {
     void join_AlreadyJoinedUser_Throws_Exception() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(challengeId)).willReturn(Optional.of(challenge));
 
         UserChallenge joinedUc = mock(UserChallenge.class);
         given(joinedUc.getStatus()).willReturn(ChallengeJoinStatus.JOINED);
@@ -146,7 +167,7 @@ class ChallengeServiceJoinTest {
     void join_MaxLimitExceeded_Throws_Exception() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(challengeId)).willReturn(Optional.of(challenge));
         given(challengeRepository.countByUserIdAndStatus(any(), eq(ChallengeJoinStatus.JOINED))).willReturn(5L);
 
         // [When & Then]
@@ -161,7 +182,7 @@ class ChallengeServiceJoinTest {
     void join_ChallengeFull_Throws_Exception() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(challengeId)).willReturn(Optional.of(challenge));
         given(challenge.getCurrentParticipants()).willReturn(10);
         given(challenge.getMaxParticipants()).willReturn(10);
 
@@ -177,7 +198,7 @@ class ChallengeServiceJoinTest {
     void join_PasswordMismatch_Throws_Exception() {
         // [Given]
         Long challengeId = 1L;
-        given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
+        given(challengeRepository.findByIdForUpdate(challengeId)).willReturn(Optional.of(challenge));
 
         given(challenge.getIsPublic()).willReturn(false);
         given(challenge.getPassword()).willReturn("1234");

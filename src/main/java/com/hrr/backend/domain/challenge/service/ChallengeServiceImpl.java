@@ -476,7 +476,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		UserChallenge userChallenge;
 		if (existingUcOp.isPresent()) {
-			// 기존 기록이 있다면 (validateJoinRequest를 통과했으므로 DROPPED 상태임) 상태만 JOINED로 변경
+			// 기존 기록이 있다면 (validateJoinRequest를 통과했으므로 CANCELLED/DROPPED 상태임) 상태만 JOINED로 변경
 			userChallenge = existingUcOp.get();
 			userChallenge.updateStatus(ChallengeJoinStatus.JOINED);
 		} else {
@@ -521,8 +521,8 @@ public class ChallengeServiceImpl implements ChallengeService {
                     .ifPresent(roundRecordRepository::delete);
         }
 
-        // UserChallenge 이력은 유지하고 하차 상태로 변경
-        userChallenge.updateStatus(ChallengeJoinStatus.DROPPED);
+        // UserChallenge 이력은 유지하고 시작 전 나가기 상태로 변경
+        userChallenge.updateStatus(ChallengeJoinStatus.CANCELLED);
 
         // 참가자 수 감소 (참가 로직의 반대)
         challenge.decreaseCurrentParticipants();
