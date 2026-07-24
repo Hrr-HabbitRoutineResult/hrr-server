@@ -2,10 +2,13 @@ package com.hrr.backend.domain.user.service;
 
 import java.util.List;
 
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.follow.entity.Follow;
 import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.follow.service.FollowCountService;
+import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,7 @@ public class UserDeleteService {
 	private final ChallengeRepository challengeRepository;
 	private final SocialAuthRepository socialAuthRepository;
     private final FollowRepository followRepository;
+	private final ApplicationEventPublisher applicationEventPublisher;
 
 	private final S3Service s3Service;
 	private final AuthService authService;
@@ -60,15 +64,27 @@ public class UserDeleteService {
 
 		// 참여 중인 챌린지 인원수 감소 및 상태 변경
 		List<UserChallenge> activeChallenges = userChallengeRepository
-			.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
+				.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
 
 		for (UserChallenge uc : activeChallenges) {
-			// 유저의 참여 상태를 '비정상 종료(KICKED)'로 업데이트
+			Challenge challenge = uc.getChallenge();
+
+			boolean wasFull = challenge.getCurrentParticipants() == challenge.getMaxParticipants();
+
 			uc.updateStatus(ChallengeJoinStatus.KICKED);
 
-			int updatedRowNumber = challengeRepository.decreaseCurrentParticipantCount(uc.getChallenge().getId()); // 인원수 -1
+			int updatedRowNumber = challengeRepository.decreaseCurrentParticipantCount(challenge.getId());
+
 			if (updatedRowNumber == 0) {
 				log.error("일부 챌린지의 현재 참가 인원에 대한 업데이트가 진행되지 않았습니다. UserChallengeId: {}", uc.getId());
+				continue;
+			}
+
+			// 탈퇴 처리로 인해 빈자리가 생긴 경우 대기자에게 알림
+			if (wasFull) {
+				applicationEventPublisher.publishEvent(
+						new ChallengeVacancyEvent(challenge.getId())
+				);
 			}
 		}
 
