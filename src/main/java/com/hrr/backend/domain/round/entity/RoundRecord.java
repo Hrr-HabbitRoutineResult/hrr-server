@@ -2,7 +2,6 @@ package com.hrr.backend.domain.round.entity;
 
 import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.user.entity.UserChallenge;
-import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
@@ -88,13 +87,8 @@ public class RoundRecord extends BaseEntity {
         this.nextRoundIntent = intent;
     }
 
-	// 데이터 정합성을 고려하여 경고 횟수를 업데이트 하고 퇴출 조건을 확인
-	public void synchronizeWarnCount(int newWarnCount) {
-		this.warnCount = newWarnCount; //
-
-		// 경고가 3회 이상이면 해당 유저의 챌린지 참여 상태를 KICKED로 변경
-		if (this.warnCount >= 3) {
-			this.userChallenge.updateStatus(ChallengeJoinStatus.KICKED);
-		}
+	// 데이터 정합성을 고려하여 경고 횟수를 업데이트
+    public void synchronizeWarnCount(int newWarnCount) {
+        this.warnCount = newWarnCount;
 	}
 }

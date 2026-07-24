@@ -46,13 +46,8 @@ public class RoundRecordServiceImpl implements RoundRecordService {
 		// 경고 횟수 계산: (부실 신고 / 3) + 미인증 횟수
 		int calculatedWarnCount = (int) (weakReportCount / 3) + (int) absenceCount;
 
-		// 경고 횟수 동기화 및 챌린지 퇴출 여부 판단 - warnCound==3이면 KICKED로 변경되며 퇴출
-		roundRecord.synchronizeWarnCount(calculatedWarnCount);
-
-		// 필요 시, 추가적인 퇴출 처리 진행
-		if (roundRecord.getUserChallenge().getStatus() == ChallengeJoinStatus.KICKED) {
-			processKickOutSideEffects(roundRecord.getUserChallenge().getChallenge().getId());
-		}
+		// 경고 횟수 동기화 (퇴출 기능 폐지로 KICKED 자동 전환은 더 이상 발생하지 않음)
+        roundRecord.synchronizeWarnCount(calculatedWarnCount);
 	}
 
 	// 퇴출 처리 진행
