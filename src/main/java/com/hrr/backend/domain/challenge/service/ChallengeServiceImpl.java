@@ -259,6 +259,11 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return challengeConverter.toProfileDto(challenge, isParticipating, verifiedDaysThisWeek, extensionStatus);
 	}
 
+	/**
+	 * 현재 라운드의 연장 상태 계산
+	 * 연장 가능 기간(D-3 ~ D-2)에만 상태 노출
+	 * 미응답은 PENDING, 응답 완료는 COMPLETED를 반환
+	 */
 	private ExtensionStatus calculateExtensionStatus(UserChallenge userChallenge, Round currentRound) {
 		if (currentRound == null || !isExtensionPeriodOpen(currentRound, LocalDate.now(KOREA_ZONE))) {
 			return ExtensionStatus.NONE;
@@ -271,6 +276,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 				.orElse(ExtensionStatus.NONE);
 	}
 
+	/**
+	 * 현재 날짜가 연장 의사 결정 기간(D-3 ~ D-2)인지 확인
+	 */
 	private boolean isExtensionPeriodOpen(Round currentRound, LocalDate today) {
 		if (today.isBefore(currentRound.getStartDate()) || today.isAfter(currentRound.getEndDate())) {
 			return false;
