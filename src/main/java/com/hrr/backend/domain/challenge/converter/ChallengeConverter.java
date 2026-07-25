@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.domain.challenge.entity.enums.ExtensionStatus;
 import com.hrr.backend.global.s3.S3UrlUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,7 +133,8 @@ public class ChallengeConverter {
     public ChallengeResponseDto.ChallengeProfileDto toProfileDto(
             Challenge challenge,
             boolean isParticipating,
-            List<ChallengeDays> verifiedDays
+            List<ChallengeDays> verifiedDays,
+            ExtensionStatus extensionStatus
     ) {
         // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환
         List<ChallengeDays> targetDays = challenge.getChallengeDays().stream()
@@ -155,6 +157,7 @@ public class ChallengeConverter {
                 .verifyStartTime(challenge.getVerifyStartTime())
                 .verifyEndTime(challenge.getVerifyEndTime())
                 .verifiedDaysThisWeek(sortedVerifiedDays)// 미참여시 null
+                .extensionStatus(extensionStatus)
                 .build();
     }
 
