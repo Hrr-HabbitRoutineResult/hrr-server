@@ -70,6 +70,7 @@ public class UserDeleteService {
 		for (UserChallenge uc : activeChallenges) {
 			Challenge challenge = uc.getChallenge();
 
+			// 동시성 보장을 위해 챌린지 행 잠금
 			Challenge lockedChallenge = challengeRepository.findByIdForUpdate(challenge.getId())
 					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
 
@@ -80,6 +81,7 @@ public class UserDeleteService {
 
 			lockedChallenge.decreaseCurrentParticipants();
 
+			// 만석 → 빈자리 전환 시에만 빈자리 이벤트 발행
 			if (wasFull) {
 				applicationEventPublisher.publishEvent(
 						new ChallengeVacancyEvent(lockedChallenge.getId()));
