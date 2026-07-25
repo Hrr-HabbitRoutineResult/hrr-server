@@ -403,6 +403,7 @@ class RoundFlowUnitTest {
 
         when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
                 .thenReturn(List.of(rrContinue, rrStop));
+        when(challengeRepository.decreaseCurrentParticipantCount(999L)).thenReturn(1);
 
         // when
         roundDropService.dropNonContinuersAt(endDate);
@@ -413,6 +414,42 @@ class RoundFlowUnitTest {
 
         // CONTINUE는 drop 대상이 아니므로 decrease 호출 추가 발생 X
         verify(challengeRepository, times(1)).decreaseCurrentParticipantCount(999L);
+    }
+
+    @Test
+    @DisplayName("dropNonContinuersAt: 참가자 수 감소가 실패하면 하차 상태로 변경하지 않는다")
+    void dropNonContinuersAt_doesNotDrop_whenParticipantCountCannotDecrease() {
+        // given
+        LocalDate endDate = LocalDate.now();
+
+        Round endedRound = mock(Round.class);
+        Challenge challenge = mock(Challenge.class);
+
+        when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
+        when(endedRound.getId()).thenReturn(10L);
+        when(endedRound.getChallenge()).thenReturn(challenge);
+
+        when(challenge.getStatus()).thenReturn(ChallengeStatus.ONGOING);
+        when(challenge.getId()).thenReturn(999L);
+        when(challenge.getCurrentRound()).thenReturn(endedRound);
+
+        RoundRecord rrStop = mock(RoundRecord.class);
+        when(rrStop.getNextRoundIntent()).thenReturn(NextRoundIntent.STOP);
+
+        UserChallenge ucStop = mock(UserChallenge.class);
+        when(rrStop.getUserChallenge()).thenReturn(ucStop);
+        when(ucStop.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
+
+        when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
+                .thenReturn(List.of(rrStop));
+        when(challengeRepository.decreaseCurrentParticipantCount(999L)).thenReturn(0);
+
+        // when
+        roundDropService.dropNonContinuersAt(endDate);
+
+        // then
+        verify(challengeRepository).decreaseCurrentParticipantCount(999L);
+        verify(ucStop, never()).updateStatus(ChallengeJoinStatus.DROPPED);
     }
 
     @Test

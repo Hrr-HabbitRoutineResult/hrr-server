@@ -16,6 +16,8 @@ import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,8 +62,12 @@ public class RoundDropServiceImpl implements RoundDropService {
                     UserChallenge uc = rr.getUserChallenge();
                     if (uc.getStatus() != ChallengeJoinStatus.JOINED) continue;
 
+                    int decreasedCount = challengeRepository.decreaseCurrentParticipantCount(challenge.getId());
+                    if (decreasedCount == 0) {
+                        throw new GlobalException(ErrorCode.CHALLENGE_PARTICIPANT_COUNT_UNDERFLOW);
+                    }
+
                     uc.updateStatus(ChallengeJoinStatus.DROPPED);
-                    challengeRepository.decreaseCurrentParticipantCount(challenge.getId());
                 }
 
             } catch (Exception e) {
