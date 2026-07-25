@@ -62,6 +62,7 @@ public enum ErrorCode implements BaseCode{
     CHALLENGE_MAX_PARTICIPANTS_BELOW_CURRENT(HttpStatus.BAD_REQUEST, "CHALLENGE40018", "최대 참여 인원은 현재 참여 인원보다 적을 수 없습니다."),
     CHALLENGE_LEAVE_FORBIDDEN_OWNER(HttpStatus.FORBIDDEN, "CHALLENGE4033", "방장은 챌린지에서 나갈 수 없습니다."),
     CHALLENGE_LEAVE_PERIOD_EXPIRED(HttpStatus.BAD_REQUEST, "CHALLENGE40019", "챌린지 시작일 이후에는 나갈 수 없습니다."),
+    CHALLENGE_PARTICIPANT_COUNT_UNDERFLOW(HttpStatus.INTERNAL_SERVER_ERROR, "CHALLENGE5001", "챌린지 참가자 수를 감소할 수 없는 상태입니다."),
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
     CHALLENGE_WAIT_NOT_FOUND(HttpStatus.NOT_FOUND, "WAIT4041", "알림 신청 내역을 찾을 수 없습니다."),

@@ -128,7 +128,7 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
             "AND f.following.userStatus = 'ACTIVE'")
     long countActiveFollowings(@Param("userId") Long userId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM Follow f " +
             "WHERE f.follower.id = :userId " +
             "OR f.following.id = :userId")
