@@ -128,6 +128,27 @@ class UserDeleteServiceConcurrencyIntegrationTest {
 		assertThat(applicationEvents.stream(ChallengeVacancyEvent.class)).hasSize(1);
 	}
 
+	@Test
+	@DisplayName("탈퇴 대상 챌린지는 챌린지 ID 오름차순으로 조회되어 락 획득 순서가 고정된다")
+	void findByUserAndStatus_ReturnsJoinedChallengesOrderedByChallengeId() {
+		OrderedWithdrawalTarget target = createUserJoinedToTwoChallengesInReverseMappingOrder();
+
+		entityManager.clear();
+
+		User user = userRepository.findById(target.userIds().get(0)).orElseThrow();
+
+		List<Long> challengeIds = userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED)
+				.stream()
+				.map(userChallenge -> userChallenge.getChallenge().getId())
+				.toList();
+
+		assertThat(challengeIds).containsExactlyElementsOf(
+				target.challengeIds().stream()
+						.sorted()
+						.toList()
+		);
+	}
+
 	private WithdrawalTarget createFullChallengeWithTwoUsers() {
 		return transactionTemplate.execute(status -> {
 			Challenge challenge = challengeRepository.save(Challenge.builder()
@@ -168,6 +189,53 @@ class UserDeleteServiceConcurrencyIntegrationTest {
 		});
 	}
 
+	private OrderedWithdrawalTarget createUserJoinedToTwoChallengesInReverseMappingOrder() {
+		return transactionTemplate.execute(status -> {
+			Challenge firstChallenge = challengeRepository.save(createChallenge("first challenge", 1));
+			Challenge secondChallenge = challengeRepository.save(createChallenge("second challenge", 2));
+
+			User user = userRepository.save(User.builder()
+					.name("ordered_withdrawer_" + USER_SEQUENCE.incrementAndGet())
+					.nickname("ordered_withdrawer_" + USER_SEQUENCE.incrementAndGet())
+					.isPublic(true)
+					.build());
+
+			userChallengeRepository.save(UserChallenge.builder()
+					.user(user)
+					.challenge(secondChallenge)
+					.status(ChallengeJoinStatus.JOINED)
+					.build());
+			userChallengeRepository.save(UserChallenge.builder()
+					.user(user)
+					.challenge(firstChallenge)
+					.status(ChallengeJoinStatus.JOINED)
+					.build());
+
+			return new OrderedWithdrawalTarget(
+					List.of(user.getId()),
+					List.of(firstChallenge.getId(), secondChallenge.getId())
+			);
+		});
+	}
+
+	private Challenge createChallenge(String title, int participantCount) {
+		return Challenge.builder()
+				.title(title)
+				.description("ordered lock test")
+				.isPublic(true)
+				.isViewerMode(false)
+				.category(Category.HEALTH)
+				.verificationType(VerificationType.TEXT)
+				.startDate(LocalDateTime.now().plusDays(1))
+				.verifyStartTime(LocalTime.of(9, 0))
+				.verifyEndTime(LocalTime.of(22, 0))
+				.maxParticipants(2)
+				.currentParticipants(participantCount)
+				.status(ChallengeStatus.RECRUITING)
+				.imageKey("test-image-key")
+				.build();
+	}
+
 	private void cleanDatabase() {
 		transactionTemplate.executeWithoutResult(status -> {
 			followRepository.deleteAll();
@@ -178,5 +246,8 @@ class UserDeleteServiceConcurrencyIntegrationTest {
 	}
 
 	private record WithdrawalTarget(Long challengeId, List<Long> userIds) {
+	}
+
+	private record OrderedWithdrawalTarget(List<Long> userIds, List<Long> challengeIds) {
 	}
 }
