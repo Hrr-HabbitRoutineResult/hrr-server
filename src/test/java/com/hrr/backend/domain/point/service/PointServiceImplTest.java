@@ -353,7 +353,7 @@ class PointServiceImplTest {
         PointHistory weekPerfectHistory = PointHistory.builder()
                 .id(2L).points(3).pointType(PointType.WEEK1_PERFECT).build();
 
-        iven(pointHistoryRepository.findAllByVerificationIdForUpdate(999L))
+        given(pointHistoryRepository.findAllByVerificationIdForUpdate(999L))
                 .willReturn(List.of(firstVerificationHistory, weekPerfectHistory));
         // when
         pointService.revokePointsForVerification(verification);
