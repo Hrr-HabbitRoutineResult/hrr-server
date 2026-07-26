@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,6 +27,11 @@ public interface PointHistoryRepository extends JpaRepository<PointHistory, Long
 
     // 특정 인증글로 인해 지급된 포인트 내역 전체 조회
     List<PointHistory> findAllByVerificationId(Long verificationId);
+
+    // 인증 삭제 시 포인트 회수 멱등성 보장
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM PointHistory p WHERE p.verification.id = :verificationId")
+    List<PointHistory> findAllByVerificationIdForUpdate(@Param("verificationId") Long verificationId);
 
     /** 내 포인트 적립 내역 조회 */
     @Query("SELECT p FROM PointHistory p " +
