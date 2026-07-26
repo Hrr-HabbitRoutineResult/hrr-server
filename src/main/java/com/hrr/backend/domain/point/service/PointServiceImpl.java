@@ -171,7 +171,8 @@ public class PointServiceImpl implements PointService {
     @Override
     @Transactional
     public void revokePointsForVerification(Verification verification) {
-        List<PointHistory> histories = pointHistoryRepository.findAllByVerificationId(verification.getId());
+        // 비관적 락으로 조회해서, 동시에 두 번 삭제 요청이 들어와도 포인트가 중복 차감되지 않도록 직렬화
+        List<PointHistory> histories = pointHistoryRepository.findAllByVerificationIdForUpdate(verification.getId());
 
         if (histories.isEmpty()) {
             return; // 이 인증글로 지급된 포인트가 없으면 할 일 없음
@@ -244,7 +245,9 @@ public class PointServiceImpl implements PointService {
             pointAwardExecutor.execute(user, type, challenge, round, randomMission, verification);
         } catch (DataIntegrityViolationException e) {
             // 동시 요청 등으로 인해 DB 유니크 제약에 걸린 경우 - 이미 지급된 것으로 간주하고 조용히 무시(멱등 처리)
-            log.info("[Point] 유니크 제약으로 인해 중복 지급을 건너뜁니다. userId={}, type={}", user.getId(), type);
+            // 지급 직전에 대상 인증글이 삭제되어 FK 제약에 걸린 경우 -> 지급할 대상이 사라졌으므로 무시
+            log.info("[Point] 포인트 지급을 건너뜁니다(이미 지급됐거나 대상 인증글이 삭제됨). userId={}, type={}",
+                    user.getId(), type);
         }
     }
 
