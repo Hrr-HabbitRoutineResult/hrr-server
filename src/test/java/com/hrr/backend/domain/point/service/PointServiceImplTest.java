@@ -353,9 +353,8 @@ class PointServiceImplTest {
         PointHistory weekPerfectHistory = PointHistory.builder()
                 .id(2L).points(3).pointType(PointType.WEEK1_PERFECT).build();
 
-        given(pointHistoryRepository.findAllByVerificationId(999L))
+        iven(pointHistoryRepository.findAllByVerificationIdForUpdate(999L))
                 .willReturn(List.of(firstVerificationHistory, weekPerfectHistory));
-
         // when
         pointService.revokePointsForVerification(verification);
 
@@ -374,7 +373,7 @@ class PointServiceImplTest {
         RoundRecord roundRecord = RoundRecord.builder().id(30L).userChallenge(userChallenge).build();
         Verification verification = Verification.builder().id(999L).roundRecord(roundRecord).build();
 
-        given(pointHistoryRepository.findAllByVerificationId(999L)).willReturn(List.of());
+        given(pointHistoryRepository.findAllByVerificationIdForUpdate(999L)).willReturn(List.of());
 
         // when
         pointService.revokePointsForVerification(verification);
