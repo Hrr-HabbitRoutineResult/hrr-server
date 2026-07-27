@@ -40,6 +40,7 @@ import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.s3.S3UrlUtil;
+import com.hrr.backend.domain.point.service.PointService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -92,6 +93,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final RedisTemplate<String, String> redisTemplate;
 
     private final ApplicationEventPublisher eventPublisher;
+
+    private final PointService pointService;
 
 
     private static final int UPCOMING_DAYS_CRITERIA = 5;	// '곧 시작' 챌린지 판단 기준 일자
@@ -576,6 +579,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 					userChallenge
 			);
 			roundRecordRepository.save(roundRecord);
+            // 동일 챌린지 3라운드 이상 참여
+            pointService.checkAndEarnChallengeMasterPoint(userChallenge.getUser(), challenge, userChallenge);
 		}
 	}
 

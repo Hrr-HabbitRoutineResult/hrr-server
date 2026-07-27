@@ -156,4 +156,13 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
 			@Param("roundId") Long roundId,
 			@Param("status") ChallengeJoinStatus status
 	);
+    /** 특정 라운드에 속한 모든 RoundRecord 조회
+     * 미인증 없이 라운드 종료 포인트는 연장 여부와 무관하게 지급되어야 하므로 상태 필터 없이 전부 조회
+     */
+    @Query("SELECT rr FROM RoundRecord rr " +
+            "JOIN FETCH rr.userChallenge uc " +
+            "JOIN FETCH uc.user " +
+            "JOIN FETCH uc.challenge " +
+            "WHERE rr.round.id = :roundId")
+    List<RoundRecord> findAllByRoundIdWithUserAndChallenge(@Param("roundId") Long roundId);
 }
