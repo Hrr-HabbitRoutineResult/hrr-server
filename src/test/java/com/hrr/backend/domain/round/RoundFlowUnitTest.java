@@ -21,8 +21,10 @@ import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.round.service.RoundDecisionServiceImpl;
+import com.hrr.backend.domain.round.service.RoundDropProcessor;
 import com.hrr.backend.domain.round.service.RoundDropServiceImpl;
 import com.hrr.backend.domain.round.service.RoundLifecycleServiceImpl;
+import com.hrr.backend.domain.point.service.PointService;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
@@ -50,6 +52,8 @@ class RoundFlowUnitTest {
     @Mock RoundConverter roundConverter;
     @Mock TransactionTemplate transactionTemplate;
     @Mock ApplicationEventPublisher publisher;
+    @Mock RoundDropProcessor roundDropProcessor;
+    @Mock PointService pointService;
 
     @InjectMocks RoundDecisionServiceImpl roundDecisionService;
     @InjectMocks RoundDropServiceImpl roundDropService;
@@ -373,96 +377,52 @@ class RoundFlowUnitTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("dropNonContinuersAt: STOP/UNDECIDED인 사람만 DROPPED + 참가자 감소")
-    void dropNonContinuersAt_dropsStopAndUndecided() {
+    @DisplayName("dropNonContinuersAt: endDate에 해당하는 Round 목록만 조회하고 각 Round 처리를 위임한다")
+    void dropNonContinuersAt_delegatesEachRound() {
         // given
         LocalDate endDate = LocalDate.now();
-
-        Round endedRound = mock(Round.class);
-        Challenge challenge = mock(Challenge.class);
-
-        when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
-        when(endedRound.getId()).thenReturn(10L);
-        when(endedRound.getChallenge()).thenReturn(challenge);
-
-        when(challenge.getStatus()).thenReturn(ChallengeStatus.ONGOING);
-        when(challenge.getId()).thenReturn(999L);
-
-        // currentRound가 endedRound와 동일해야 처리됨(멱등성)
-        when(challenge.getCurrentRound()).thenReturn(endedRound);
-
-        RoundRecord rrContinue = mock(RoundRecord.class);
-        when(rrContinue.getNextRoundIntent()).thenReturn(NextRoundIntent.CONTINUE);
-
-        RoundRecord rrStop = mock(RoundRecord.class);
-        when(rrStop.getNextRoundIntent()).thenReturn(NextRoundIntent.STOP);
-
-        UserChallenge ucStop = mock(UserChallenge.class);
-        when(rrStop.getUserChallenge()).thenReturn(ucStop);
-        when(ucStop.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-
-        when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
-                .thenReturn(List.of(rrContinue, rrStop));
-        when(challengeRepository.decreaseCurrentParticipantCount(999L)).thenReturn(1);
+        Round firstRound = mock(Round.class);
+        Round secondRound = mock(Round.class);
+        when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(firstRound, secondRound));
 
         // when
         roundDropService.dropNonContinuersAt(endDate);
 
         // then
-        verify(ucStop).updateStatus(ChallengeJoinStatus.DROPPED);
-        verify(challengeRepository).decreaseCurrentParticipantCount(999L);
-
-        // CONTINUE는 drop 대상이 아니므로 decrease 호출 추가 발생 X
-        verify(challengeRepository, times(1)).decreaseCurrentParticipantCount(999L);
+        verify(roundRepository).findAllByEndDate(endDate);
+        verify(roundDropProcessor).processRound(firstRound);
+        verify(roundDropProcessor).processRound(secondRound);
     }
 
     @Test
-    @DisplayName("dropNonContinuersAt: 참가자 수 감소가 실패하면 하차 상태로 변경하지 않는다")
-    void dropNonContinuersAt_doesNotDrop_whenParticipantCountCannotDecrease() {
+    @DisplayName("dropNonContinuersAt: 한 Round 처리 실패를 로깅하고 다음 Round를 계속 처리한다")
+    void dropNonContinuersAt_continuesAfterRoundFailure() {
         // given
         LocalDate endDate = LocalDate.now();
+        Round failedRound = mock(Round.class);
+        Round nextRound = mock(Round.class);
 
-        Round endedRound = mock(Round.class);
-        Challenge challenge = mock(Challenge.class);
-
-        when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
-        when(endedRound.getId()).thenReturn(10L);
-        when(endedRound.getChallenge()).thenReturn(challenge);
-
-        when(challenge.getStatus()).thenReturn(ChallengeStatus.ONGOING);
-        when(challenge.getId()).thenReturn(999L);
-        when(challenge.getCurrentRound()).thenReturn(endedRound);
-
-        RoundRecord rrStop = mock(RoundRecord.class);
-        when(rrStop.getNextRoundIntent()).thenReturn(NextRoundIntent.STOP);
-
-        UserChallenge ucStop = mock(UserChallenge.class);
-        when(rrStop.getUserChallenge()).thenReturn(ucStop);
-        when(ucStop.getStatus()).thenReturn(ChallengeJoinStatus.JOINED);
-
-        when(roundRecordRepository.findAllByRoundWithUserAndSetting(endedRound, ChallengeJoinStatus.JOINED))
-                .thenReturn(List.of(rrStop));
-        when(challengeRepository.decreaseCurrentParticipantCount(999L)).thenReturn(0);
+        when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(failedRound, nextRound));
+        when(failedRound.getId()).thenReturn(10L);
+        doThrow(new GlobalException(ErrorCode.CHALLENGE_PARTICIPANT_COUNT_UNDERFLOW))
+                .when(roundDropProcessor).processRound(failedRound);
 
         // when
         roundDropService.dropNonContinuersAt(endDate);
 
         // then
-        verify(challengeRepository).decreaseCurrentParticipantCount(999L);
-        verify(ucStop, never()).updateStatus(ChallengeJoinStatus.DROPPED);
+        verify(roundDropProcessor).processRound(failedRound);
+        verify(roundDropProcessor).processRound(nextRound);
     }
 
     @Test
-    @DisplayName("dropNonContinuersAt: currentRound가 이미 바뀐 경우 스킵(레코드 조회도 안 함)")
-    void dropNonContinuersAt_skips_whenCurrentRoundChanged() {
+    @DisplayName("processRound: currentRound가 이미 바뀐 경우 스킵(레코드 조회도 안 함)")
+    void processRound_skips_whenCurrentRoundChanged() {
         // given
-        LocalDate endDate = LocalDate.now();
-
         Round endedRound = mock(Round.class);
         Round otherRound = mock(Round.class);
         Challenge challenge = mock(Challenge.class);
 
-        when(roundRepository.findAllByEndDate(endDate)).thenReturn(List.of(endedRound));
         when(endedRound.getId()).thenReturn(10L);
         when(endedRound.getChallenge()).thenReturn(challenge);
 
@@ -471,7 +431,8 @@ class RoundFlowUnitTest {
         when(otherRound.getId()).thenReturn(9999L); // endedRound(10L)과 다름
 
         // when
-        roundDropService.dropNonContinuersAt(endDate);
+        RoundDropProcessor processor = new RoundDropProcessor(roundRecordRepository, challengeRepository);
+        processor.processRound(endedRound);
 
         // then
         verify(roundRecordRepository, never()).findAllByRoundWithUserAndSetting(any(), any());
