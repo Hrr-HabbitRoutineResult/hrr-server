@@ -60,10 +60,10 @@ public class UserDeleteService {
 		// Social Auth 정보 삭제
 		socialAuthRepository.deleteByUser(user);
 
-		// S3에서 프로필 이미지 파일 삭제
+		// S3에서 프로필 이미지 파일 삭제 - 소셜 플랫폼에서 제공된 이미지는 대상에서 제외
 		s3Service.deleteFileByKey(user.getProfileImage());
 
-		// 참여 중인 챌린지 조회
+		// 참여 중인 챌린지 인원수 감소 및 상태 변경
 		List<UserChallenge> activeChallenges =
 				userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
 
@@ -90,21 +90,22 @@ public class UserDeleteService {
 
 		Long userId = user.getId();
 
+		// 1. 내가 팔로우하던 사람들의 ID를 가져옴
 		List<Long> followingIds = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED)
-				.stream()
-				.map(f -> f.getFollowing().getId())
-				.toList();
+				.stream().map(f -> f.getFollowing().getId()).toList();
 
+		// 2. 나를 팔로우하던 사람들의 ID를 가져옴
 		List<Long> followerIds = followRepository.findAllByFollowingIdAndStatus(userId, FollowStatus.APPROVED)
-				.stream()
-				.map(f -> f.getFollower().getId())
-				.toList();
+				.stream().map(f -> f.getFollower().getId()).toList();
 
+		// 3. 관계 삭제 (이걸 먼저 해야 sync할 때 정확한 숫자가 나옴)
 		followRepository.deleteAllByUserId(userId);
 
+		// 4. 영향을 받은 모든 유저의 카운트 재계산 (벌크 -1보다 훨씬 안전!)
 		followingIds.forEach(followCountService::syncCounts);
 		followerIds.forEach(followCountService::syncCounts);
 
+		// 유저 정보 마스킹 및 상태 변경
 		user.completeWithdrawal();
 
 		userRepository.save(user);
