@@ -22,6 +22,7 @@ import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
+import com.hrr.backend.domain.point.service.PointService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
     private final TransactionTemplate transactionTemplate;
 
     private final ApplicationEventPublisher publisher;
+    private final PointService pointService;
 
     @Override
     public void processRoundsEndedAt(LocalDate endDate) {
@@ -70,6 +72,8 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
         if (currentRound == null || !currentRound.getId().equals(endedRound.getId())) {
             return;
         }
+        // 미인증 없이 라운드 종료하면 포인트 지급
+        pointService.checkAndEarnFlawlessRoundPoints(endedRound);
 
         // 2. 진행중인 챌린지만 라운드 자동 전환
         if (challenge.getStatus() != ChallengeStatus.ONGOING) {
@@ -110,6 +114,8 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
 
             RoundRecord nextRR = roundConverter.toRoundRecordEntity(nextRound, uc);
             roundRecordRepository.save(nextRR);
+            // 동일 챌린지 3라운드 이상 참여시에 지급 여부 확인
+            pointService.checkAndEarnChallengeMasterPoint(uc.getUser(), challenge, uc);
         }
 
         // 7. 챌린지 currentRound 교체

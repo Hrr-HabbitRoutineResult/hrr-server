@@ -15,6 +15,12 @@ import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.point.service.PointService;
+import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.global.common.enums.ChallengeDays;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +33,9 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -34,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -56,6 +66,9 @@ class VerificationServiceTest {
 
     @Mock
     private UserChallengeRepository userChallengeRepository; // 추가됨
+
+    @Mock
+    private PointService pointService;
 
     // --- Helper Methods ---
 
@@ -276,5 +289,48 @@ class VerificationServiceTest {
         assertThatThrownBy(() -> verificationService.getVerificationDetail(verificationId, currentUserId, 0, 10))
                 .isInstanceOf(GlobalException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("성공: 인증 삭제 시, 인증 삭제보다 먼저 관련 포인트를 회수한다 (순서 검증)")
+    void deleteVerification_revokesPointsBeforeDeleting() {
+        // given
+        Long verificationId = 1L;
+        Long authorId = 10L;
+        User author = createUser(authorId, UserStatus.ACTIVE);
+
+        // 인증 요일/시간대 검증이 언제 실행해도 항상 통과하도록, 매일 + 하루종일 인증 가능한 챌린지로 구성
+        Challenge challenge = Challenge.builder()
+                .id(100L)
+                .title("Test Challenge")
+                .verifyStartTime(LocalTime.MIN)
+                .verifyEndTime(LocalTime.MAX)
+                .challengeDays(Arrays.stream(ChallengeDays.values())
+                        .map(day -> ChallengeDayJoin.builder().dayOfWeek(day).build())
+                        .toList())
+                .build();
+        Round round = Round.builder().id(200L).challenge(challenge).build();
+        UserChallenge userChallenge = UserChallenge.builder().user(author).challenge(challenge).build();
+        RoundRecord roundRecord = RoundRecord.builder().round(round).userChallenge(userChallenge).build();
+
+        Verification verification = Verification.builder()
+                .id(verificationId)
+                .roundRecord(roundRecord)
+                .status(VerificationStatus.COMPLETED)
+                .isQuestion(false)
+                .isResolved(false)
+                .build();
+        // createdAt은 BaseEntity 필드라 빌더로 설정이 안 되어, 인증 시간대 검증 통과를 위해 리플렉션으로 "지금"으로 세팅
+        ReflectionTestUtils.setField(verification, "createdAt", LocalDateTime.now());
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+
+        // when
+        verificationService.deleteVerification(verificationId, authorId);
+
+        // then: point_history가 verification을 FK로 참조하므로, 반드시 포인트 회수 -> 인증 삭제 순서여야 함
+        InOrder inOrder = Mockito.inOrder(pointService, verificationRepository);
+        inOrder.verify(pointService, times(1)).revokePointsForVerification(verification);
+        inOrder.verify(verificationRepository, times(1)).delete(verification);
     }
 }
