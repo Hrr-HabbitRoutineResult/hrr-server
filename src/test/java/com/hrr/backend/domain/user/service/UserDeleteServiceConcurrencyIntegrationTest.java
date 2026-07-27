@@ -24,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.hrr.backend.domain.auth.service.AuthService;
@@ -129,6 +130,7 @@ class UserDeleteServiceConcurrencyIntegrationTest {
 	}
 
 	@Test
+	@Transactional
 	@DisplayName("탈퇴 대상 챌린지는 챌린지 ID 오름차순으로 조회되어 락 획득 순서가 고정된다")
 	void findByUserAndStatus_ReturnsJoinedChallengesOrderedByChallengeId() {
 		OrderedWithdrawalTarget target = createUserJoinedToTwoChallengesInReverseMappingOrder();
