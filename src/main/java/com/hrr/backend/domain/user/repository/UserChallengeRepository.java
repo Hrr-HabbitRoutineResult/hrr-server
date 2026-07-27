@@ -6,7 +6,9 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -91,6 +93,7 @@ public interface UserChallengeRepository extends JpaRepository<UserChallenge, Lo
     List<UserChallenge> findAllJoinedWithUserFavorByChallengeId(@Param("challengeId") Long challengeId);
 
 	// 특정 사용자가 참가 중인 챌린지 정보를 상태에 따라 조회
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT uc
             FROM UserChallenge uc
