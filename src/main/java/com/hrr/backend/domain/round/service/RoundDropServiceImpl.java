@@ -4,18 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.hrr.backend.domain.challenge.entity.Challenge;
-import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.round.entity.Round;
-import com.hrr.backend.domain.round.entity.RoundRecord;
-import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
-import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
-import com.hrr.backend.domain.user.entity.UserChallenge;
-import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
-import com.hrr.backend.global.common.enums.ChallengeStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,44 +17,19 @@ import lombok.extern.slf4j.Slf4j;
 public class RoundDropServiceImpl implements RoundDropService {
 
     private final RoundRepository roundRepository;
-    private final RoundRecordRepository roundRecordRepository;
-    private final ChallengeRepository challengeRepository;
+    private final RoundDropProcessor roundDropProcessor;
 
     @Override
-    @Transactional
     public void dropNonContinuersAt(LocalDate endDate) {
 
         // 오늘이 endDate인 라운드들 => 오늘 23:59에 드랍 처리 대상
         List<Round> rounds = roundRepository.findAllByEndDate(endDate);
 
+        // 각 Round는 독립 트랜잭션으로 처리
+        // 한 Round 처리 중 예외가 발생해도 로그만 남기고 다음 Round 처리를 계속 진행
         for (Round round : rounds) {
             try {
-                Challenge challenge = round.getChallenge();
-
-                // 진행중 챌린지만 처리
-                if (challenge.getStatus() != ChallengeStatus.ONGOING) continue;
-
-                // 멱등성: 이미 currentRound가 바뀌었으면 스킵
-                if (challenge.getCurrentRound() == null || !challenge.getCurrentRound().getId().equals(round.getId())) {
-                    continue;
-                }
-
-                // JOINED만 조회
-                List<RoundRecord> records = roundRecordRepository.findAllByRoundWithUserAndSetting(
-                        round,
-                        ChallengeJoinStatus.JOINED
-                );
-
-                for (RoundRecord rr : records) {
-                    if (rr.getNextRoundIntent() == NextRoundIntent.CONTINUE) continue;
-
-                    UserChallenge uc = rr.getUserChallenge();
-                    if (uc.getStatus() != ChallengeJoinStatus.JOINED) continue;
-
-                    uc.updateStatus(ChallengeJoinStatus.DROPPED);
-                    challengeRepository.decreaseCurrentParticipantCount(challenge.getId());
-                }
-
+                roundDropProcessor.processRound(round);
             } catch (Exception e) {
                 log.error("[RoundDrop] 드랍 처리 실패. roundId={}", round.getId(), e);
             }

@@ -2,10 +2,12 @@ package com.hrr.backend.domain.user.service;
 
 import java.util.List;
 
-import com.hrr.backend.domain.follow.entity.Follow;
+import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.follow.entity.enums.FollowStatus;
 import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.follow.service.FollowCountService;
+import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,8 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.s3.S3Service;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +38,7 @@ public class UserDeleteService {
 	private final ChallengeRepository challengeRepository;
 	private final SocialAuthRepository socialAuthRepository;
     private final FollowRepository followRepository;
+	private final ApplicationEventPublisher applicationEventPublisher;
 
 	private final S3Service s3Service;
 	private final AuthService authService;
@@ -59,20 +64,31 @@ public class UserDeleteService {
 		s3Service.deleteFileByKey(user.getProfileImage());
 
 		// 참여 중인 챌린지 인원수 감소 및 상태 변경
-		List<UserChallenge> activeChallenges = userChallengeRepository
-			.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
+		List<UserChallenge> activeChallenges =
+				userChallengeRepository.findByUserAndStatus(user, ChallengeJoinStatus.JOINED);
 
 		for (UserChallenge uc : activeChallenges) {
-			// 유저의 참여 상태를 '비정상 종료(KICKED)'로 업데이트
+			Challenge challenge = uc.getChallenge();
+
+			// 동시성 보장을 위해 챌린지 행 잠금
+			Challenge lockedChallenge = challengeRepository.findByIdForUpdate(challenge.getId())
+					.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+			boolean wasFull = lockedChallenge.getCurrentParticipants()
+					.equals(lockedChallenge.getMaxParticipants());
+
 			uc.updateStatus(ChallengeJoinStatus.KICKED);
 
-			int updatedRowNumber = challengeRepository.decreaseCurrentParticipantCount(uc.getChallenge().getId()); // 인원수 -1
-			if (updatedRowNumber == 0) {
-				log.error("일부 챌린지의 현재 참가 인원에 대한 업데이트가 진행되지 않았습니다. UserChallengeId: {}", uc.getId());
+			lockedChallenge.decreaseCurrentParticipants();
+
+			// 만석 → 빈자리 전환 시에만 빈자리 이벤트 발행
+			if (wasFull) {
+				applicationEventPublisher.publishEvent(
+						new ChallengeVacancyEvent(lockedChallenge.getId()));
 			}
 		}
 
-        Long userId = user.getId();
+		Long userId = user.getId();
 
 		// 1. 내가 팔로우하던 사람들의 ID를 가져옴
 		List<Long> followingIds = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED)
@@ -89,8 +105,8 @@ public class UserDeleteService {
 		followingIds.forEach(followCountService::syncCounts);
 		followerIds.forEach(followCountService::syncCounts);
 
-        // 유저 정보 마스킹 및 상태 변경
-        user.completeWithdrawal();
+		// 유저 정보 마스킹 및 상태 변경
+		user.completeWithdrawal();
 
 		userRepository.save(user);
 	}

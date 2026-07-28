@@ -1,7 +1,9 @@
 package com.hrr.backend.domain.notification;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeWait;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
 import com.hrr.backend.domain.notification.entity.*;
 import com.hrr.backend.domain.notification.entity.enums.NotificationCategory;
@@ -13,6 +15,7 @@ import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
+import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
 import com.hrr.backend.domain.notification.listener.NotificationEventListener;
 import com.hrr.backend.domain.notification.repository.*;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
@@ -69,6 +72,7 @@ class NotificationIntegrationTest {
     @Autowired private RoundRecordRepository roundRecordRepository;
     @Autowired private RoundRepository roundRepository;
     @Autowired private ChallengeRepository challengeRepository;
+    @Autowired private ChallengeWaitRepository challengeWaitRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private UserChallengeRepository userChallengeRepository;
     @Autowired private VerificationRepository verificationRepository;
@@ -123,6 +127,7 @@ class NotificationIntegrationTest {
         roundRecordRepository.deleteAll();
         roundRepository.deleteAll();
         userChallengeRepository.deleteAll();
+        challengeWaitRepository.deleteAll();
         challengeRepository.deleteAll();
         followRepository.deleteAll();
         userRepository.deleteAll();
@@ -349,7 +354,67 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("8. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
+    @DisplayName("8. 챌린지 빈자리 알림: 대기 신청자에게 내역을 저장하고 설정 ON 대상에게만 FCM 이벤트를 발행한다")
+    void challengeVacancy_Integration_Test() {
+        // given
+        testChallenge.updateCurrentParticipants(9);
+        challengeRepository.saveAndFlush(testChallenge);
+
+        User enabledWaiter = createUser("vacancy_on", true);
+        User disabledWaiter = createUser("vacancy_off", false);
+        User joinedWaiter = createUser("vacancy_joined", true);
+        User cancelledWaiter = createUser("vacancy_cncl", true);
+        User droppedWaiter = createUser("vacancy_dropped", true);
+
+        challengeWaitRepository.save(ChallengeWait.builder().user(enabledWaiter).challenge(testChallenge).build());
+        challengeWaitRepository.save(ChallengeWait.builder().user(disabledWaiter).challenge(testChallenge).build());
+        challengeWaitRepository.save(ChallengeWait.builder().user(joinedWaiter).challenge(testChallenge).build());
+        challengeWaitRepository.save(ChallengeWait.builder().user(cancelledWaiter).challenge(testChallenge).build());
+        challengeWaitRepository.save(ChallengeWait.builder().user(droppedWaiter).challenge(testChallenge).build());
+        userChallengeRepository.save(UserChallenge.builder()
+                .user(joinedWaiter).challenge(testChallenge).status(ChallengeJoinStatus.JOINED).build());
+        userChallengeRepository.save(UserChallenge.builder()
+                .user(cancelledWaiter).challenge(testChallenge).status(ChallengeJoinStatus.CANCELLED).build());
+        userChallengeRepository.save(UserChallenge.builder()
+                .user(droppedWaiter).challenge(testChallenge).status(ChallengeJoinStatus.DROPPED).build());
+        challengeWaitRepository.flush();
+        userChallengeRepository.flush();
+
+        // when
+        notificationCommandService.sendChallengeVacancyNotification(new ChallengeVacancyEvent(testChallenge.getId()));
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            NotificationEvent notificationEvent = events.get(0);
+            assertThat(notificationEvent.getType().getTypeName()).isEqualTo(NotificationTypeName.CHALLENGE_VACANCY);
+            assertThat(notificationEvent.getCategory()).isEqualTo(NotificationCategory.CHALLENGE);
+            assertThat(notificationEvent.getTargetType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getTargetId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getContextType()).isEqualTo(ResourceType.CHALLENGE);
+            assertThat(notificationEvent.getContextId()).isEqualTo(testChallenge.getId());
+            assertThat(notificationEvent.getTitle()).isEqualTo("빈자리가 있어요");
+            assertThat(notificationEvent.getMessage()).isEqualTo("테스트 챌린지 챌린지에 빈자리가 생겼어요!\n지금 바로 챌린지에 참여해보세요.");
+
+            assertThat(deliveries).hasSize(3);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getReceiver().getName())
+                    .containsExactlyInAnyOrder("vacancy_on", "vacancy_off", "vacancy_dropped");
+        });
+
+        List<FcmPushSendEvent> pushEvents = applicationEvents.stream(FcmPushSendEvent.class).toList();
+        assertThat(pushEvents).hasSize(1);
+        assertThat(pushEvents.get(0).deliveries()).hasSize(2);
+        assertThat(pushEvents.get(0).deliveries())
+                .extracting(delivery -> delivery.getReceiver().getName())
+                .containsExactlyInAnyOrder("vacancy_on", "vacancy_dropped");
+    }
+
+    @Test
+    @DisplayName("9. 멱등성 검증: 동일한 알림을 두 번 호출해도 한 번만 생성된다")
     void notificationIdempotency_Test() {
         // given
         User user = createUser("idempotent_user", true);
@@ -373,7 +438,7 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("9. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
+    @DisplayName("10. 다중 알림 검증: 3H 구간과 1H 구간에 각각 호출하면 알림이 각각 1개씩 생성된다")
     void multipleVerificationDeadlines_Test() {
         // given
         User user = createUser("multi_user", true);

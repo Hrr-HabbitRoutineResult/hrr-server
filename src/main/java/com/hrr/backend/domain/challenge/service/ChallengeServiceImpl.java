@@ -21,6 +21,7 @@ import com.hrr.backend.domain.challenge.event.ChallengeCreatedEvent;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
+import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.entity.Round;
@@ -478,7 +479,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		UserChallenge userChallenge;
 		if (existingUcOp.isPresent()) {
-			// 기존 기록이 있다면 (validateJoinRequest를 통과했으므로 DROPPED 상태임) 상태만 JOINED로 변경
+			// 기존 기록이 있다면 (validateJoinRequest를 통과했으므로 CANCELLED/DROPPED 상태임) 상태만 JOINED로 변경
 			userChallenge = existingUcOp.get();
 			userChallenge.updateStatus(ChallengeJoinStatus.JOINED);
 		} else {
@@ -514,6 +515,8 @@ public class ChallengeServiceImpl implements ChallengeService {
         // 비즈니스 룰 검증 (방장 여부, 참여 상태, 시작일 전 여부)
         validateLeaveRequest(challenge, userChallenge);
 
+        boolean wasFull = challenge.getCurrentParticipants() >= challenge.getMaxParticipants();
+
         // 현재 라운드의 내 RoundRecord 삭제 (아직 시작 전이라 라운드는 1개, 인증 기록도 없음)
         Round currentRound = challenge.getCurrentRound();
         if (currentRound != null) {
@@ -521,14 +524,18 @@ public class ChallengeServiceImpl implements ChallengeService {
                     .ifPresent(roundRecordRepository::delete);
         }
 
-        // UserChallenge 삭제 (상태값으로 남기지 않고 참가 이력 자체를 제거)
-        userChallengeRepository.delete(userChallenge);
+        // UserChallenge 이력은 유지하고 시작 전 나가기 상태로 변경
+        userChallenge.updateStatus(ChallengeJoinStatus.CANCELLED);
 
         // 참가자 수 감소 (참가 로직의 반대)
         challenge.decreaseCurrentParticipants();
 
         // challenge_statics 재집계 (JOINED 기준 전체 재계산이라 join과 동일하게 재사용 가능)
         challengeStaticsService.updateChallengeStatics(challenge);
+
+        if (wasFull && challenge.getCurrentParticipants() < challenge.getMaxParticipants()) {
+            eventPublisher.publishEvent(new ChallengeVacancyEvent(challenge.getId()));
+        }
 
         return challengeConverter.toLeaveResponseDto(challenge);
     }

@@ -11,6 +11,8 @@ import com.hrr.backend.global.common.enums.Category;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
 import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
+import com.hrr.backend.global.exception.GlobalException;
+import com.hrr.backend.global.response.ErrorCode;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -118,9 +120,11 @@ public class Challenge extends BaseEntity {
 
 	// 참가자 수 감소 편의 메서드
 	public void decreaseCurrentParticipants() {
-		if (this.currentParticipants > 0) {
-			this.currentParticipants--;
+		if (this.currentParticipants == null || this.currentParticipants <= 0) {
+			throw new GlobalException(ErrorCode.CHALLENGE_PARTICIPANT_COUNT_UNDERFLOW);
 		}
+
+		this.currentParticipants--;
 	}
 
 	// 라운드 교체

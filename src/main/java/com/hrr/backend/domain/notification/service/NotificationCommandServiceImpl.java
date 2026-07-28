@@ -1,7 +1,9 @@
 package com.hrr.backend.domain.notification.service;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.entity.ChallengeWait;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.comment.entity.Comment;
 import com.hrr.backend.domain.comment.repository.CommentRepository;
 import com.hrr.backend.domain.fcm.event.FcmPushSendEvent;
@@ -49,6 +51,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     private final UserRepository userRepository;
     private final VerificationRepository verificationRepository;
     private final CommentRepository commentRepository;
+    private final ChallengeWaitRepository challengeWaitRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationEventHelper eventHelper;
 
@@ -395,6 +398,67 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
             notificationRepository.saveAll(allDeliveries);
 
             // 푸시 발송만 설정 확인
+            List<NotificationDelivery> pushTargets = allDeliveries.stream()
+                    .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
+                    .toList();
+
+            if (!pushTargets.isEmpty()) {
+                eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
+            }
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendChallengeVacancyNotification(ChallengeVacancyEvent event) {
+        Long challengeId = event.challengeId();
+        LocalDate today = LocalDate.now();
+
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+        if (challenge.getStatus() == com.hrr.backend.global.common.enums.ChallengeStatus.FINISHED
+                || challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
+            return;
+        }
+
+        NotificationType type = typeRepository.findByTypeName(NotificationTypeName.CHALLENGE_VACANCY)
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOTIFICATION_TYPE_NOT_FOUND));
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .type(type)
+                .category(NotificationCategory.CHALLENGE)
+                .targetType(ResourceType.CHALLENGE)
+                .targetId(challengeId)
+                .contextType(ResourceType.CHALLENGE)
+                .contextId(challengeId)
+                .title("빈자리가 있어요")
+                .message(String.format("%s 챌린지에 빈자리가 생겼어요!\n지금 바로 챌린지에 참여해보세요.", challenge.getTitle()))
+                .imageKey(challenge.getImageKey())
+                .createdDate(today)
+                .build();
+
+        try {
+            eventRepository.saveAndFlush(notificationEvent);
+        } catch (DataIntegrityViolationException e) {
+            log.info("중복된 챌린지 빈자리 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            return;
+        }
+
+        List<ChallengeWait> waits = challengeWaitRepository.findReceiversByChallengeIdExcludingStatuses(
+                challengeId, List.of(ChallengeJoinStatus.JOINED, ChallengeJoinStatus.CANCELLED));
+
+        List<NotificationDelivery> allDeliveries = waits.stream()
+                .map(ChallengeWait::getUser)
+                .map(receiver -> NotificationDelivery.builder()
+                        .event(notificationEvent)
+                        .receiver(receiver)
+                        .isRead(false)
+                        .build())
+                .toList();
+
+        if (!allDeliveries.isEmpty()) {
+            notificationRepository.saveAll(allDeliveries);
+
             List<NotificationDelivery> pushTargets = allDeliveries.stream()
                     .filter(d -> d.getReceiver().getNotificationSetting().isChallengeEnabled())
                     .toList();

@@ -7,6 +7,7 @@ import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEven
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
+import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
 import com.hrr.backend.domain.notification.event.VerificationDeadlineEvent;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import java.time.LocalDate;
@@ -35,5 +36,8 @@ public interface NotificationCommandService {
 
     // 챌린지 수정 안내 발송
     void sendChallengeUpdatedNotification(ChallengeUpdatedEvent event);
+
+    // 챌린지 빈자리 발생 안내 발송
+    void sendChallengeVacancyNotification(ChallengeVacancyEvent event);
 
 }
