@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.domain.challenge.entity.enums.ExtensionStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import com.hrr.backend.global.common.enums.VerificationType;
@@ -213,6 +214,9 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "이번 주 인증 완료 요일 (참여 중일 때만 값 있음, 미참여시 null)", example = "[\"MONDAY\"]")
 		private List<ChallengeDays> verifiedDaysThisWeek;
+
+		@Schema(description = "연장 요청 상태 (NONE, PENDING, COMPLETED)", example = "PENDING")
+		private ExtensionStatus extensionStatus;
 	}
 
 	@Getter

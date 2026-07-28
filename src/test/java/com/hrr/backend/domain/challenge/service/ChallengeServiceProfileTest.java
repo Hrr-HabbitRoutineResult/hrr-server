@@ -4,7 +4,12 @@ import com.hrr.backend.domain.challenge.converter.ChallengeConverter;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
+import com.hrr.backend.domain.challenge.entity.enums.ExtensionStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.round.entity.Round;
+import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
@@ -23,8 +28,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +52,7 @@ class ChallengeServiceProfileTest {
 
     @Mock private ChallengeRepository challengeRepository;
     @Mock private UserChallengeRepository userChallengeRepository;
+    @Mock private RoundRecordRepository roundRecordRepository;
     @Mock private VerificationRepository verificationRepository;
 
     @Mock private S3UrlUtil s3UrlUtil;
@@ -86,6 +95,7 @@ class ChallengeServiceProfileTest {
         assertThat(result.getTargetDays()).contains(ChallengeDays.MONDAY, ChallengeDays.THURSDAY); // 목표는 2개
         assertThat(result.getVerifiedDaysThisWeek()).hasSize(1); // 인증은 1개
         assertThat(result.getVerifiedDaysThisWeek()).containsOnly(ChallengeDays.MONDAY); // 월요일만 포함
+        assertThat(result.getExtensionStatus()).isEqualTo(ExtensionStatus.NONE);
     }
 
     @Test
@@ -182,6 +192,8 @@ class ChallengeServiceProfileTest {
         // Then
         assertThat(result.getIsParticipating()).isFalse();
         assertThat(result.getVerifiedDaysThisWeek()).isNull();
+        assertThat(result.getExtensionStatus()).isEqualTo(ExtensionStatus.NONE);
+        verify(roundRecordRepository, never()).findByUserChallengeAndRoundId(any(), any());
     }
 
     @Test
@@ -228,14 +240,87 @@ class ChallengeServiceProfileTest {
         assertThat(capturedEnd.getDayOfWeek()).isEqualTo(DayOfWeek.SATURDAY);
     }
 
+    @Test
+    @DisplayName("7. [연장 기간/미응답] 참여 중이고 현재 라운드 연장 가능 기간이며 응답 전이면 PENDING")
+    void getChallengeProfile_ExtensionPeriod_Undecided_Pending() {
+        // Given
+        Long challengeId = 1L;
+        User user = User.builder().id(100L).build();
+        Round currentRound = createExtensionOpenRound();
+        Challenge challenge = createChallenge(challengeId, "연장 미응답 테스트", List.of(ChallengeDays.MONDAY), currentRound);
+        UserChallenge userChallenge = mockParticipating(user, challenge);
+
+        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        given(verificationRepository.findWeeklyVerifications(any(), any(), any(), any(), any()))
+                .willReturn(Collections.emptyList());
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, currentRound.getId()))
+                .willReturn(Optional.of(createRoundRecord(userChallenge, currentRound, NextRoundIntent.UNDECIDED)));
+
+        // When
+        ChallengeResponseDto.ChallengeProfileDto result = challengeService.getChallengeProfile(user, challengeId);
+
+        // Then
+        assertThat(result.getExtensionStatus()).isEqualTo(ExtensionStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("8. [연장 기간/응답 완료] 참여 중이고 현재 라운드 연장 가능 기간이며 이미 응답했으면 COMPLETED")
+    void getChallengeProfile_ExtensionPeriod_Responded_Completed() {
+        // Given
+        Long challengeId = 1L;
+        User user = User.builder().id(100L).build();
+        Round currentRound = createExtensionOpenRound();
+        Challenge challenge = createChallenge(challengeId, "연장 응답 완료 테스트", List.of(ChallengeDays.MONDAY), currentRound);
+        UserChallenge userChallenge = mockParticipating(user, challenge);
+
+        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        given(verificationRepository.findWeeklyVerifications(any(), any(), any(), any(), any()))
+                .willReturn(Collections.emptyList());
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, currentRound.getId()))
+                .willReturn(Optional.of(createRoundRecord(userChallenge, currentRound, NextRoundIntent.CONTINUE)));
+
+        // When
+        ChallengeResponseDto.ChallengeProfileDto result = challengeService.getChallengeProfile(user, challengeId);
+
+        // Then
+        assertThat(result.getExtensionStatus()).isEqualTo(ExtensionStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("9. [연장 기간 외] 참여 중이어도 연장 가능 기간이 아니면 NONE")
+    void getChallengeProfile_NotExtensionPeriod_None() {
+        // Given
+        Long challengeId = 1L;
+        User user = User.builder().id(100L).build();
+        Round currentRound = createExtensionClosedRound();
+        Challenge challenge = createChallenge(challengeId, "연장 기간 외 테스트", List.of(ChallengeDays.MONDAY), currentRound);
+
+        mockParticipating(user, challenge);
+        given(challengeRepository.findByIdWithDays(challengeId)).willReturn(Optional.of(challenge));
+        given(verificationRepository.findWeeklyVerifications(any(), any(), any(), any(), any()))
+                .willReturn(Collections.emptyList());
+
+        // When
+        ChallengeResponseDto.ChallengeProfileDto result = challengeService.getChallengeProfile(user, challengeId);
+
+        // Then
+        assertThat(result.getExtensionStatus()).isEqualTo(ExtensionStatus.NONE);
+        verify(roundRecordRepository, never()).findByUserChallengeAndRoundId(any(), any());
+    }
+
     // 챌린지 생성 헬퍼
     private Challenge createChallenge(Long id, String title, List<ChallengeDays> targetDays) {
+        return createChallenge(id, title, targetDays, null);
+    }
+
+    private Challenge createChallenge(Long id, String title, List<ChallengeDays> targetDays, Round currentRound) {
         Challenge challenge = Challenge.builder()
                 .id(id)
                 .title(title)
                 .rule("규칙")
                 .verifyStartTime(LocalTime.of(9, 0))
                 .verifyEndTime(LocalTime.of(18, 0))
+                .currentRound(currentRound)
                 .build();
 
         // 목표 요일 추가
@@ -264,12 +349,13 @@ class ChallengeServiceProfileTest {
     }
 
     // 참여 상태 Mocking
-    private void mockParticipating(User user, Challenge challenge) {
+    private UserChallenge mockParticipating(User user, Challenge challenge) {
         UserChallenge uc = UserChallenge.builder()
                 .id(10L).user(user).challenge(challenge)
                 .status(ChallengeJoinStatus.JOINED)
                 .build();
         given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.of(uc));
+        return uc;
     }
 
     // Repository 호출 Mocking (Common)
@@ -283,5 +369,31 @@ class ChallengeServiceProfileTest {
                 any(LocalDateTime.class),
                 eq(VerificationStatus.COMPLETED)
         )).willReturn(verifications);
+    }
+
+    private Round createExtensionOpenRound() {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        return Round.builder()
+                .id(20L)
+                .startDate(today.minusDays(1))
+                .endDate(today.plusDays(3))
+                .build();
+    }
+
+    private Round createExtensionClosedRound() {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        return Round.builder()
+                .id(20L)
+                .startDate(today.minusDays(1))
+                .endDate(today.plusDays(5))
+                .build();
+    }
+
+    private RoundRecord createRoundRecord(UserChallenge userChallenge, Round round, NextRoundIntent intent) {
+        return RoundRecord.builder()
+                .userChallenge(userChallenge)
+                .round(round)
+                .nextRoundIntent(intent)
+                .build();
     }
 }

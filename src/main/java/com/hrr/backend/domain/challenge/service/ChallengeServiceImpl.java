@@ -19,6 +19,7 @@ import com.hrr.backend.domain.challenge.entity.ChallengeLike; // Import 추가
 import com.hrr.backend.domain.challenge.entity.ChallengeWait;
 import com.hrr.backend.domain.challenge.event.ChallengeCreatedEvent;
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
+import com.hrr.backend.domain.challenge.entity.enums.ExtensionStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
@@ -26,6 +27,7 @@ import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.entity.enums.NextRoundIntent;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.converter.UserChallengeConverter;
@@ -103,6 +105,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private static final String TODAY_CHALLENGE_RANKING_KEY = "today:challenge:clicks";
 
 	private final S3UrlUtil s3UrlUtil;
+
+	private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -222,11 +226,13 @@ public class ChallengeServiceImpl implements ChallengeService {
 		Challenge challenge = findChallengeWithDays(challengeId);
 
 		// 참여 여부 확인
-		boolean isParticipating = userChallengeRepository.findByUserAndChallenge(user, challenge)
+		Optional<UserChallenge> userChallengeOptional = userChallengeRepository.findByUserAndChallenge(user, challenge);
+		boolean isParticipating = userChallengeOptional
 				.map(uc -> uc.getStatus() == ChallengeJoinStatus.JOINED)
 				.orElse(false);
 
 		List<ChallengeDays> verifiedDaysThisWeek = null;
+		ExtensionStatus extensionStatus = ExtensionStatus.NONE;
 
 		// 참여 중일 때만 계산
 		if (isParticipating) {
@@ -250,9 +256,42 @@ public class ChallengeServiceImpl implements ChallengeService {
 					.map(v -> ChallengeDays.from(v.getCreatedAt().getDayOfWeek()))
 					.distinct()
 					.toList();
+
+			extensionStatus = calculateExtensionStatus(userChallengeOptional.get(), challenge.getCurrentRound());
 		}
 
-		return challengeConverter.toProfileDto(challenge, isParticipating, verifiedDaysThisWeek);
+		return challengeConverter.toProfileDto(challenge, isParticipating, verifiedDaysThisWeek, extensionStatus);
+	}
+
+	/**
+	 * 현재 라운드의 연장 상태 계산
+	 * 연장 가능 기간(D-3 ~ D-2)에만 상태 노출
+	 * 미응답은 PENDING, 응답 완료는 COMPLETED를 반환
+	 */
+	private ExtensionStatus calculateExtensionStatus(UserChallenge userChallenge, Round currentRound) {
+		if (currentRound == null || !isExtensionPeriodOpen(currentRound, LocalDate.now(KOREA_ZONE))) {
+			return ExtensionStatus.NONE;
+		}
+
+		return roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, currentRound.getId())
+				.map(roundRecord -> roundRecord.getNextRoundIntent() == NextRoundIntent.UNDECIDED
+						? ExtensionStatus.PENDING
+						: ExtensionStatus.COMPLETED)
+				.orElse(ExtensionStatus.NONE);
+	}
+
+	/**
+	 * 현재 날짜가 연장 의사 결정 기간(D-3 ~ D-2)인지 확인
+	 */
+	private boolean isExtensionPeriodOpen(Round currentRound, LocalDate today) {
+		if (today.isBefore(currentRound.getStartDate()) || today.isAfter(currentRound.getEndDate())) {
+			return false;
+		}
+
+		LocalDate decisionOpenDate = currentRound.getEndDate().minusDays(3);
+		LocalDate decisionCloseDate = currentRound.getEndDate().minusDays(2);
+
+		return !today.isBefore(decisionOpenDate) && !today.isAfter(decisionCloseDate);
 	}
 
 	@Override
