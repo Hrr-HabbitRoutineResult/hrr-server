@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.point.service;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -20,6 +21,7 @@ import com.hrr.backend.domain.point.converter.PointConverter;
 import com.hrr.backend.domain.point.dto.PointHistoryResponseDto;
 import com.hrr.backend.domain.point.entity.PointHistory;
 import com.hrr.backend.domain.point.entity.enums.PointType;
+import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.point.repository.PointHistoryRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
@@ -55,6 +57,7 @@ public class PointServiceImpl implements PointService {
     private final PointAwardExecutor pointAwardExecutor;
     private final UserRepository userRepository;
     private final VerificationRepository verificationRepository;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -74,11 +77,17 @@ public class PointServiceImpl implements PointService {
     @Override
     @Transactional
     public void checkAndEarnFlawlessRoundPoints(Round endedRound) {
-        // 종료된 라운드에 속한 모든 RoundRecord 조회 (JOINED/DROPPED/KICKED 무관)
+        // CANCELLED는 나가기 시 RoundRecord가 삭제되어 애초에 조회되지 않음
+        // 종료된 라운드에 속한 모든 RoundRecord 조회 (JOINED/DROPPED 대상)
         List<RoundRecord> records = roundRecordRepository.findAllByRoundIdWithUserAndChallenge(endedRound.getId());
 
         for (RoundRecord record : records) {
             try {
+                // 회원 탈퇴로 종료된(KICKED) 참여자는 무결석 완주 대상에서 제외
+                if (record.getUserChallenge().getStatus() == ChallengeJoinStatus.KICKED) {
+                    continue;
+                }
+
                 long absenceCount = verificationAbsenceLogRepository.countByRoundRecordId(record.getId());
                 if (absenceCount > 0) {
                     continue; // 결석이 있으면 무결석 완주가 아님
@@ -224,7 +233,8 @@ public class PointServiceImpl implements PointService {
     @Transactional(readOnly = true)
     public PointHistoryResponseDto.PageDto getMyPointHistory(User user, int page, int size) {
         // 최근 3개월(당월 포함) 시작 시점 계산: 오늘이 7월이면 5월 1일 00:00부터
-        LocalDateTime from = LocalDate.now()
+        // 서버 기본 타임존에 의존하지 않고 KST 기준으로 계산되도록, 그리고 테스트에서 시각을 고정할 수 있도록 변경
+        LocalDateTime from = LocalDate.now(clock)
                 .minusMonths(RECENT_MONTHS - 1)
                 .withDayOfMonth(1)
                 .atStartOfDay();
