@@ -20,10 +20,26 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
 
     // 특정 스냅샷일의 등수순 상위 N명 조회
     @Query("SELECT s FROM UserRankSnapshot s " +
-            "JOIN FETCH s.user " +
+            "JOIN FETCH s.user u " +
             "WHERE s.snapshotDate = :snapshotDate " +
+            "AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.ACTIVE " +
             "ORDER BY s.ranking ASC, CASE WHEN s.achievedAt IS NULL THEN 1 ELSE 0 END ASC, s.achievedAt ASC")
     List<UserRankSnapshot> findTopByRanking(@Param("snapshotDate") LocalDate snapshotDate, Pageable pageable);
+
+    // 내 등수를 활성 유저 기준으로 계산
+    @Query("SELECT COUNT(s) FROM UserRankSnapshot s " +
+            "JOIN s.user u " +
+            "WHERE s.snapshotDate = :snapshotDate " +
+            "AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.ACTIVE " +
+            "AND s.points > :points")
+    long countHigherRankers(@Param("snapshotDate") LocalDate snapshotDate, @Param("points") Long points);
+
+    /** 특정 스냅샷일의 활성 유저 총 인원수. */
+    @Query("SELECT COUNT(s) FROM UserRankSnapshot s " +
+            "JOIN s.user u " +
+            "WHERE s.snapshotDate = :snapshotDate " +
+            "AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.ACTIVE")
+    long countActiveBySnapshotDate(@Param("snapshotDate") LocalDate snapshotDate);
 
     // 특정 유저의 특정 스냅샷일 기록 조회
     Optional<UserRankSnapshot> findByUserIdAndSnapshotDate(Long userId, LocalDate snapshotDate);
