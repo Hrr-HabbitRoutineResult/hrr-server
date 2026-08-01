@@ -21,7 +21,7 @@ public class RankingResponseDto {
         @Schema(description = "내 프로필 정보 (실시간 반영)")
         private MyProfileDto myProfile;
 
-        @Schema(description = "랭킹 보드 정보 (매주 월요일 00시 스냅샷 기준)")
+        @Schema(description = "랭킹 보드 정보 (매주 월요일 00시 스냅샷 기준). 아직 랭킹이 한 번도 집계되지 않았으면 null")
         private BoardInfoDto board;
     }
 
@@ -49,13 +49,13 @@ public class RankingResponseDto {
     @Schema(description = "랭킹 보드 DTO (주간 스냅샷 기준)")
     public static class BoardInfoDto {
 
-        @Schema(description = "내 등수 (스냅샷 기준)", example = "30")
+        @Schema(description = "내 등수 (활성 유저 기준). 아직 순위가 집계되지 않은 신규 가입자면 null", example = "30")
         private Integer myRank;
 
-        @Schema(description = "스냅샷 기준 전체 인원수", example = "100")
+        @Schema(description = "전체 활성 유저 수", example = "100")
         private Integer totalUserCount;
 
-        @Schema(description = "상위 퍼센트 (본인 포함, 올림 처리)", example = "30")
+        @Schema(description = "상위 퍼센트 (본인 포함, 올림 처리). 신규 가입자면 null", example = "30")
         private Integer topPercent;
 
         @Schema(description = "직전 스냅샷 대비 등수 변화값. 양수=상승한 계단 수, 음수=하락한 계단 수, 0=변동없음, null=비교할 이전 데이터 없음(첫 주)", example = "5")
@@ -64,7 +64,7 @@ public class RankingResponseDto {
         @Schema(description = "등수 변화 문구. 이전 데이터가 없으면 null (이 경우 프론트에서 관련 문구 자체를 노출하지 않아야 함)", example = "지난주보다 5계단 상승했어요")
         private String rankChangeMessage;
 
-        @Schema(description = "내 포인트 (스냅샷 기준)", example = "100")
+        @Schema(description = "내 포인트 (스냅샷 기준). 신규 가입자면 null", example = "100")
         private Long myPoints;
 
         @Schema(description = "상위 5명 랭킹 목록")
