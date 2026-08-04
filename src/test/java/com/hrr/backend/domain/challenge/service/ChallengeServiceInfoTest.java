@@ -371,8 +371,8 @@ class ChallengeServiceInfoTest {
     }
 
     @Test
-    @DisplayName("상황 16: 진행 중 + 강퇴(KICKED)된 유저는 재참여 불가하므로 REJECT")
-    void ongoing_kickedUser_returns_REJECT() {
+    @DisplayName("상황 16: 진행 중 + 기존 퇴출(KICKED) 기록이 있는 유저는 일반 미참여자로 처리되어 JOIN")
+    void ongoing_kickedUser_returns_JOIN() {
         Long challengeId = 1L;
         User user = mock(User.class);
         Challenge challenge = createChallengeBase();
@@ -382,10 +382,69 @@ class ChallengeServiceInfoTest {
 
         mockFetchingChallenge(challengeId, challenge);
         mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
-        mockConverter(ActionButtonStatus.REJECT);
+        mockConverter(ActionButtonStatus.JOIN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.REJECT);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.JOIN);
+    }
+
+    @Test
+    @DisplayName("상황 17: 진행 중 + 기존 퇴출(KICKED) 기록 + 만석 + 빈자리 알림 미신청 -> WAITLIST")
+    void ongoing_kickedUser_full_notWaitRegistered_returns_WAITLIST() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 30, 30);
+        setRoundDate(challenge, LocalDate.now());
+
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
+        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(false);
+        mockConverter(ActionButtonStatus.WAITLIST);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLIST);
+    }
+
+    @Test
+    @DisplayName("상황 18: 진행 중 + 기존 퇴출(KICKED) 기록 + 만석 + 빈자리 알림 신청 완료 -> WAITLISTED")
+    void ongoing_kickedUser_full_waitRegistered_returns_WAITLISTED() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 30, 30);
+        setRoundDate(challenge, LocalDate.now());
+
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
+        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(true);
+        mockConverter(ActionButtonStatus.WAITLISTED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLISTED);
+    }
+
+    @Test
+    @DisplayName("상황 19: 진행 중 + 기존 퇴출(KICKED) 기록 + 참여 개수 제한 -> MAX_LIMIT_EXCEEDED")
+    void ongoing_kickedUser_maxJoined_returns_MAX_LIMIT_EXCEEDED() {
+        Long challengeId = 1L;
+        Long userId = 10L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+
+        given(user.getId()).willReturn(userId);
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 5, 10);
+        setRoundDate(challenge, LocalDate.now());
+
+        mockFetchingChallenge(challengeId, challenge);
+        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
+        given(challengeRepository.countByUserIdAndStatus(userId, ChallengeJoinStatus.JOINED)).willReturn(5L);
+        mockConverter(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
     }
     /**
      * Helper Methods

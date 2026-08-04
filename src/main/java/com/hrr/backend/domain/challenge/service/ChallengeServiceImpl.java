@@ -174,7 +174,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 유저 상태 확인 (참여 여부, 오늘 인증 여부)
 		boolean isParticipant = false;
 		boolean isCertifiedToday = false;
-		boolean isKicked = false; // 강퇴 여부 플래그 추가
 
         // 유저가 참여 중인지 확인
         Optional<UserChallenge> ucOp = userChallengeRepository.findByUserAndChallenge(user, challenge);
@@ -185,9 +184,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 			if (uc.getStatus() == ChallengeJoinStatus.JOINED && challenge.getStatus() != ChallengeStatus.FINISHED) {
 				isParticipant = true;
 				isCertifiedToday = checkTodayVerification(uc.getId(), challenge);
-			}
-			else if (uc.getStatus() == ChallengeJoinStatus.KICKED) {
-				isKicked = true;
 			}
 		}
 
@@ -206,7 +202,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isOwnerActive = (owner != null) && (owner.getUserStatus() == UserStatus.ACTIVE);
 
 		// 버튼 상태 결정
-		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, user, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
+		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, user, isParticipant, isCertifiedToday, isMaxJoined);
 
         // 현재 유저가 방장인지 여부
         boolean isOwner = Objects.equals(owner != null ? owner.getId() : null, user.getId());
@@ -1087,19 +1083,14 @@ public class ChallengeServiceImpl implements ChallengeService {
      * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
      * (기획 따라 변경 가능)
      */
-	private ActionButtonStatus resolveButtonStatus(Challenge challenge, User user, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined, boolean isKicked) {
+	private ActionButtonStatus resolveButtonStatus(Challenge challenge, User user, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined) {
 
 		// 1. 챌린지 자체가 종료된 경우
 		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
 			return ActionButtonStatus.FINISHED;
 		}
 
-		// 2. 강퇴된 유저의 경우
-		if (isKicked) {
-			return ActionButtonStatus.REJECT;
-		}
-
-		// 3. 참여자인 경우 (인증 관련 분기)
+		// 2. 참여자인 경우 (인증 관련 분기)
 		if (isParticipant) {
 			Round currentRound = challenge.getCurrentRound();
 
@@ -1118,19 +1109,19 @@ public class ChallengeServiceImpl implements ChallengeService {
 			return isCertifiedToday ? ActionButtonStatus.DONE : ActionButtonStatus.AVAILABLE;
 		}
 
-		// 4. 미참여자이면서 참여가 제한되는 경우
+		// 3. 미참여자이면서 참여가 제한되는 경우
 		if (isMaxJoined) {
 			return ActionButtonStatus.MAX_LIMIT_EXCEEDED;
 		}
 
-		// 5. 미참여자 정원 체크
+		// 4. 미참여자 정원 체크
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
 			return challengeWaitRepository.existsByUserAndChallenge(user, challenge)
 					? ActionButtonStatus.WAITLISTED
 					: ActionButtonStatus.WAITLIST;
 		}
 
-		// 6. 그 외 참여 가능
+		// 5. 그 외 참여 가능
 		return ActionButtonStatus.JOIN;
 	}
 
