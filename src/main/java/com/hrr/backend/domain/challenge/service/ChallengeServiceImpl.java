@@ -107,6 +107,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final S3UrlUtil s3UrlUtil;
 
 	private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+	private static final long MAX_ACTIVE_CHALLENGE_COUNT = 5L;
 
 	@Override
 	public SliceResponseDto<ChallengeResponseDto.InfoDto> getChallengeList(
@@ -188,7 +189,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		}
 
 		// 챌린지 참여 개수 조회
-		boolean isMaxJoined = challengeRepository.countByUserIdAndStatus(user.getId(), ChallengeJoinStatus.JOINED) >= 5;
+		boolean isMaxJoined = hasReachedActiveChallengeLimit(user);
 
 		// 좋아요 여부 조회
 		boolean isLiked = challengeLikeRepository.existsByUserAndChallenge(user, challenge);
@@ -636,6 +637,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 			throw new GlobalException(ErrorCode.CHALLENGE_WAIT_ALREADY_EXIST);
 		}
 
+		validateActiveChallengeLimit(user);
+
 		// 자리가 남아있는 경우 대기 신청 불가
 		if (challenge.getCurrentParticipants() < challenge.getMaxParticipants()) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_FULL);
@@ -946,10 +949,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 */
 	private void validateCreateRequest(User owner, ChallengeRequestDto.CreateChallengeDto req) {
 
-		// 참가 중인 챌린지가 5개일 경우 요청 거절
-		if (challengeRepository.countByUserIdAndStatus(owner.getId(), ChallengeJoinStatus.JOINED) >= 5) {
-			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
-		}
+		validateActiveChallengeLimit(owner);
 
         LocalDate todayKst = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
@@ -987,10 +987,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
 
-		// 참가 중인 챌린지가 5개일 경우 요청 거절
-		if (challengeRepository.countByUserIdAndStatus(user.getId(), ChallengeJoinStatus.JOINED) >= 5) {
-			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
-		}
+		validateActiveChallengeLimit(user);
 
 		// 상태 검증 (종료만 아니면 모두 참여 가능)
 		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
@@ -1025,6 +1022,16 @@ public class ChallengeServiceImpl implements ChallengeService {
 			log.error("[Data Error] 챌린지의 현재 라운드(CurrentRound)가 null입니다. challengeId={}", challenge.getId());
 			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
 		}
+	}
+
+	private void validateActiveChallengeLimit(User user) {
+		if (hasReachedActiveChallengeLimit(user)) {
+			throw new GlobalException(ErrorCode.MAX_CHALLENGE_EXCEEDED);
+		}
+	}
+
+	private boolean hasReachedActiveChallengeLimit(User user) {
+		return challengeRepository.countByUserIdAndStatus(user.getId(), ChallengeJoinStatus.JOINED) >= MAX_ACTIVE_CHALLENGE_COUNT;
 	}
 
 	// 챌린지 일반 조회용
@@ -1109,19 +1116,24 @@ public class ChallengeServiceImpl implements ChallengeService {
 			return isCertifiedToday ? ActionButtonStatus.DONE : ActionButtonStatus.AVAILABLE;
 		}
 
-		// 3. 미참여자이면서 참여가 제한되는 경우
+		// 3. 만석인 챌린지에 이미 빈자리 알림을 신청한 경우
+		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
+			if (challengeWaitRepository.existsByUserAndChallenge(user, challenge)) {
+				return ActionButtonStatus.WAITLISTED;
+			}
+		}
+
+		// 4. 미참여자이면서 참여가 제한되는 경우
 		if (isMaxJoined) {
 			return ActionButtonStatus.MAX_LIMIT_EXCEEDED;
 		}
 
-		// 4. 미참여자 정원 체크
+		// 5. 미참여자 정원 체크
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
-			return challengeWaitRepository.existsByUserAndChallenge(user, challenge)
-					? ActionButtonStatus.WAITLISTED
-					: ActionButtonStatus.WAITLIST;
+			return ActionButtonStatus.WAITLIST;
 		}
 
-		// 5. 그 외 참여 가능
+		// 6. 그 외 참여 가능
 		return ActionButtonStatus.JOIN;
 	}
 

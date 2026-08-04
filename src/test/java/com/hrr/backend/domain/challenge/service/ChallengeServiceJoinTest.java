@@ -5,6 +5,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.point.service.PointService;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
@@ -45,6 +46,7 @@ class ChallengeServiceJoinTest {
     @Mock private ChallengeConverter challengeConverter;
     @Mock private RoundConverter roundConverter;
     @Mock private ChallengeStaticsService challengeStaticsService;
+    @Mock private PointService pointService;
 
     private User user;
     private Challenge challenge;

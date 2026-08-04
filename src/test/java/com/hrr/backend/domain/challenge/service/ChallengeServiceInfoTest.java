@@ -427,6 +427,29 @@ class ChallengeServiceInfoTest {
     }
 
     @Test
+    @DisplayName("상황 18-1: 진행 중 + 참여 개수 제한 + 기존 빈자리 알림 신청 완료 -> WAITLISTED")
+    void ongoing_guest_maxJoined_waitRegistered_returns_WAITLISTED() {
+        Long challengeId = 1L;
+        Long userId = 10L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+
+        given(user.getId()).willReturn(userId);
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 30, 30);
+        setRoundDate(challenge, LocalDate.now());
+
+        mockFetchingChallenge(challengeId, challenge);
+        mockGuest(user, challenge);
+        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(true);
+        given(challengeRepository.countByUserIdAndStatus(userId, ChallengeJoinStatus.JOINED)).willReturn(5L);
+        mockConverter(ActionButtonStatus.WAITLISTED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLISTED);
+    }
+
+    @Test
     @DisplayName("상황 19: 진행 중 + 기존 퇴출(KICKED) 기록 + 참여 개수 제한 -> MAX_LIMIT_EXCEEDED")
     void ongoing_kickedUser_maxJoined_returns_MAX_LIMIT_EXCEEDED() {
         Long challengeId = 1L;
@@ -444,6 +467,29 @@ class ChallengeServiceInfoTest {
         mockConverter(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("상황 20: 진행 중 + 참여 개수 제한 + 만석 + 빈자리 알림 미신청 -> MAX_LIMIT_EXCEEDED")
+    void ongoing_guest_maxJoined_full_notWaitRegistered_returns_MAX_LIMIT_EXCEEDED() {
+        Long challengeId = 1L;
+        Long userId = 10L;
+        User user = mock(User.class);
+        Challenge challenge = createChallengeBase();
+
+        given(user.getId()).willReturn(userId);
+        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 30, 30);
+        setRoundDate(challenge, LocalDate.now());
+
+        mockFetchingChallenge(challengeId, challenge);
+        mockGuest(user, challenge);
+        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(false);
+        given(challengeRepository.countByUserIdAndStatus(userId, ChallengeJoinStatus.JOINED)).willReturn(5L);
+        mockConverter(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
     }
     /**
