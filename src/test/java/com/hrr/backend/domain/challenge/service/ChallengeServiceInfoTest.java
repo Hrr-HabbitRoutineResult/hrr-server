@@ -371,8 +371,8 @@ class ChallengeServiceInfoTest {
     }
 
     @Test
-    @DisplayName("상황 16: 진행 중 + 기존 퇴출(KICKED) 기록이 있는 유저는 일반 미참여자로 처리되어 JOIN")
-    void ongoing_kickedUser_returns_JOIN() {
+    @DisplayName("상황 16: 진행 중 + 회원 탈퇴 이력(KICKED) 유저 -> WITHDRAWN")
+    void ongoing_kickedUser_returns_WITHDRAWN() {
         Long challengeId = 1L;
         User user = mock(User.class);
         Challenge challenge = createChallengeBase();
@@ -382,15 +382,15 @@ class ChallengeServiceInfoTest {
 
         mockFetchingChallenge(challengeId, challenge);
         mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
-        mockConverter(ActionButtonStatus.JOIN);
+        mockConverter(ActionButtonStatus.WITHDRAWN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.JOIN);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WITHDRAWN);
     }
 
     @Test
-    @DisplayName("상황 17: 진행 중 + 기존 퇴출(KICKED) 기록 + 만석 + 빈자리 알림 미신청 -> WAITLIST")
-    void ongoing_kickedUser_full_notWaitRegistered_returns_WAITLIST() {
+    @DisplayName("상황 17: 진행 중 + 회원 탈퇴 이력(KICKED) + 만석 + 빈자리 알림 신청 완료 -> WITHDRAWN 우선")
+    void ongoing_kickedUser_full_waitRegistered_returns_WITHDRAWN() {
         Long challengeId = 1L;
         User user = mock(User.class);
         Challenge challenge = createChallengeBase();
@@ -400,30 +400,11 @@ class ChallengeServiceInfoTest {
 
         mockFetchingChallenge(challengeId, challenge);
         mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
-        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(false);
-        mockConverter(ActionButtonStatus.WAITLIST);
+        mockConverter(ActionButtonStatus.WITHDRAWN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLIST);
-    }
-
-    @Test
-    @DisplayName("상황 18: 진행 중 + 기존 퇴출(KICKED) 기록 + 만석 + 빈자리 알림 신청 완료 -> WAITLISTED")
-    void ongoing_kickedUser_full_waitRegistered_returns_WAITLISTED() {
-        Long challengeId = 1L;
-        User user = mock(User.class);
-        Challenge challenge = createChallengeBase();
-
-        setChallengeStatus(challenge, ChallengeStatus.ONGOING, 30, 30);
-        setRoundDate(challenge, LocalDate.now());
-
-        mockFetchingChallenge(challengeId, challenge);
-        mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
-        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(true);
-        mockConverter(ActionButtonStatus.WAITLISTED);
-
-        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLISTED);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WITHDRAWN);
+        verify(challengeWaitRepository, never()).existsByUserAndChallenge(user, challenge);
     }
 
     @Test
@@ -450,8 +431,8 @@ class ChallengeServiceInfoTest {
     }
 
     @Test
-    @DisplayName("상황 19: 진행 중 + 기존 퇴출(KICKED) 기록 + 참여 개수 제한 -> MAX_LIMIT_EXCEEDED")
-    void ongoing_kickedUser_maxJoined_returns_MAX_LIMIT_EXCEEDED() {
+    @DisplayName("상황 19: 진행 중 + 회원 탈퇴 이력(KICKED) + 참여 개수 제한 -> WITHDRAWN 우선")
+    void ongoing_kickedUser_maxJoined_returns_WITHDRAWN() {
         Long challengeId = 1L;
         Long userId = 10L;
         User user = mock(User.class);
@@ -464,10 +445,10 @@ class ChallengeServiceInfoTest {
         mockFetchingChallenge(challengeId, challenge);
         mockParticipantWithStatus(user, challenge, ChallengeJoinStatus.KICKED);
         given(challengeRepository.countByUserIdAndStatus(userId, ChallengeJoinStatus.JOINED)).willReturn(5L);
-        mockConverter(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+        mockConverter(ActionButtonStatus.WITHDRAWN);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
-        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.MAX_LIMIT_EXCEEDED);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WITHDRAWN);
     }
 
     @Test

@@ -187,6 +187,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 				isCertifiedToday = checkTodayVerification(uc.getId(), challenge);
 			}
 		}
+		boolean isWithdrawn = ucOp
+				.map(uc -> uc.getStatus() == ChallengeJoinStatus.KICKED)
+				.orElse(false);
 
 		// 챌린지 참여 개수 조회
 		boolean isMaxJoined = hasReachedActiveChallengeLimit(user);
@@ -203,7 +206,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isOwnerActive = (owner != null) && (owner.getUserStatus() == UserStatus.ACTIVE);
 
 		// 버튼 상태 결정
-		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, user, isParticipant, isCertifiedToday, isMaxJoined);
+		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, user, isParticipant, isCertifiedToday, isMaxJoined, isWithdrawn);
 
         // 현재 유저가 방장인지 여부
         boolean isOwner = Objects.equals(owner != null ? owner.getId() : null, user.getId());
@@ -515,7 +518,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		UserChallenge userChallenge;
 		if (existingUcOp.isPresent()) {
-			// 기존 기록이 있다면 (validateJoinRequest를 통과했으므로 CANCELLED/DROPPED 상태임) 상태만 JOINED로 변경
+			// 기존 기록이 있다면 (CANCELLED/DROPPED) 재사용해 유니크 제약 충돌을 방지
 			userChallenge = existingUcOp.get();
 			userChallenge.updateStatus(ChallengeJoinStatus.JOINED);
 		} else {
@@ -986,9 +989,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 	 * 챌린지 참가 요청에 대한 비즈니스 검증 로직
 	 */
 	private void validateJoinRequest(Challenge challenge, User user, String inputPassword) {
-
-		validateActiveChallengeLimit(user);
-
 		// 상태 검증 (종료만 아니면 모두 참여 가능)
 		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
 			throw new GlobalException(ErrorCode.CHALLENGE_NOT_RECRUITING);
@@ -1003,6 +1003,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 				throw new GlobalException(ErrorCode.CHALLENGE_KICKED_USER);
 			}
 		});
+
+		validateActiveChallengeLimit(user);
 
 		// 정원 초과 검증
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
@@ -1090,11 +1092,15 @@ public class ChallengeServiceImpl implements ChallengeService {
      * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
      * (기획 따라 변경 가능)
      */
-	private ActionButtonStatus resolveButtonStatus(Challenge challenge, User user, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined) {
+	private ActionButtonStatus resolveButtonStatus(Challenge challenge, User user, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined, boolean isWithdrawn) {
 
 		// 1. 챌린지 자체가 종료된 경우
 		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
 			return ActionButtonStatus.FINISHED;
+		}
+
+		if (isWithdrawn) {
+			return ActionButtonStatus.WITHDRAWN;
 		}
 
 		// 2. 참여자인 경우 (인증 관련 분기)
