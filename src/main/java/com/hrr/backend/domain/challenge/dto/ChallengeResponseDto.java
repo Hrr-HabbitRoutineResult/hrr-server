@@ -164,7 +164,7 @@ public class ChallengeResponseDto {
 		private Boolean isLiked;
 
 		// 하단 버튼 상태
-		@Schema(description = "하단 버튼 상태 (JOIN, DISABLED, WAITLIST, CERTIFY_AVAILABLE, CERTIFIED)", example = "CERTIFIED")
+		@Schema(description = "하단 버튼 상태 (AVAILABLE, DONE, UPCOMING, NOT_DAY, NOT_TIME, JOIN, WAITLIST, WAITLISTED, FINISHED, MAX_LIMIT_EXCEEDED, REJECT)", example = "AVAILABLE")
 		private ActionButtonStatus actionButtonStatus;
 
 		// 방장 정보

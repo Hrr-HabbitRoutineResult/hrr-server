@@ -8,6 +8,7 @@ import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeDayJoinRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
@@ -51,6 +52,7 @@ class ChallengeServiceInfoTest {
     @Mock private UserChallengeRepository userChallengeRepository;
     @Mock private VerificationRepository verificationRepository;
     @Mock private ChallengeLikeRepository challengeLikeRepository;
+    @Mock private ChallengeWaitRepository challengeWaitRepository;
     @Mock private ChallengeConverter challengeConverter;
     @Mock private ChallengeDayJoinRepository challengeDayJoinRepository;
     @Mock private S3UrlUtil s3UrlUtil;
@@ -189,10 +191,30 @@ class ChallengeServiceInfoTest {
 
         mockFetchingChallenge(challengeId, challenge);
         mockGuest(user, challenge);
+        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(false);
         mockConverter(ActionButtonStatus.WAITLIST);
 
         ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
         assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLIST);
+    }
+
+    @Test
+    @DisplayName("상황 7-1: 미참여자 + 모집중 + 만석 + 빈자리 알림 신청 완료 -> WAITLISTED")
+    void guest_recruiting_full_waitRegistered_returns_WAITLISTED() {
+        Long challengeId = 1L;
+        User user = mock(User.class);
+        Challenge challenge = mock(Challenge.class);
+
+        setChallengeStatus(challenge, ChallengeStatus.RECRUITING, 30, 30);
+        setRoundDate(challenge, LocalDate.now());
+
+        mockFetchingChallenge(challengeId, challenge);
+        mockGuest(user, challenge);
+        given(challengeWaitRepository.existsByUserAndChallenge(user, challenge)).willReturn(true);
+        mockConverter(ActionButtonStatus.WAITLISTED);
+
+        ChallengeResponseDto.HeaderInfoDto result = challengeService.getChallengeHeaderInfo(challengeId, user);
+        assertThat(result.getActionButtonStatus()).isEqualTo(ActionButtonStatus.WAITLISTED);
     }
 
     @Test

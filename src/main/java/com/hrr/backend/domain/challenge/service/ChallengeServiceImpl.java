@@ -206,7 +206,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		boolean isOwnerActive = (owner != null) && (owner.getUserStatus() == UserStatus.ACTIVE);
 
 		// 버튼 상태 결정
-		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
+		ActionButtonStatus buttonStatus = resolveButtonStatus(challenge, user, isParticipant, isCertifiedToday, isMaxJoined, isKicked);
 
         // 현재 유저가 방장인지 여부
         boolean isOwner = Objects.equals(owner != null ? owner.getId() : null, user.getId());
@@ -1087,7 +1087,7 @@ public class ChallengeServiceImpl implements ChallengeService {
      * 하단 버튼의 상태(ActionButtonStatus)를 결정하는 핵심 로직
      * (기획 따라 변경 가능)
      */
-	private ActionButtonStatus resolveButtonStatus(Challenge challenge, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined, boolean isKicked) {
+	private ActionButtonStatus resolveButtonStatus(Challenge challenge, User user, boolean isParticipant, boolean isCertifiedToday, boolean isMaxJoined, boolean isKicked) {
 
 		// 1. 챌린지 자체가 종료된 경우
 		if (challenge.getStatus() == ChallengeStatus.FINISHED) {
@@ -1125,7 +1125,9 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 		// 5. 미참여자 정원 체크
 		if (challenge.getCurrentParticipants() >= challenge.getMaxParticipants()) {
-			return ActionButtonStatus.WAITLIST;
+			return challengeWaitRepository.existsByUserAndChallenge(user, challenge)
+					? ActionButtonStatus.WAITLISTED
+					: ActionButtonStatus.WAITLIST;
 		}
 
 		// 6. 그 외 참여 가능

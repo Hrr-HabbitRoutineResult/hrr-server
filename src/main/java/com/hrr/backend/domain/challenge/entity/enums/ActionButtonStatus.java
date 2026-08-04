@@ -16,6 +16,7 @@ public enum ActionButtonStatus {
     // 2. 미참여자용 상태
     JOIN("참가하기"),
     WAITLIST("빈자리 알림 받기"),
+    WAITLISTED("빈자리 알림 신청 완료"),
 
     // 3. 제한 상태 (DISABLED 세분화)
     FINISHED("종료된 챌린지"),
