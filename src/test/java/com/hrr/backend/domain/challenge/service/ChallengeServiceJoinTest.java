@@ -5,6 +5,7 @@ import com.hrr.backend.domain.challenge.dto.ChallengeRequestDto;
 import com.hrr.backend.domain.challenge.dto.ChallengeResponseDto;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.point.service.PointService;
 import com.hrr.backend.domain.round.converter.RoundConverter;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
@@ -45,6 +46,7 @@ class ChallengeServiceJoinTest {
     @Mock private ChallengeConverter challengeConverter;
     @Mock private RoundConverter roundConverter;
     @Mock private ChallengeStaticsService challengeStaticsService;
+    @Mock private PointService pointService;
 
     private User user;
     private Challenge challenge;
@@ -127,7 +129,7 @@ class ChallengeServiceJoinTest {
     }
 
     @Test
-    @DisplayName("가입 상황 3: 강퇴(KICKED) 유저 재참여 시도 -> CHALLENGE_KICKED_USER 예외 발생")
+    @DisplayName("가입 상황 3: 회원 탈퇴 이력(KICKED) 유저 참여 시도 -> CHALLENGE_KICKED_USER 예외 발생")
     void join_KickedUser_Throws_Exception() {
         // [Given]
         Long challengeId = 1L;
@@ -142,6 +144,9 @@ class ChallengeServiceJoinTest {
                 challengeService.joinChallenge(user, challengeId, joinReq)
         );
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CHALLENGE_KICKED_USER);
+        verify(kickedUc, never()).updateStatus(any());
+        verify(userChallengeRepository, never()).save(any(UserChallenge.class));
+        verify(challenge, never()).increaseCurrentParticipants();
     }
 
     @Test
@@ -191,6 +196,29 @@ class ChallengeServiceJoinTest {
                 challengeService.joinChallenge(user, challengeId, joinReq)
         );
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CHALLENGE_FULL);
+    }
+
+    @Test
+    @DisplayName("가입 상황 6-1: 회원 탈퇴 이력(KICKED) 유저는 정원 및 최대 참여 개수와 무관하게 CHALLENGE_KICKED_USER 예외 발생")
+    void join_KickedUser_ReturnsKickedExceptionBeforeCapacityAndLimit() {
+        // [Given]
+        Long challengeId = 1L;
+        given(challengeRepository.findByIdForUpdate(challengeId)).willReturn(Optional.of(challenge));
+
+        UserChallenge kickedUc = mock(UserChallenge.class);
+        given(kickedUc.getStatus()).willReturn(ChallengeJoinStatus.KICKED);
+        given(userChallengeRepository.findByUserAndChallenge(user, challenge)).willReturn(Optional.of(kickedUc));
+        lenient().when(challenge.getCurrentParticipants()).thenReturn(10);
+        lenient().when(challenge.getMaxParticipants()).thenReturn(10);
+
+        // [When & Then]
+        GlobalException exception = assertThrows(GlobalException.class, () ->
+                challengeService.joinChallenge(user, challengeId, joinReq)
+        );
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CHALLENGE_KICKED_USER);
+        verify(challengeRepository, never()).countByUserIdAndStatus(any(), any());
+        verify(kickedUc, never()).updateStatus(any());
+        verify(challenge, never()).increaseCurrentParticipants();
     }
 
     @Test
