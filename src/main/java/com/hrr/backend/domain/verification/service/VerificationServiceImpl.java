@@ -44,9 +44,11 @@ import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.VerificationScrap;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
 import com.hrr.backend.global.exception.GlobalException;
@@ -74,6 +76,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final UserBlockRepository userBlockRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PointService pointService;
+    private final VerificationScrapRepository verificationScrapRepository;
 
 
     @Override
@@ -610,6 +613,24 @@ public class VerificationServiceImpl implements VerificationService {
         pointService.revokePointsForVerification(verification);
 
         verificationRepository.delete(verification);
+    }
+
+    @Override
+    @Transactional
+    public VerificationResponseDto.ScrapResponseDto scrapVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        if (!verificationScrapRepository.existsByUserIdAndVerificationId(currentUser.getId(), verificationId)) {
+            try {
+                verificationScrapRepository.save(VerificationScrap.create(currentUser, verification));
+                verificationScrapRepository.flush();
+            } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
+                // Unique constraint keeps the endpoint idempotent under concurrent duplicate requests.
+            }
+        }
+
+        return verificationConverter.toScrapResponseDto(verification);
     }
 
     /**

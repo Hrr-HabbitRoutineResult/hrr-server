@@ -12,9 +12,12 @@ import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.VerificationScrap;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.domain.point.service.PointService;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -26,11 +29,13 @@ import com.hrr.backend.global.response.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
@@ -69,6 +74,9 @@ class VerificationServiceTest {
 
     @Mock
     private PointService pointService;
+
+    @Mock
+    private VerificationScrapRepository verificationScrapRepository;
 
     // --- Helper Methods ---
 
