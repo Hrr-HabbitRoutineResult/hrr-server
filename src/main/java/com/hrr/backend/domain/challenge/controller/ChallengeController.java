@@ -251,6 +251,7 @@ public class ChallengeController {
 
             @Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
             @Min(1)
+            @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다")
             @RequestParam(name = "page", defaultValue = "1") int page,
 
             @Parameter(description = "페이지 크기", example = "20")

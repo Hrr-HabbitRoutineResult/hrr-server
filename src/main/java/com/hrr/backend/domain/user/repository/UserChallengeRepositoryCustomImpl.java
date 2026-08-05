@@ -169,7 +169,8 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                                 .when(qUserChallenge.role.eq(UserChallengeRole.OWNER)).then(0)
                                 .otherwise(1)
                                 .asc(),
-                        qUser.nickname.asc()
+                        qUser.nickname.asc(),
+                        qUser.id.asc()
                 )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)
