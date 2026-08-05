@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface VerificationScrapRepository extends JpaRepository<VerificationScrap, Long> {
 
     boolean existsByUserIdAndVerificationId(Long userId, Long verificationId);
+
+    long deleteByUserIdAndVerificationId(Long userId, Long verificationId);
 }

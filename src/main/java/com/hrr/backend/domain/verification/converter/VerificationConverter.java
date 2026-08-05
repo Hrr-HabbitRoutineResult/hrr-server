@@ -217,9 +217,13 @@ public class VerificationConverter {
     }
 
     public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification) {
+        return toScrapResponseDto(verification, true);
+    }
+
+    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification, boolean isScrapped) {
         return VerificationResponseDto.ScrapResponseDto.builder()
                 .verificationId(verification.getId())
-                .isScrapped(true)
+                .isScrapped(isScrapped)
                 .build();
     }
 

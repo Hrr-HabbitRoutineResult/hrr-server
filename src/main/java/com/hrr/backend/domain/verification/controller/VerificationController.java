@@ -189,6 +189,18 @@ public class VerificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    @DeleteMapping("/{verificationId}/scrap")
+    @Operation(summary = "인증 게시글 스크랩 해제", description = "로그인한 사용자가 인증 게시글 스크랩을 해제합니다. 스크랩 데이터가 없어도 성공 처리합니다.")
+    public ApiResponse<VerificationResponseDto.ScrapResponseDto> unscrapVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        VerificationResponseDto.ScrapResponseDto response =
+                verificationService.unscrapVerification(verificationId, userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
 
 
 }

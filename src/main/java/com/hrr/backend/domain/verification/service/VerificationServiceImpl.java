@@ -633,6 +633,17 @@ public class VerificationServiceImpl implements VerificationService {
         return verificationConverter.toScrapResponseDto(verification);
     }
 
+    @Override
+    @Transactional
+    public VerificationResponseDto.ScrapResponseDto unscrapVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        verificationScrapRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+
+        return verificationConverter.toScrapResponseDto(verification, false);
+    }
+
     /**
      * 사용자 전체 챌린지 인증 기록 조회
      */

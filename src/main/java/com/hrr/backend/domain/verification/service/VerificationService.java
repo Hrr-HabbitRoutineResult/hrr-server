@@ -67,6 +67,8 @@ public interface VerificationService {
     void deleteVerification(Long verificationId, Long currentUserId);
 
     VerificationResponseDto.ScrapResponseDto scrapVerification(Long verificationId, User currentUser);
+
+    VerificationResponseDto.ScrapResponseDto unscrapVerification(Long verificationId, User currentUser);
   
     /**
      * 사용자 인증 기록 조회
