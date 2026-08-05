@@ -7,5 +7,5 @@ public interface VerificationScrapRepository extends JpaRepository<VerificationS
 
     boolean existsByUserIdAndVerificationId(Long userId, Long verificationId);
 
-    long deleteByUserIdAndVerificationId(Long userId, Long verificationId);
+    void deleteByUserIdAndVerificationId(Long userId, Long verificationId);
 }
