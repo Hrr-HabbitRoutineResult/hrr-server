@@ -5,6 +5,7 @@ import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
@@ -74,6 +75,9 @@ class VerificationServiceTest {
 
     @Mock
     private PointService pointService;
+
+    @Mock
+    private RoundRecordRepository roundRecordRepository;
 
     @Mock
     private VerificationScrapRepository verificationScrapRepository;

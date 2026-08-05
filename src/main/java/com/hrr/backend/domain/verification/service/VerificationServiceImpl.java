@@ -621,6 +621,8 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        validateScrapRoundParticipation(verification, currentUser);
+
         if (!verificationScrapRepository.existsByUserIdAndVerificationId(currentUser.getId(), verificationId)) {
             try {
                 verificationScrapRepository.save(VerificationScrap.create(currentUser, verification));
@@ -639,9 +641,23 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        validateScrapRoundParticipation(verification, currentUser);
+
         verificationScrapRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
 
         return verificationConverter.toScrapResponseDto(verification, false);
+    }
+
+    private void validateScrapRoundParticipation(Verification verification, User currentUser) {
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+
+        UserChallenge userChallenge = userChallengeRepository
+                .findByUserIdAndChallengeId(currentUser.getId(), challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED));
+
+        roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED));
     }
 
     /**
