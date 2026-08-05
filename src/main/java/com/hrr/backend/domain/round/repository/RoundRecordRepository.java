@@ -68,6 +68,19 @@ public interface RoundRecordRepository extends JpaRepository<RoundRecord, Long> 
     @Query("SELECT COALESCE(SUM(r.verificationCount), 0) FROM RoundRecord r WHERE r.userChallenge.id = :userChallengeId")
     Long sumVerificationCountByUserChallengeId(@Param("userChallengeId") Long userChallengeId);
 
+    @Query("""
+    SELECT DISTINCT r.roundNumber
+    FROM RoundRecord rr
+    JOIN rr.round r
+    JOIN rr.userChallenge uc
+    WHERE uc.user.id = :userId
+    AND uc.challenge.id = :challengeId
+""")
+    List<Integer> findParticipatedRoundNumbers(
+            @Param("userId") Long userId,
+            @Param("challengeId") Long challengeId
+    );
+
     /**
      * 알림 발송 대상자 및 설정 정보 일괄 조회
      */

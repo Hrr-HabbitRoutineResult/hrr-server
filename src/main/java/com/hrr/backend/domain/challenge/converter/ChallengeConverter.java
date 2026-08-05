@@ -162,10 +162,11 @@ public class ChallengeConverter {
     }
 
     // Round 엔티티 -> RoundDto 변환
-    public ChallengeResponseDto.RoundDto toRoundDto(Round round, boolean isCurrentRound) {
+    public ChallengeResponseDto.RoundDto toRoundDto(Round round, boolean isCurrentRound, boolean isParticipated) {
         return ChallengeResponseDto.RoundDto.builder()
                 .roundNumber(round.getRoundNumber())
                 .isCurrentRound(isCurrentRound)
+                .isParticipated(isParticipated)
                 .build();
     }
 

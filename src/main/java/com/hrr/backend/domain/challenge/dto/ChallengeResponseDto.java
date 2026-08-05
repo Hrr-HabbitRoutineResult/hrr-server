@@ -230,6 +230,9 @@ public class ChallengeResponseDto {
 
 		@Schema(description = "현재 진행 중인 라운드인지 여부 (TRUE일 경우 UI 강조)", example = "true")
 		private Boolean isCurrentRound;
+
+		@Schema(description = "로그인한 사용자의 해당 라운드 기록 존재 여부", example = "true")
+		private Boolean isParticipated;
 	}
 
     @Getter
