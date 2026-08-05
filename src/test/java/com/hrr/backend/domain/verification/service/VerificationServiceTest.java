@@ -345,4 +345,83 @@ class VerificationServiceTest {
         inOrder.verify(pointService, times(1)).revokePointsForVerification(verification);
         inOrder.verify(verificationRepository, times(1)).delete(verification);
     }
+
+    @Test
+    @DisplayName("성공: 스크랩 등록은 INSERT IGNORE를 호출하고 isScrapped=true를 반환한다")
+    void scrapVerification_usesInsertIgnoreAndReturnsScrapped() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+        RoundRecord userRoundRecord = RoundRecord.builder()
+                .round(postRound)
+                .userChallenge(userChallenge)
+                .build();
+        VerificationResponseDto.ScrapResponseDto expected = VerificationResponseDto.ScrapResponseDto.builder()
+                .verificationId(verificationId)
+                .isScrapped(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.of(userRoundRecord));
+        given(verificationConverter.toScrapResponseDto(verification)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.ScrapResponseDto result = verificationService.scrapVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsScrapped()).isTrue();
+        Mockito.verify(verificationScrapRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationScrapRepository, Mockito.never()).save(any(VerificationScrap.class));
+        Mockito.verify(verificationScrapRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("성공: 스크랩 데이터가 없어도 스크랩 해제는 예외 없이 미스크랩 상태를 반환한다")
+    void unscrapVerification_succeedsWhenScrapDoesNotExist() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+        RoundRecord userRoundRecord = RoundRecord.builder()
+                .round(postRound)
+                .userChallenge(userChallenge)
+                .build();
+        VerificationResponseDto.ScrapResponseDto expected = VerificationResponseDto.ScrapResponseDto.builder()
+                .verificationId(verificationId)
+                .isScrapped(false)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.of(userRoundRecord));
+        given(verificationConverter.toScrapResponseDto(verification, false)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.ScrapResponseDto result = verificationService.unscrapVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsScrapped()).isFalse();
+        Mockito.verify(verificationScrapRepository, times(1))
+                .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+    }
 }

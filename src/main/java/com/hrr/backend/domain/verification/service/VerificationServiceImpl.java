@@ -44,7 +44,6 @@ import com.hrr.backend.domain.verification.dto.VerificationRequestDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
-import com.hrr.backend.domain.verification.entity.VerificationScrap;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
@@ -623,14 +622,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         validateScrapRoundParticipation(verification, currentUser);
 
-        if (!verificationScrapRepository.existsByUserIdAndVerificationId(currentUser.getId(), verificationId)) {
-            try {
-                verificationScrapRepository.save(VerificationScrap.create(currentUser, verification));
-                verificationScrapRepository.flush();
-            } catch (org.springframework.dao.DataIntegrityViolationException ignored) {
-                // Unique constraint keeps the endpoint idempotent under concurrent duplicate requests.
-            }
-        }
+        verificationScrapRepository.insertIgnore(currentUser.getId(), verificationId);
 
         return verificationConverter.toScrapResponseDto(verification);
     }
