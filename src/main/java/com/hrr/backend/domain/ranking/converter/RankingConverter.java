@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.ranking.converter;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
@@ -22,40 +23,32 @@ public class RankingConverter {
             User user,
             List<UserRankSnapshot> topRankerSnapshots,
             UserRankSnapshot mySnapshot,
+            int myRank,
+            int totalUserCount,
             int topPercent,
             Integer rankChange,
             String rankChangeMessage
     ) {
-        RankingResponseDto.MyProfileDto myProfile = RankingResponseDto.MyProfileDto.builder()
-                .nickname(user.getDisplayNickname())
-                .profileImage(s3UrlUtil.toFullUrl(user.getProfileImage()))
-                .points(user.getPoints())
-                .build();
-
-        List<RankingResponseDto.RankingEntryDto> topRankers = topRankerSnapshots.stream()
-                .map(this::toRankingEntryDto)
-                .toList();
-
         RankingResponseDto.BoardInfoDto board = RankingResponseDto.BoardInfoDto.builder()
-                .myRank(mySnapshot.getRanking())
-                .totalUserCount(mySnapshot.getTotalUserCount())
+                .myRank(myRank)
+                .totalUserCount(totalUserCount)
                 .topPercent(topPercent)
                 .rankChange(rankChange)
                 .rankChangeMessage(rankChangeMessage)
                 .myPoints(mySnapshot.getPoints())
-                .topRankers(topRankers)
+                .topRankers(toTopRankerDtos(topRankerSnapshots))
                 .snapshotDate(mySnapshot.getSnapshotDate())
                 .build();
 
         return RankingResponseDto.BoardDto.builder()
-                .myProfile(myProfile)
+                .myProfile(toMyProfileDto(user))
                 .board(board)
                 .build();
     }
 
     /**
      * 아직 랭킹 스냅샷에 내 데이터가 없는 경우(신규 가입자 등)를 위한 응답.
-     * 상위 5명은 그대로 보여주되, 나와 관련된 등수/퍼센트/등수변화/포인트는 전부 null로 응답한다.
+     * 상위 5명은 그대로 보여주되, 나와 관련된 등수/퍼센트/등수변화/포인트는 전부 null로 응답.
      */
     public RankingResponseDto.BoardDto toUnrankedBoardDto(
             User user,
@@ -63,10 +56,6 @@ public class RankingConverter {
             Integer totalUserCount,
             LocalDate snapshotDate
     ) {
-        List<RankingResponseDto.RankingEntryDto> topRankers = topRankerSnapshots.stream()
-                .map(this::toRankingEntryDto)
-                .toList();
-
         RankingResponseDto.BoardInfoDto board = RankingResponseDto.BoardInfoDto.builder()
                 .myRank(null)
                 .totalUserCount(totalUserCount)
@@ -74,7 +63,7 @@ public class RankingConverter {
                 .rankChange(null)
                 .rankChangeMessage(null)
                 .myPoints(null)
-                .topRankers(topRankers)
+                .topRankers(toTopRankerDtos(topRankerSnapshots))
                 .snapshotDate(snapshotDate)
                 .build();
 
@@ -82,6 +71,36 @@ public class RankingConverter {
                 .myProfile(toMyProfileDto(user))
                 .board(board)
                 .build();
+    }
+
+    /**시스템 전체에 스냅샷이 하나도 없을 때(서비스 오픈 직후, 첫 배치 실행 전 등)의 응답.*/
+    public RankingResponseDto.BoardDto toNoSnapshotBoardDto(User user) {
+        return RankingResponseDto.BoardDto.builder()
+                .myProfile(toMyProfileDto(user))
+                .board(null)
+                .build();
+    }
+
+    /** 위 랭커 목록의 "표시 등수"를 다시 매기기*/
+    private List<RankingResponseDto.RankingEntryDto> toTopRankerDtos(List<UserRankSnapshot> snapshots) {
+        List<RankingResponseDto.RankingEntryDto> result = new ArrayList<>();
+
+        int displayRank = 0;
+        Long previousPoints = null;
+
+        for (int i = 0; i < snapshots.size(); i++) {
+            UserRankSnapshot snapshot = snapshots.get(i);
+
+            // 앞 사람과 포인트가 다르면 (현재 순번 + 1)로 등수를 새로 부여, 같으면 앞 사람 등수를 그대로 사용
+            if (previousPoints == null || !previousPoints.equals(snapshot.getPoints())) {
+                displayRank = i + 1;
+            }
+            previousPoints = snapshot.getPoints();
+
+            result.add(toRankingEntryDto(snapshot, displayRank));
+        }
+
+        return result;
     }
 
     private RankingResponseDto.MyProfileDto toMyProfileDto(User user) {
@@ -92,11 +111,11 @@ public class RankingConverter {
                 .build();
     }
 
-    private RankingResponseDto.RankingEntryDto toRankingEntryDto(UserRankSnapshot snapshot) {
+    private RankingResponseDto.RankingEntryDto toRankingEntryDto(UserRankSnapshot snapshot, int displayRank) {
         User rankedUser = snapshot.getUser();
         return RankingResponseDto.RankingEntryDto.builder()
                 .userId(rankedUser.getId())
-                .rank(snapshot.getRanking())
+                .rank(displayRank)
                 .nickname(rankedUser.getDisplayNickname())
                 .profileImage(s3UrlUtil.toFullUrl(rankedUser.getProfileImage()))
                 .points(snapshot.getPoints())

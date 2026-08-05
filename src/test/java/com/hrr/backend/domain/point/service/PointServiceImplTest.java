@@ -13,6 +13,9 @@ import static org.mockito.Mockito.verify;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.time.Clock;
+import java.time.ZoneId;
+import org.mockito.Spy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +63,12 @@ class PointServiceImplTest {
 
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Spy
+    private Clock clock = Clock.fixed(
+            LocalDate.of(2026, 7, 22).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(),
+            ZoneId.of("Asia/Seoul")
+    );
 
     @Test
     @DisplayName("챌린지 첫 인증 포인트는 아직 지급된 적 없으면 PointAwardExecutor를 호출한다")

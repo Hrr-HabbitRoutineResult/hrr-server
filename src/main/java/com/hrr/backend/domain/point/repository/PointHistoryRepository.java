@@ -25,9 +25,6 @@ public interface PointHistoryRepository extends JpaRepository<PointHistory, Long
     // 라운드 단위 중복 지급 방지 체크용 (FLAWLESS_ROUND, WEEKx_PERFECT)
     boolean existsByUserAndPointTypeAndRound(User user, PointType pointType, Round round);
 
-    // 특정 인증글로 인해 지급된 포인트 내역 전체 조회
-    List<PointHistory> findAllByVerificationId(Long verificationId);
-
     // 인증 삭제 시 포인트 회수 멱등성 보장
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM PointHistory p WHERE p.verification.id = :verificationId")
