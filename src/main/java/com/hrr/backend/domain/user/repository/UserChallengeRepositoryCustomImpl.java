@@ -5,12 +5,17 @@ import com.hrr.backend.domain.challenge.entity.QChallengeLike;
 import com.hrr.backend.domain.round.entity.QRound;
 import com.hrr.backend.domain.round.entity.QRoundRecord;
 import com.hrr.backend.domain.user.dto.UserResponseDto;
+import com.hrr.backend.domain.user.entity.QUser;
 import com.hrr.backend.domain.user.entity.QUserChallenge;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
+import com.hrr.backend.domain.user.entity.enums.UserStatus;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -133,5 +138,57 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
         }
 
         return new SliceImpl<>(content, pageable, hasNext);
+    }
+    // 챌린지 참가 중인 챌린저 목록 조회
+    @Override
+    public Slice<UserChallenge> findParticipantsByChallengeId(
+            Long challengeId,
+            List<Long> excludedUserIds,
+            Pageable pageable
+    ) {
+        QUserChallenge qUserChallenge = QUserChallenge.userChallenge;
+        QUser qUser = QUser.user;
+
+        // 참가 중인 챌린저 조회
+        // - UserChallenge가 JOINED 상태인 유저만 조회
+        // - 탈퇴/정지 등 비활성 유저는 제외 (ACTIVE만)
+        // - 차단 관계인 유저는 제외
+        // - 정렬: 방장 고정 1순위 -> 닉네임 오름차순
+        List<UserChallenge> content = jpaQueryFactory
+                .selectFrom(qUserChallenge)
+                .join(qUserChallenge.user, qUser).fetchJoin()
+                .where(
+                        qUserChallenge.challenge.id.eq(challengeId),
+                        qUserChallenge.status.eq(ChallengeJoinStatus.JOINED),
+                        qUser.userStatus.eq(UserStatus.ACTIVE),
+                        notInExcludedUsers(qUser, excludedUserIds)
+                )
+                .orderBy(
+                        // 방장을 항상 첫 번째로 노출 (방장이 없으면 자연스럽게 닉네임 순만 적용됨)
+                        new CaseBuilder()
+                                .when(qUserChallenge.role.eq(UserChallengeRole.OWNER)).then(0)
+                                .otherwise(1)
+                                .asc(),
+                        qUser.nickname.asc()
+                )
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize() + 1)
+                .fetch();
+
+        // Slice 객체 생성 및 반환
+        boolean hasNext = content.size() > pageable.getPageSize();
+        if (hasNext) {
+            content.remove(pageable.getPageSize());
+        }
+
+        return new SliceImpl<>(content, pageable, hasNext);
+    }
+
+    /**차단 관계 유저 제외 조건 */
+    private BooleanExpression notInExcludedUsers(QUser qUser, List<Long> excludedUserIds) {
+        if (excludedUserIds == null || excludedUserIds.isEmpty()) {
+            return null;
+        }
+        return qUser.id.notIn(excludedUserIds);
     }
 }
