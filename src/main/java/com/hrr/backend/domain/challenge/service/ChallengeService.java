@@ -62,7 +62,7 @@ public interface ChallengeService {
 	ChallengeResponseDto.ChallengeLikeDto unlikeChallenge(User user, Long challengeId);
 
 	// 챌린지 라운드 목록 조회
-	List<ChallengeResponseDto.RoundDto> getChallengeRounds(Long challengeId);
+	List<ChallengeResponseDto.RoundDto> getChallengeRounds(User user, Long challengeId);
 
     // 챌린지 수정 기능
     ChallengeResponseDto.UpdateChallengeDto updateChallenge(

@@ -722,12 +722,18 @@ public class ChallengeServiceImpl implements ChallengeService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<ChallengeResponseDto.RoundDto> getChallengeRounds(Long challengeId) {
+	public List<ChallengeResponseDto.RoundDto> getChallengeRounds(User user, Long challengeId) {
 		// 챌린지 조회
 		Challenge challenge = findChallenge(challengeId);
 
 		// 라운드 목록 조회
 		List<Round> rounds = roundRepository.findAllByChallengeIdOrderByRoundNumberAsc(challengeId);
+		Set<Integer> participatedRoundNumbers = roundRecordRepository.findParticipatedRoundNumbers(
+						user.getId(),
+						challengeId
+				)
+				.stream()
+				.collect(Collectors.toSet());
 
 		// 현재 라운드 ID 추출 (Null Safe)
 		Long currentRoundId = (challenge.getCurrentRound() != null)
@@ -738,7 +744,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 		return rounds.stream()
 				.map(round -> {
 					boolean isCurrent = round.getId().equals(currentRoundId);
-					return challengeConverter.toRoundDto(round, isCurrent);
+					boolean isParticipated = participatedRoundNumbers.contains(round.getRoundNumber());
+					return challengeConverter.toRoundDto(round, isCurrent, isParticipated);
 				})
 				.toList();
 	}

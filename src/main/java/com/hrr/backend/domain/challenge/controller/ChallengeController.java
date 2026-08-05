@@ -188,11 +188,13 @@ public class ChallengeController {
 	}
 
 	@GetMapping("/{challengeId}/rounds")
-	@Operation(summary = "챌린지 라운드 목록 조회", description = "챌린지의 전체 라운드 목록(1R, 2R...)을 회차순으로 반환합니다. 현재 진행 중인 라운드는 isCurrentRound=true로 표시됩니다.")
+	@Operation(summary = "챌린지 라운드 목록 조회", description = "챌린지의 전체 라운드 목록(1R, 2R...)을 회차순으로 반환합니다. 현재 진행 중인 라운드는 isCurrentRound=true, 로그인한 사용자의 라운드 기록이 있는 라운드는 isParticipated=true로 표시됩니다.")
 	public ApiResponse<List<ChallengeResponseDto.RoundDto>> getChallengeRounds(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal CustomUserDetails userDetails,
 			@PathVariable("challengeId") Long challengeId
 	) {
-		List<ChallengeResponseDto.RoundDto> response = challengeService.getChallengeRounds(challengeId);
+		List<ChallengeResponseDto.RoundDto> response = challengeService.getChallengeRounds(userDetails.getUser(), challengeId);
 
 		return ApiResponse.onSuccess(SuccessCode.OK, response);
 	}
