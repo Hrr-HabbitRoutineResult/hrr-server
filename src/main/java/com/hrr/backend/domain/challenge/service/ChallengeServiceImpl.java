@@ -774,7 +774,7 @@ public class ChallengeServiceImpl implements ChallengeService {
         return challengeConverter.toEditInfoDto(challenge);
     }
 
-    // 챌린지 참가 중인 챌린저 목록 조회 =====
+    // 챌린지 참가 중인 챌린저 목록 조회
     @Override
     @Transactional(readOnly = true)
     public SliceResponseDto<ChallengeResponseDto.ParticipantDto> getChallengeParticipants(
@@ -792,10 +792,11 @@ public class ChallengeServiceImpl implements ChallengeService {
         // 목록에서 제외할 유저 ID 수집 (내가 차단한 유저 + 나를 차단한 유저)
         List<Long> excludedUserIds = collectBlockedUserIds(user.getId());
 
-        // 참가자 목록 조회 (방장 우선 -> 닉네임 오름차순)
+        // 참가자 목록 조회 (본인 -> 방장 -> 닉네임 오름차순)
         Pageable pageable = PageRequest.of(page, size);
         Slice<UserChallenge> participantSlice = userChallengeRepository.findParticipantsByChallengeId(
                 challengeId,
+                user.getId(),
                 excludedUserIds,
                 pageable
         );
