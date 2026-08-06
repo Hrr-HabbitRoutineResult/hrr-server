@@ -143,6 +143,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
     @Override
     public Slice<UserChallenge> findParticipantsByChallengeId(
             Long challengeId,
+            Long currentUserId,
             List<Long> excludedUserIds,
             Pageable pageable
     ) {
@@ -153,7 +154,7 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
         // - UserChallenge가 JOINED 상태인 유저만 조회
         // - 탈퇴/정지 등 비활성 유저는 제외 (ACTIVE만)
         // - 차단 관계인 유저는 제외
-        // - 정렬: 방장 고정 1순위 -> 닉네임 오름차순
+        // - 정렬: 본인 1순위 -> 방장 2순위 -> 닉네임 오름차순
         List<UserChallenge> content = jpaQueryFactory
                 .selectFrom(qUserChallenge)
                 .join(qUserChallenge.user, qUser).fetchJoin()
@@ -164,13 +165,12 @@ public class UserChallengeRepositoryCustomImpl implements UserChallengeRepositor
                         notInExcludedUsers(qUser, excludedUserIds)
                 )
                 .orderBy(
-                        // 방장을 항상 첫 번째로 노출 (방장이 없으면 자연스럽게 닉네임 순만 적용됨)
                         new CaseBuilder()
-                                .when(qUserChallenge.role.eq(UserChallengeRole.OWNER)).then(0)
-                                .otherwise(1)
+                                .when(qUser.id.eq(currentUserId)).then(0)	// 본인 1순위
+                                .when(qUserChallenge.role.eq(UserChallengeRole.OWNER)).then(1)	// 방장 2순위
+                                .otherwise(2)
                                 .asc(),
-                        qUser.nickname.asc(),
-                        qUser.id.asc()
+                        qUser.nickname.asc()
                 )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)

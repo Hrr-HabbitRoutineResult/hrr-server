@@ -38,6 +38,7 @@ public interface UserChallengeRepositoryCustom {
     /**린지에 참가 중인(JOINED) 챌린저 목록 조회 (페이징) */
     Slice<UserChallenge> findParticipantsByChallengeId(
             Long challengeId,
+            Long currentUserId,
             List<Long> excludedUserIds,
             Pageable pageable
     );
