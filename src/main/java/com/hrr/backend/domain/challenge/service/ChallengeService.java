@@ -76,4 +76,12 @@ public interface ChallengeService {
 
     // 챌린지 수정 화면 진입 시 폼을 채우기 위한 상세 정보 조회
     ChallengeResponseDto.EditInfoDto getChallengeEditInfo(User user, Long challengeId);
+
+    // 챌린지 참가 중인 챌린저 목록 조회
+    SliceResponseDto<ChallengeResponseDto.ParticipantDto> getChallengeParticipants(
+            User user,
+            Long challengeId,
+            int page,
+            int size
+    );
 }

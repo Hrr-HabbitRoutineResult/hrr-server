@@ -2,6 +2,7 @@ package com.hrr.backend.domain.challenge.converter;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.entity.enums.ExtensionStatus;
@@ -16,6 +17,8 @@ import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
@@ -211,6 +214,28 @@ public class ChallengeConverter {
                 .daysOfWeek(daysOfWeek)
                 .imageKey(challenge.getImageKey())
                 .imageUrl(s3UrlUtil.toFullUrl(challenge.getImageKey()))
+                .build();
+    }
+
+    // 챌린지 참가 중인 챌린저 정보 DTO 변환
+    public ChallengeResponseDto.ParticipantDto toParticipantDto(
+            UserChallenge userChallenge,
+            Long currentUserId,
+            boolean isFollowing
+    ) {
+        User participant = userChallenge.getUser();
+
+        // 본인 여부 (null-safe 비교)
+        boolean isMe = Objects.equals(participant.getId(), currentUserId);
+
+        return ChallengeResponseDto.ParticipantDto.builder()
+                .userId(participant.getId())
+                .nickname(participant.getDisplayNickname())
+                .profileImageUrl(s3UrlUtil.toFullUrl(participant.getProfileImage()))
+                .isOwner(userChallenge.getRole() == UserChallengeRole.OWNER)
+                .isMe(isMe)
+                // 본인 프로필에는 팔로우 버튼이 노출되지 않으므로 항상 false로 내려줌
+                .isFollowing(isMe ? false : isFollowing)
                 .build();
     }
 }

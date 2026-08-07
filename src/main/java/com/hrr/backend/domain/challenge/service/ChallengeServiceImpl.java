@@ -3,7 +3,9 @@ package com.hrr.backend.domain.challenge.service;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,6 +24,7 @@ import com.hrr.backend.domain.challenge.entity.enums.ActionButtonStatus;
 import com.hrr.backend.domain.challenge.entity.enums.ExtensionStatus;
 import com.hrr.backend.domain.challenge.repository.ChallengeLikeRepository; // Import 추가
 import com.hrr.backend.domain.challenge.repository.ChallengeWaitRepository;
+import com.hrr.backend.domain.follow.repository.FollowRepository;
 import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
 import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
 import com.hrr.backend.domain.round.converter.RoundConverter;
@@ -36,6 +39,7 @@ import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
@@ -83,6 +87,8 @@ public class ChallengeServiceImpl implements ChallengeService {
 	private final UserRepository userRepository;
 	private final UserChallengeRepository userChallengeRepository;
 	private final UserChallengeConverter userChallengeConverter;
+    private final UserBlockRepository userBlockRepository;
+    private final FollowRepository followRepository;
 
 	private final RoundRepository roundRepository;
 	private final RoundRecordRepository roundRecordRepository;
@@ -766,6 +772,89 @@ public class ChallengeServiceImpl implements ChallengeService {
         validateUpdatePeriod(challenge);
 
         return challengeConverter.toEditInfoDto(challenge);
+    }
+
+    // 챌린지 참가 중인 챌린저 목록 조회
+    @Override
+    @Transactional(readOnly = true)
+    public SliceResponseDto<ChallengeResponseDto.ParticipantDto> getChallengeParticipants(
+            User user,
+            Long challengeId,
+            int page,
+            int size
+    ) {
+        // 챌린지 조회 (기존 findChallenge 헬퍼 재사용)
+        Challenge challenge = findChallenge(challengeId);
+
+        // 조회 권한 검증 (참가 중인 챌린저만, 진행 중인 챌린지만)
+        validateParticipantListAccess(challenge, user);
+
+        // 목록에서 제외할 유저 ID 수집 (내가 차단한 유저 + 나를 차단한 유저)
+        List<Long> excludedUserIds = collectBlockedUserIds(user.getId());
+
+        // 참가자 목록 조회 (본인 -> 방장 -> 닉네임 오름차순)
+        Pageable pageable = PageRequest.of(page, size);
+        Slice<UserChallenge> participantSlice = userChallengeRepository.findParticipantsByChallengeId(
+                challengeId,
+                user.getId(),
+                excludedUserIds,
+                pageable
+        );
+
+        // 조회 결과가 없으면 팔로우 조회 없이 즉시 반환
+        if (participantSlice.isEmpty()) {
+            return new SliceResponseDto<>(participantSlice.map(uc ->
+                    challengeConverter.toParticipantDto(uc, user.getId(), false)
+            ));
+        }
+
+        // N+1 방지: 한 번의 쿼리로 현재 유저가 팔로우 중인(APPROVED) 유저 ID 목록 조회
+        List<Long> participantIds = participantSlice.getContent().stream()
+                .map(uc -> uc.getUser().getId())
+                .toList();
+
+        Set<Long> followingIds = new HashSet<>(
+                followRepository.findFollowingIdsByFollowerIdAndFollowingIds(user.getId(), participantIds)
+        );
+
+        // DTO 변환 (isMe, isFollowing 계산)
+        Slice<ChallengeResponseDto.ParticipantDto> dtoSlice = participantSlice.map(uc ->
+                challengeConverter.toParticipantDto(
+                        uc,
+                        user.getId(),
+                        followingIds.contains(uc.getUser().getId())
+                )
+        );
+
+        return new SliceResponseDto<>(dtoSlice);
+    }
+
+    /** 챌린지 참가자 목록 조회 권한 검증
+     * - 해당 챌린지에 JOINED 상태로 참가 중인 유저만 조회 가능
+     * - 진행 중(ONGOING)인 챌린지만 조회 가능 (시작 전/종료된 챌린지는 조회 불가)
+     */
+    private void validateParticipantListAccess(Challenge challenge, User user) {
+        // 참가 여부 확인
+        // 참가하지 않은 유저에게는 챌린지 진행 상태를 노출할 필요가 없으므로 참가 여부를 먼저 검증
+        UserChallenge myUserChallenge = userChallengeRepository.findByUserAndChallenge(user, challenge)
+                .orElseThrow(() -> new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND));
+
+        if (myUserChallenge.getStatus() != ChallengeJoinStatus.JOINED) {
+            throw new GlobalException(ErrorCode.USER_CHALLENGE_NOT_FOUND);
+        }
+
+        // 진행 중인 챌린지인지 확인
+        if (challenge.getStatus() != ChallengeStatus.ONGOING) {
+            throw new GlobalException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+    }
+
+    /**챌린저 목록에서 제외할 차단 관계 유저 ID 수집*/
+    private List<Long> collectBlockedUserIds(Long currentUserId) {
+        Set<Long> blockedUserIds = new HashSet<>(userBlockRepository.findBlockedIdsByBlockerId(currentUserId));
+        blockedUserIds.addAll(userBlockRepository.findBlockerIdsByBlockedId(currentUserId));
+
+        return new ArrayList<>(blockedUserIds);
     }
 
     @Override

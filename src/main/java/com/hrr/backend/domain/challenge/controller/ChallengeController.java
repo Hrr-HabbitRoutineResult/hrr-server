@@ -234,6 +234,38 @@ public class ChallengeController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    // 챌린지 참가 중인 챌린저 목록 조회
+    @GetMapping("/{challengeId}/participants")
+    @Operation(
+            summary = "챌린지 참가 중인 챌린저 목록 조회",
+            description = "챌린지에 참가 중인 챌린저 목록을 조회합니다.\n"
+                    + "해당 챌린지에 참가 중(JOINED)인 유저만 조회할 수 있으며, 진행 중(ONGOING)인 챌린지만 조회 가능합니다.\n"
+                    + "본인이 항상 첫 번째, 그 다음이 방장이며, 나머지는 닉네임 오름차순(숫자 → 영문 → 한글)으로 정렬됩니다.\n"
+                    + "차단 관계(내가 차단한 유저 / 나를 차단한 유저)와 탈퇴·정지 유저는 목록에서 제외되므로, "
+                    + "챌린지 상단의 참여 인원 수와 목록의 개수가 다를 수 있습니다."
+    )
+    public ApiResponse<SliceResponseDto<ChallengeResponseDto.ParticipantDto>> getChallengeParticipants(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable("challengeId") Long challengeId,
+
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+            @Min(1)
+            @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다")
+            @RequestParam(name = "page", defaultValue = "1") int page,
+
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(name = "size", defaultValue = "20") int size
+    ) {
+        SliceResponseDto<ChallengeResponseDto.ParticipantDto> response = challengeService.getChallengeParticipants(
+                userDetails.getUser(),
+                challengeId,
+                page - 1,
+                size
+        );
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
     @Operation(
             summary = "챌린지 나가기",
             description = "참가 중인 챌린지에서 나갑니다. 방장은 나갈 수 없으며, 챌린지 시작일 전까지만 가능합니다."
