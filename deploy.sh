@@ -67,6 +67,7 @@ export APPLE_P8_KEY=$(echo "$SECRET_JSON" | jq -r '.APPLE_P8_KEY')
 export NAVER_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_ID')
 export NAVER_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_SECRET')
 export MODEL_SERVER_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_SERVER_URL')
+export DISCORD_WEBHOOK_URL=$(echo "$SECRET_JSON" | jq -r '.DISCORD_WEBHOOK_URL')
 
 # --- 3/6: 배포 대상(Blue/Green) 결정 ---
 echo "--- 3/6: 배포 대상 확인 ---"
