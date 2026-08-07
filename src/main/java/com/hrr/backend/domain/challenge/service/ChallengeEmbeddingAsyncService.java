@@ -72,7 +72,7 @@ public class ChallengeEmbeddingAsyncService {
             challengeEmbeddingRepository.save(embeddingEntity);
 
         } catch (Exception e) {
-            log.error("임베딩 계산 실패. challengeId={}, error={}", challengeId, e.getMessage(), e);
+            log.warn("임베딩 계산 실패. challengeId={}, error={}", challengeId, e.getMessage(), e);
             throw e;
         }
     }

@@ -27,12 +27,18 @@ public class RoundDropServiceImpl implements RoundDropService {
 
         // 각 Round는 독립 트랜잭션으로 처리
         // 한 Round 처리 중 예외가 발생해도 로그만 남기고 다음 Round 처리를 계속 진행
+        int failCount = 0;
         for (Round round : rounds) {
             try {
                 roundDropProcessor.processRound(round);
             } catch (Exception e) {
-                log.error("[RoundDrop] 드랍 처리 실패. roundId={}", round.getId(), e);
+                log.warn("[RoundDrop] 드랍 처리 실패. roundId={}", round.getId(), e);
+                failCount++;
             }
+        }
+
+        if (failCount > 0) {
+            log.error("[RoundDrop] 드랍 처리 총 {}건 중 {}건 실패", rounds.size(), failCount);
         }
     }
 }

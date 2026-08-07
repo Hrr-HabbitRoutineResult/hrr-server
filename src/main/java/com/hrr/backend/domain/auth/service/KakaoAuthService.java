@@ -140,17 +140,17 @@ public class KakaoAuthService {
 		} catch (HttpClientErrorException e) {
 			// 카카오 측에서 보내는 4xx 에러 처리
 			if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-				log.error("카카오 연결 해제 실패: ", e);
+				log.error("카카오 연결 해제 실패 - Admin Key 인증 오류(401): ", e);
 				throw new GlobalException(ErrorCode.AUTH_KAKAO_INVALID_ADMIN_KEY);
 			} else if (e.getStatusCode() == HttpStatus.NOT_FOUND || e.getStatusCode() == HttpStatus.BAD_REQUEST) {
 				// 이미 연결이 끊겼거나 잘못된 target_id인 경우
-				log.error("카카오 연결 해제 실패: ", e);
+				log.warn("카카오 연결 해제 실패 - 이미 연결 해제되었거나 잘못된 대상: ", e);
 				throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_NOT_FOUND);
 			}
 			throw new GlobalException(ErrorCode.AUTH_KAKAO_UNLINK_ERROR);
 		} catch (Exception e) {
 			// 네트워크 오류나 5xx 에러 처리
-			log.error("카카오 연결 해제 실패: ", e);
+			log.error("카카오 연결 해제 실패 - 네트워크 또는 카카오 서버 오류: ", e);
 			throw new GlobalException(ErrorCode.AUTH_KAKAO_UNLINK_ERROR);
 		}
 	}

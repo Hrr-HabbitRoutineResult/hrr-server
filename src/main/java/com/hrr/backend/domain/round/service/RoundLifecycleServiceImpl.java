@@ -46,6 +46,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
 
         List<Round> endedRounds = roundRepository.findAllByEndDate(endDate);
 
+        int failCount = 0;
         for (Round endedRound : endedRounds) {
             Long endedRoundId = endedRound.getId();
 
@@ -58,8 +59,13 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
                     processSingleEndedRound(managedEndedRound);
                 });
             } catch (Exception e) {
-                log.error("[RoundLifecycle] 라운드 종료 처리 실패. roundId={}", endedRoundId, e);
+                log.warn("[RoundLifecycle] 라운드 종료 처리 실패. roundId={}", endedRoundId, e);
+                failCount++;
             }
+        }
+
+        if (failCount > 0) {
+            log.error("[RoundLifecycle] 라운드 종료 처리 총 {}건 중 {}건 실패", endedRounds.size(), failCount);
         }
     }
 

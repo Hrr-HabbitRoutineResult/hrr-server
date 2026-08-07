@@ -55,14 +55,20 @@ public class NotificationScheduler {
                 return;
             }
 
+            int failCount = 0;
             for (Challenge challenge : targetChallenges) {
                 try {
                     eventPublisher.publishEvent(new ChallengeStartEvent(challenge.getId()));
                     log.info("[ChallengeStartScheduler] 이벤트 발행 완료 - ChallengeId: {}", challenge.getId());
                 } catch (Exception e) {
-                    log.error("[ChallengeStartScheduler] 이벤트 발행 실패 - ChallengeId: {}, 사유: {}",
+                    log.warn("[ChallengeStartScheduler] 이벤트 발행 실패 - ChallengeId: {}, 사유: {}",
                             challenge.getId(), e.getMessage());
+                    failCount++;
                 }
+            }
+
+            if (failCount > 0) {
+                log.error("[ChallengeStartScheduler] 이벤트 발행 총 {}건 중 {}건 실패", targetChallenges.size(), failCount);
             }
 
             log.info("[ChallengeStartScheduler] 스케줄러 작업 정상 종료");
@@ -92,15 +98,21 @@ public class NotificationScheduler {
                 return;
             }
 
+            int failCount = 0;
             for (Round round : targetRounds) {
                 try {
                     // 각 라운드별 이벤트 발행 시도 로깅
                     eventPublisher.publishEvent(new ChallengeExtensionEvent(round.getId()));
                     log.info("[ChallengeExtensionScheduler] 이벤트 발행 완료 - RoundId: {}", round.getId());
                 } catch (Exception e) {
-                    // 개별 라운드 처리 중 예외 발생 시 에러 로깅
-                    log.error("[ChallengeExtensionScheduler] 이벤트 발행 실패 - RoundId: {}, 사유: {}", round.getId(), e.getMessage());
+                    // 개별 라운드 처리 중 예외 발생 시 경고 로깅
+                    log.warn("[ChallengeExtensionScheduler] 이벤트 발행 실패 - RoundId: {}, 사유: {}", round.getId(), e.getMessage());
+                    failCount++;
                 }
+            }
+
+            if (failCount > 0) {
+                log.error("[ChallengeExtensionScheduler] 이벤트 발행 총 {}건 중 {}건 실패", targetRounds.size(), failCount);
             }
 
             log.info("[ChallengeExtensionScheduler] 스케줄러 작업 정상 종료");
@@ -129,6 +141,7 @@ public class NotificationScheduler {
             return;
         }
 
+        int failCount = 0;
         for (Round round : targetRounds) {
             try {
                 Challenge challenge = round.getChallenge();
@@ -161,8 +174,13 @@ public class NotificationScheduler {
                     }
                 }
             } catch (Exception e) {
-                log.error("[VerificationPolling] RoundId: {} 처리 실패: {}", round.getId(), e.getMessage());
+                log.warn("[VerificationPolling] RoundId: {} 처리 실패: {}", round.getId(), e.getMessage());
+                failCount++;
             }
+        }
+
+        if (failCount > 0) {
+            log.error("[VerificationPolling] 처리 총 {}건 중 {}건 실패", targetRounds.size(), failCount);
         }
     }
 

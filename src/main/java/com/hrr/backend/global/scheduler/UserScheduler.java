@@ -32,14 +32,20 @@ public class UserScheduler {
 		List<User> usersToClean = userRepository
 			.findUserToDelete(threshold);
 
+		int failCount = 0;
 		for (User user : usersToClean) {
 			try {
 				userDeleteService.processPermanentWithdrawal(user);
 			} catch (Exception e) {
 				// 특정 사용자 처리 실패 시 로그를 남기고 다음 사용자 진행
-				log.error("탈퇴 회원 정리 중 오류 발생: {}", user.getId(), e);
+				log.warn("탈퇴 회원 정리 중 오류 발생: {}", user.getId(), e);
+				failCount++;
 			}
 		}
-		log.info("탈퇴 회원 정리가 완료되었습니다.");
+		if (failCount > 0) {
+			log.error("탈퇴 회원 정리 완료 - 총 {}건 중 {}건 실패", usersToClean.size(), failCount);
+		} else {
+			log.info("탈퇴 회원 정리가 완료되었습니다. 총 {}건", usersToClean.size());
+		}
 	}
 }

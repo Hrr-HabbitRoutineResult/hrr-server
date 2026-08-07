@@ -48,10 +48,14 @@ public class VerificationScheduler {
 			try {
 				verificationAbsenceService.processAbsentee(record, yesterdayDate); // 인증이 완료되지 않은 요일은 체크 대상인 어제이므로 어제를 미인증날짜로 기록
 			} catch (Exception e) {
-				log.error("미인증 처리 실패 - roundRecordId: {}", record.getId(), e);
+				log.warn("미인증 처리 실패 - roundRecordId: {}", record.getId(), e);
 				failCount++;
 			}
 		}
-		log.info("미인증 처리 완료 - 총: {}, 실패: {}", absentees.size(), failCount);
+		if (failCount > 0) {
+			log.error("미인증 처리 완료 - 총: {}, 실패: {}", absentees.size(), failCount);
+		} else {
+			log.info("미인증 처리 완료 - 총: {}, 실패: {}", absentees.size(), failCount);
+		}
 	}
 }

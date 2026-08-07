@@ -59,15 +59,17 @@ public class AppleAuthService {
 
 			// "sub" 필드가 null 체크
 			if (jsonNode.get("sub") == null || jsonNode.get("sub").isNull() || jsonNode.get("sub").asText().isBlank()) {
-				log.error("애플 토큰 내 sub 필드가 누락되었거나 비어있습니다. Payload: {}", payload);
+				log.warn("애플 토큰 내 sub 필드가 누락되었거나 비어있습니다. Payload: {}", payload);
 				throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 			}
 
 			String sub = jsonNode.get("sub").asText();
 
 			return sub;
+		} catch (GlobalException e) {
+			throw e;
 		} catch (Exception e) {
-			log.error("애플 토큰으로부터 sub 획득 실패");
+			log.error("애플 토큰으로부터 sub 획득 실패", e);
 			throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 		}
 	}
@@ -102,13 +104,13 @@ public class AppleAuthService {
 
 			// 응답 바디 전체가 null 인지 확인
 			if (body == null) {
-				log.error("애플 토큰 응답 바디가 비어있습니다.");
+				log.warn("애플 토큰 응답 바디가 비어있습니다.");
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
 
 			// 애플 측에서 보낸 에러 메시지가 있는지 확인 (디버깅용)
 			if (body.containsKey("error")) {
-				log.error("애플 서버 인증 에러: {}, 상세: {}", body.get("error"), body.get("error_description"));
+				log.warn("애플 서버 인증 에러: {}, 상세: {}", body.get("error"), body.get("error_description"));
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
 
@@ -118,7 +120,7 @@ public class AppleAuthService {
 			// StringUtils 를 활용하여 null 및 빈 문자열 (""), 공백 (" ") 체크
 			if (!StringUtils.hasText(idToken) ||
 				!StringUtils.hasText(refreshToken)) {
-				log.error("애플 토큰 응답에 필수 필드 누락 또는 빈 값: id_token={}, refresh_token={}",
+				log.warn("애플 토큰 응답에 필수 필드 누락 또는 빈 값: id_token={}, refresh_token={}",
 					idToken != null, refreshToken != null);
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
