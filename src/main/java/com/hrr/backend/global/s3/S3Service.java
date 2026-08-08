@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -61,6 +62,7 @@ public class S3Service {
 
 	public void deleteFileByKey(String key) {
 		if (key == null || key.isBlank() || key.startsWith("http")) return;
+		String keyFingerprint = Integer.toHexString(key.hashCode());
 
 		try {
 			DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
@@ -69,9 +71,14 @@ public class S3Service {
 				.build();
 
 			s3Client.deleteObject(deleteObjectRequest);
-			log.info("S3 파일 삭제 완료 (Key: {})", key);
+			log.info("[deleteFileByKey] S3 파일 삭제를 완료했습니다. keyFingerprint={}", keyFingerprint);
+		} catch (S3Exception e) {
+			String errorCode = e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : null;
+			log.error("[deleteFileByKey] S3 파일 삭제에 실패했습니다. keyFingerprint={}, status={}, errorCode={}, requestId={}",
+				keyFingerprint, e.statusCode(), errorCode, e.requestId());
 		} catch (Exception e) {
-			log.error("S3 파일 삭제 실패 (Key: {}): {}", key, e.getMessage());
+			log.error("[deleteFileByKey] S3 파일 삭제 중 예상하지 못한 오류가 발생했습니다. keyFingerprint={}, exception={}",
+				keyFingerprint, e.getClass().getSimpleName());
 		}
 	}
 }

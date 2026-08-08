@@ -60,13 +60,15 @@ public class NaverAuthService {
 			}
 		} catch (HttpClientErrorException.Unauthorized e) {
 			// 401 Unauthorized 에러 발생 시 (토큰 만료 등)
-			// KakaoAuthService에도 동일한 이름의 fetchUser가 있어 클래스명까지 명시
-			log.warn("[NaverAuthService.fetchUser] 네이버 토큰이 유효하지 않음: {}", e.getMessage());
+			log.warn("[fetchUser] Naver token이 유효하지 않습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_TOKEN_INVALID);
+		} catch (HttpClientErrorException e) {
+			log.warn("[fetchUser] Naver 사용자 정보 요청이 거부되었습니다. status={}", e.getStatusCode());
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		} catch (Exception e) {
 			// 그 외 통신 장애 등 모든 외부 API 오류
-			log.error("[NaverAuthService.fetchUser] 네이버 API 호출 중 예상치 못한 오류 발생: {}", e.getMessage());
-			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+			log.error("[fetchUser] Naver 사용자 정보 API 호출 중 예상하지 못한 오류가 발생했습니다.", e);
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR, e);
 		}
 	}
 
@@ -93,7 +95,7 @@ public class NaverAuthService {
 
 			// HTTP 상태 코드 확인 (200 OK 인지)
 			if (!response.getStatusCode().is2xxSuccessful()) {
-				log.error("네이버 연동 해제 실패 (HTTP Status): {}", response.getStatusCode());
+				log.error("[revoke] Naver 연결 해제에 실패했습니다. status={}", response.getStatusCode());
 				throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 			}
 
@@ -101,29 +103,39 @@ public class NaverAuthService {
 
 			// 응답 바디 및 결과값 방어적 체크
 			if (body == null) {
-				log.error("네이버 연동 해제 실패: 응답 바디가 비어 있습니다.");
+				log.error("[revoke] Naver 연결 해제 API 응답 body가 비어 있습니다.");
 				throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 			}
 
 			// 네이버가 보낸 result 값 검증
 			if ("success".equals(body.getResult())) {
-				log.info("네이버 연동 해제 성공 ");
+				log.info("[revoke] Naver 연결 해제를 완료했습니다.");
 				return true;
 			} else {
 				// 네이버가 success 가 아닌 에러 코드를 보낸 경우 (이미 해제되었거나 토큰이 잘못된 경우 등)
-				log.error("네이버 연동 해제 거부 : error={}, description={}",
-					body.getError(), body.getErrorDescription());
-
+				log.warn("[revoke] Naver 연결 해제 요청이 거부되었습니다. error={}", body.getError());
 				throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 			}
 
-		} catch (RestClientException e) {
-			// RestTemplate 통신 자체에서 발생한 에러 (타임아웃 , 연결 실패 등)
-			log.error("네이버 서버와 통신 중 네트워크 에러 발생 : ", e);
+		} catch (HttpClientErrorException e) {
+			// 만료되었거나 이미 해제된 token 등 예상 가능한 4xx는 호출자 응답으로 충분하다.
+			log.warn("[revoke] Naver 연결 해제 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		} catch (RestClientException e) {
+			// 주의: revokeUrl에 client_secret/access_token이 쿼리 파라미터로 포함되어 있고,
+			// RestClientException(예: ResourceAccessException)의 메시지에는 실패한 요청 URL 전체가 그대로 담긴다.
+			// e를 그대로 로깅하거나 cause로 체이닝하면 스택트레이스를 통해 시크릿이 콘솔/Discord로 노출되므로
+			// 절대 e를 로깅/체이닝하지 않고 예외 타입만 안전하게 남긴다.
+			log.error("[revoke] Naver 연결 해제 API 통신 중 오류가 발생했습니다. exception={}",
+				e.getClass().getSimpleName());
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+		} catch (GlobalException e) {
+			// 응답 검증 분기에서 이미 한 번 기록했으므로 상위 계층에서 다시 알리지 않는다.
+			throw e;
 		} catch (Exception e) {
-			// 그 외 예상치 못한 런타임 에러
-			log.error("네이버 연동 해제 중 알 수 없는 에러 발생 : ", e);
+			// 그 외 예상치 못한 런타임 에러 - 위와 동일한 이유로 e를 로깅/체이닝하지 않음
+			log.error("[revoke] Naver 연결 해제 중 예상하지 못한 오류가 발생했습니다. exception={}",
+				e.getClass().getSimpleName());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		}
 
@@ -146,8 +158,15 @@ public class NaverAuthService {
 			if (response.getBody() != null && response.getBody().getAccessToken() != null) {
 				return response.getBody().getAccessToken();
 			}
+		} catch (HttpClientErrorException e) {
+			// 만료되었거나 유효하지 않은 refresh token은 정상적인 인증 실패로 처리한다.
+			log.warn("[refreshNaverToken] Naver token 갱신 요청이 거부되었습니다. status={}", e.getStatusCode());
+			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		} catch (Exception e) {
-				log.error("네이버 토큰 갱신 실패: ", e);
+				// refreshUrl에 client_secret/refresh_token이 쿼리 파라미터로 포함되어 있어, e를 그대로 로깅하면
+				// 예외 메시지에 담긴 요청 URL을 통해 시크릿이 노출된다 - 예외 타입만 안전하게 남긴다.
+				log.error("[refreshNaverToken] Naver token 갱신에 실패했습니다. exception={}",
+					e.getClass().getSimpleName());
 		}
 
 		throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);

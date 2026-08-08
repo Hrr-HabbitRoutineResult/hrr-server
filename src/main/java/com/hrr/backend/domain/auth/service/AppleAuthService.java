@@ -59,7 +59,7 @@ public class AppleAuthService {
 
 			// "sub" 필드가 null 체크
 			if (jsonNode.get("sub") == null || jsonNode.get("sub").isNull() || jsonNode.get("sub").asText().isBlank()) {
-				log.warn("애플 토큰 내 sub 필드가 누락되었거나 비어있습니다. Payload: {}", payload);
+				log.warn("[getAppleAccountId] Apple id_token에 sub 필드가 없습니다.");
 				throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 			}
 
@@ -69,7 +69,8 @@ public class AppleAuthService {
 		} catch (GlobalException e) {
 			throw e;
 		} catch (Exception e) {
-			log.error("애플 토큰으로부터 sub 획득 실패", e);
+			log.warn("[getAppleAccountId] Apple id_token 파싱에 실패했습니다. exception={}",
+				e.getClass().getSimpleName());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 		}
 	}
@@ -104,13 +105,13 @@ public class AppleAuthService {
 
 			// 응답 바디 전체가 null 인지 확인
 			if (body == null) {
-				log.warn("애플 토큰 응답 바디가 비어있습니다.");
+				log.warn("[getAppleTokens] Apple token API 응답 body가 비어 있습니다.");
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
 
 			// 애플 측에서 보낸 에러 메시지가 있는지 확인 (디버깅용)
 			if (body.containsKey("error")) {
-				log.warn("애플 서버 인증 에러: {}, 상세: {}", body.get("error"), body.get("error_description"));
+				log.warn("[getAppleTokens] Apple 인증 요청이 거부되었습니다. error={}", body.get("error"));
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
 
@@ -120,20 +121,21 @@ public class AppleAuthService {
 			// StringUtils 를 활용하여 null 및 빈 문자열 (""), 공백 (" ") 체크
 			if (!StringUtils.hasText(idToken) ||
 				!StringUtils.hasText(refreshToken)) {
-				log.warn("애플 토큰 응답에 필수 필드 누락 또는 빈 값: id_token={}, refresh_token={}",
-					idToken != null, refreshToken != null);
+				log.warn("[getAppleTokens] Apple token 응답에 필수 필드가 없습니다. idTokenPresent={}, refreshTokenPresent={}",
+					StringUtils.hasText(idToken), StringUtils.hasText(refreshToken));
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
 
 			return Map.of("id_token", idToken, "refresh_token", refreshToken);
 
 		} catch (HttpClientErrorException e) {
-			// HTTP 에러 발생 시 애플이 보낸 상세 에러 바디를 로그로 남김
-			log.error("애플 토큰 요청 실패: ", e);
+			log.warn("[getAppleTokens] Apple token API 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+		} catch (GlobalException e) {
+			throw e;
 		} catch (Exception e) {
-			log.error("애플 토큰 처리 중 알 수 없는 오류 발생: {}", e.getMessage());
-			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
+			log.error("[getAppleTokens] Apple 토큰 처리 중 예상하지 못한 오류가 발생했습니다.", e);
+			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR, e);
 		}
 	}
 
@@ -170,7 +172,9 @@ public class AppleAuthService {
 			PrivateKeyInfo keyInfo = PrivateKeyInfo.getInstance(encoded);
 			return new JcaPEMKeyConverter().getPrivateKey(keyInfo);
 		} catch (Exception e) {
-			throw new GlobalException(ErrorCode.AUTH_APPLE_KEY_ERROR);
+			// P8 키 형식이 깨졌거나 설정이 잘못된 경우 - 로그 없이 던지면 원인 파악이 불가능해 반드시 남긴다
+			log.error("[getPrivateKey] Apple P8 private key 파싱에 실패했습니다.", e);
+			throw new GlobalException(ErrorCode.AUTH_APPLE_KEY_ERROR, e);
 		}
 	}
 
@@ -195,15 +199,20 @@ public class AppleAuthService {
 		try {
 			ResponseEntity<String> response = restTemplate.postForEntity(revokeUrl, entity, String.class);
 
-			if (response.getStatusCode().is2xxSuccessful()) {
-				log.info("애플 연결 해제 성공");
-			} else {
-				log.error("애플 연결 해제 실패: {}", response.getBody());
+			if (!response.getStatusCode().is2xxSuccessful()) {
+				log.error("[revoke] Apple 연결 해제에 실패했습니다. status={}", response.getStatusCode());
 				throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
 			}
-		} catch (Exception e) {
-			log.error("애플 Revoke 통신 중 오류 발생: ", e);
+			log.info("[revoke] Apple 연결 해제를 완료했습니다.");
+		} catch (HttpClientErrorException e) {
+			log.warn("[revoke] Apple 연결 해제 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
+		} catch (GlobalException e) {
+			// 비정상 응답 분기에서 이미 한 번 기록했다.
+			throw e;
+		} catch (Exception e) {
+			log.error("[revoke] Apple revoke API 통신 중 오류가 발생했습니다.", e);
+			throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR, e);
 		}
 	}
 }

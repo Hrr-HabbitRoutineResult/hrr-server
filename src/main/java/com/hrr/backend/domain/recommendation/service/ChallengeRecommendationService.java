@@ -59,7 +59,8 @@ public class ChallengeRecommendationService {
         // 1) 전체 챌린지 메타 조회
         List<ChallengeItemDto> allChallenges = recommendationRepository.findAllChallengeMeta();
         if (allChallenges.isEmpty()) {
-            log.warn("[Recommend] No challenges found in DB. Returning empty result.");
+            log.info("[recommendChallenges] 추천 가능한 챌린지가 없어 빈 결과를 반환합니다. userId={}, reason=NO_CHALLENGE",
+                    request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
@@ -80,7 +81,8 @@ public class ChallengeRecommendationService {
         }
 
         if (allChallenges.isEmpty()) {
-            log.warn("[Recommend] All challenges excluded due to blocked owners. Returning empty result. userId={}", request.getUserId());
+            log.info("[recommendChallenges] 차단 User가 소유한 챌린지를 제외한 후 빈 결과를 반환합니다. userId={}",
+                    request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
@@ -101,7 +103,8 @@ public class ChallengeRecommendationService {
                 .toList();
 
         if (allChallenges.isEmpty()) {
-            log.warn("[Recommend] No available challenges. Returning empty result. userId={}", request.getUserId());
+            log.info("[recommendChallenges] 종료된 챌린지를 제외한 후 빈 결과를 반환합니다. userId={}",
+                    request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
@@ -152,15 +155,18 @@ public class ChallengeRecommendationService {
                             .build()
 
             );
-            log.info("[Recommend] Model-api response: version={}, latencyMs={}",
-                    modelApiResponse != null ? modelApiResponse.getModelVersion() : null,
-                    modelApiResponse != null ? modelApiResponse.getLatencyMs() : null);
+        } catch (GlobalException e) {
+            // ModelApiClient가 외부 호출 실패를 정확한 위치에서 이미 기록한다.
+            throw e;
         } catch (Exception e) {
-            log.error("[Recommend] Model API call failed", e);
-            throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
+            log.error("[recommendChallenges] 추천 Model API 호출 중 예상하지 못한 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
         }
 
         // 6) 추천 결과 저장
+        log.info("[recommendChallenges] 추천 Model API 응답을 받았습니다. modelVersion={}, latencyMs={}, recommendationCount={}",
+                modelApiResponse.getModelVersion(), modelApiResponse.getLatencyMs(),
+                modelApiResponse.getRecommendations() != null ? modelApiResponse.getRecommendations().size() : 0);
         saveRecommendationResults(favor, modelApiResponse);
 
         // 7) 응답 매핑

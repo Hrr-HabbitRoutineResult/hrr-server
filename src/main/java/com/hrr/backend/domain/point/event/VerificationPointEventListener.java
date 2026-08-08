@@ -39,7 +39,7 @@ public class VerificationPointEventListener {
     /** 재시도를 모두 소진하고도 실패한 경우 호출 */
     @Recover
     public void recover(Exception e, VerificationPointTriggerEvent event) {
-        log.error("[Point][Retry Failed] 인증 커밋 이후 포인트 지급 재시도 3회 모두 실패. verificationId={}, error={}",
-                event.verificationId(), e.getMessage(), e);
+        log.error("[recover] 인증 commit 후 포인트 지급 재시도를 모두 실패했습니다. verificationId={}",
+                event.verificationId(), e);
     }
 }

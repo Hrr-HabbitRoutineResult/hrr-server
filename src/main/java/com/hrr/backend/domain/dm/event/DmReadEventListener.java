@@ -23,7 +23,8 @@ public class DmReadEventListener {
             );
         } catch (Exception e) {
             // 트랜잭션은 이미 커밋된 뒤이므로 읽음 처리 자체는 성공. 실시간 브로드캐스트만 실패한 경우.
-            log.error("[onUpdated] 읽음 상태 브로드캐스트 실패. conversationId={}", p.getConversationId(), e);
+            log.error("[onUpdated] DM 읽음 상태 broadcast에 실패했습니다. conversationId={}",
+                    p.getConversationId(), e);
         }
     }
 }

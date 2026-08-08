@@ -4,6 +4,7 @@ import com.hrr.backend.domain.dm.dto.DmMessageSocketDto;
 import com.hrr.backend.domain.dm.dto.DmReadSocketDto;
 import com.hrr.backend.domain.dm.service.message.DmMessageService;
 import com.hrr.backend.domain.dm.service.read.DmReadService;
+import com.hrr.backend.global.exception.GlobalException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +31,15 @@ public class DmStompController {
 
             // 해당 대화방 구독자에게 메시지 전송
             messagingTemplate.convertAndSend("/sub/dm/" + messageDto.getConversationId(), saved);
-        } catch (Exception e) {
-            log.error("[sendMessage] DM 메시지 처리 중 예외 발생. conversationId={}", messageDto.getConversationId(), e);
+        } catch (GlobalException e) {
+            log.warn("[sendMessage] DM 메시지 요청을 처리할 수 없습니다. conversationId={}, errorCode={}",
+                    messageDto.getConversationId(), e.getErrorCode());
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("[sendMessage] DM 메시지 처리 중 오류가 발생했습니다. conversationId={}",
+                    messageDto.getConversationId(), e);
+            // 로깅을 추가하더라도 Spring STOMP의 기존 오류 처리 흐름은 유지한다.
+            throw e;
         }
     }
 
@@ -41,10 +49,15 @@ public class DmStompController {
         try {
             dmReadService.report(dto);
             // 응답 없음: AFTER_COMMIT 리스너가 /sub/dm/{conversationId}/read로 브로드캐스트
-        } catch (Exception e) {
+        } catch (GlobalException e) {
+            log.warn("[report] DM 읽음 요청을 처리할 수 없습니다. conversationId={}, userId={}, errorCode={}",
+                    dto.getConversationId(), dto.getUserId(), e.getErrorCode());
+            throw e;
+        } catch (RuntimeException e) {
             // DmReadServiceImpl에도 동일한 이름의 report가 있어 클래스명까지 명시
-            log.error("[DmStompController.report] DM 읽음 처리 중 예외 발생. conversationId={}, userId={}, lastReadMessageId={}",
+            log.error("[report] DM 읽음 처리 중 오류가 발생했습니다. conversationId={}, userId={}, lastReadMessageId={}",
                     dto.getConversationId(), dto.getUserId(), dto.getLastReadMessageId(), e);
+            throw e;
         }
     }
 }

@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,7 +21,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-@Slf4j
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -43,8 +41,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 요청 - currentUserId: {}, followedUserId: {}", currentUserId, followedUserId);
-
         FollowResponseDto response = followService.followUser(currentUserId, followedUserId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -57,8 +53,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 취소 요청 - currentUserId: {}, unfollowedUserId: {}", currentUserId, unfollowedUserId);
-
         FollowResponseDto response = followService.unfollowUser(currentUserId, unfollowedUserId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -76,8 +70,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("내 팔로잉 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
-
         Pageable pageable = PageRequest.of(page-1, size);
         SliceResponseDto<FollowListResponseDto> followings = followListService.getFollowings(currentUserId, currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, followings);
@@ -94,8 +86,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("내 팔로워 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
-
         Pageable pageable = PageRequest.of(page-1, size);
         SliceResponseDto<FollowListResponseDto> followers = followListService.getFollowers(currentUserId, currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, followers);
@@ -112,8 +102,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("받은 팔로우 요청 목록 조회 요청 - currentUserId: {}, page: {}, size: {}", currentUserId, page, size);
-
         Pageable pageable = PageRequest.of(page - 1, size);
         SliceResponseDto<FollowRequestDto> response = followService.getPendingFollowRequests(currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
@@ -136,9 +124,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("사용자 팔로잉 목록 조회 요청 - userId: {}, currentUserId: {}, page: {}, size: {}",
-                userId, currentUserId, page, size);
-
         Pageable pageable = PageRequest.of(page-1, size);
         SliceResponseDto<FollowListResponseDto> followings = followListService.getFollowings(userId, currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, followings);
@@ -159,9 +144,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("사용자 팔로워 목록 조회 요청 - userId: {}, currentUserId: {}, page: {}, size: {}",
-                userId, currentUserId, page, size);
-
         Pageable pageable = PageRequest.of(page-1, size);
         SliceResponseDto<FollowListResponseDto> followers = followListService.getFollowers(userId, currentUserId, pageable);
         return ApiResponse.onSuccess(SuccessCode.OK, followers);
@@ -177,8 +159,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 요청 승인 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
-
         FollowResponseDto response = followService.approveFollowRequest(currentUserId, requesterId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
@@ -191,8 +171,6 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         Long currentUserId = customUserDetails.getUser().getId();
-        log.info("팔로우 요청 거절 - currentUserId: {}, requesterId: {}", currentUserId, requesterId);
-
         FollowResponseDto response = followService.rejectFollowRequest(currentUserId, requesterId);
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }

@@ -47,6 +47,7 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
         List<Round> endedRounds = roundRepository.findAllByEndDate(endDate);
 
         int failCount = 0;
+        Exception firstFailure = null;
         for (Round endedRound : endedRounds) {
             Long endedRoundId = endedRound.getId();
 
@@ -59,14 +60,18 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
                     processSingleEndedRound(managedEndedRound);
                 });
             } catch (Exception e) {
-                log.warn("[RoundLifecycle] 라운드 종료 처리 실패. roundId={}", endedRoundId, e);
+                log.warn("[processRoundsEndedAt] 라운드 종료 처리에 실패했습니다. roundId={}", endedRoundId, e);
                 failCount++;
+                if (firstFailure == null) firstFailure = e;
             }
         }
 
         if (failCount > 0) {
-            log.error("[RoundLifecycle] 라운드 종료 처리 총 {}건 중 {}건 실패", endedRounds.size(), failCount);
+            log.error("[processRoundsEndedAt] 라운드 종료 처리 대상 총 {}건 중 {}건을 실패했습니다.",
+                    endedRounds.size(), failCount, firstFailure);
         }
+        log.info("[processRoundsEndedAt] 종료 라운드 처리를 완료했습니다. targetCount={}, failedCount={}",
+                endedRounds.size(), failCount);
     }
 
     private void processSingleEndedRound(Round endedRound) {
@@ -126,16 +131,16 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
 
         // 7. 챌린지 currentRound 교체
         challenge.changeCurrentRound(nextRound);
+        log.info("[processSingleEndedRound] 다음 라운드 전환을 완료했습니다. challengeId={}, previousRoundNumber={}, nextRoundNumber={}, continuerCount={}",
+                challenge.getId(), endedRound.getRoundNumber(), nextRound.getRoundNumber(), continuers.size());
 
         // 8. 통계 최신화 1회
         publisher.publishEvent(new ChallengeParticipantsChangedEvent(challenge.getId()));
 
-        log.info("[RoundLifecycle] 라운드 전환 완료. challengeId={}, {}R -> {}R",
-                challenge.getId(), endedRound.getRoundNumber(), nextRound.getRoundNumber());
     }
 
     private void finishChallengeOnly(Challenge challenge) {
         challenge.updateStatus(ChallengeStatus.FINISHED);
-        log.info("[RoundLifecycle] 챌린지 종료 처리(FINISHED). challengeId={}", challenge.getId());
+        log.info("[finishChallengeOnly] 연장 참여자가 없어 챌린지를 종료했습니다. challengeId={}", challenge.getId());
     }
 }

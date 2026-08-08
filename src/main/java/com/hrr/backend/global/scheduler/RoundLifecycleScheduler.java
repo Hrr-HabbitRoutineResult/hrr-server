@@ -21,7 +21,7 @@ public class RoundLifecycleScheduler {
     @Scheduled(cron = "0 10 0 * * *")
     public void closeEndedRounds() {
         LocalDate yesterday = LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(1);
-        log.info("[RoundLifecycleScheduler] 종료 라운드 처리 시작. endDate={}", yesterday);
+        log.info("[closeEndedRounds] 종료 라운드 처리를 시작합니다. endDate={}", yesterday);
         roundLifecycleService.processRoundsEndedAt(yesterday);
     }
 }

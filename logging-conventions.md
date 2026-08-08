@@ -10,38 +10,59 @@
 
 ## 1. 레벨 선택
 
-- **ERROR** — 진짜 예상하지 못한, 조치가 필요한 실패만. 재시도로 해결되는 중간 단계, 클라이언트 입력에 따른 정상적인 실패(토큰 만료, 검증 실패, 이미 존재함 등)는 ERROR가 아니다.
-- **WARN** — 예상된/클라이언트발 실패, 재시도 중간 단계(`@Retryable`의 각 시도 실패 등), 복구 가능한 경합 상황.
-- **INFO** — 정상 흐름 추적용. 배치/루프 작업은 시작·종료 요약만 INFO로 남기고 건별 성공은 남기지 않는다.
+- **ERROR** — 즉시 조치가 필요한 단일 실패 또는 WARN 대상 실패가 한 작업 안에서 누적된 최종 집계만 남긴다. 재시도로 해결되는 중간 단계, 클라이언트 입력에 따른 정상적인 실패는 ERROR가 아니다.
+- **WARN** — 당장 처리를 중단할 필요는 없지만 추후 빈도와 추세를 확인해야 하는 실패, 재시도 중간 단계(`@Retryable`의 각 시도 실패 등), 복구 가능한 경합 상황. 추후 Sentry에서 WARN 누적을 집계할 수 있도록 안전한 식별자와 실패 유형을 포함한다.
+- **INFO** — 정상 처리 흐름 중 장애 분석이나 운영 상태 확인에 필요한 이벤트를 남긴다. 배치 실행 결과, 외부 연동 결과, 비동기 이벤트 수신, 주요 데이터 상태 변경이 대상이다.
 
 **예외**: 요청마다(또는 아주 높은 빈도로) 호출되는 코드의 "정상적으로 흔한" 실패는 WARN조차 남기지 않는 게 맞을 수 있다(예: `JwtService.validateToken()` — 매 인증 요청마다 호출되며 토큰 만료는 지극히 흔한 일이라 로그를 넣으면 정상 트래픽만으로 도배된다). 호출 빈도를 먼저 확인할 것.
 
-## 2. 메시지 형식 — `[메소드명]` 접두사
+다음 상황은 기본적으로 로그를 남기지 않는다.
 
-로그만 보고 어느 메소드에서 났는지 바로 알 수 있도록, 메시지 맨 앞에 발생한 메소드명을 대괄호로 붙인다.
+- 조회 결과 없음, 중복 요청 차단, 이미 처리된 상태처럼 정상 분기에 해당하는 경우
+- 인증 실패, 만료된 token, 외부 API의 예상 가능한 4xx처럼 호출자에게 오류 응답으로 충분한 경우
+- 단순 CRUD 요청의 진입·종료나 목록 조회처럼 호출량에 비례하지만 추가 진단 정보가 없는 정상 흐름
+- 상위 처리 경로에서 최종 실패를 기록하는 재시도·fallback의 중간 성공 또는 중간 실패
+
+배치·비동기·외부 연동은 실행 여부 자체가 장애 분석에 필요할 수 있다. 이 경우 시작과 건별 성공을 여러 줄 남기기보다 `targetCount`, `successCount`, `failedCount`가 포함된 완료 요약을 우선한다. 다만 트랜잭션 commit 이후 이벤트 수신, fallback 적용처럼 실행 경계 확인이 중요한 지점은 개별 INFO를 남길 수 있다.
+
+## 2. 메시지 형식 — `[methodName] 한글 설명. key={}`
+
+모든 신규 로그는 아래 형식을 사용한다.
 
 ```java
-log.error("[socialLogin] 카카오 로그인 중 오류 발생: ", e);
-log.warn("[extractUserId] 토큰에서 userId 추출 실패: {}", e.getMessage());
+log.error("[socialLogin] Kakao 로그인 중 예상하지 못한 오류가 발생했습니다.", e);
+log.warn("[dropNonContinuersAt] 드랍 처리에 실패했습니다. roundId={}", roundId, e);
 ```
 
-다른 클래스에 동일한 이름의 메소드가 있어서 헷갈릴 수 있으면 클래스명까지 붙인다:
+- 접두사는 실제 메서드명을 영어 `camelCase`로 적는다. 같은 이름이 여러 클래스에 있어 구분이 어려울 때만 `[ClassName.methodName]`을 사용한다.
+- 설명은 한글 완결형 문장으로 작성하고 마침표로 끝낸다.
+- 메서드명, 클래스명, entity/field 이름과 기술 용어는 원래 영어 표기를 유지한다. 예: `DB`, `Redis`, `API`, `FCM`, `S3`, `JWT`, `User`, `NotificationEvent`, `userId`.
+- `타깃`, `타켓`, `target`을 설명 문장에 혼용하지 않고 **대상**으로 통일한다. 구조화된 key 이름(`targetDate`)은 코드의 영어 이름을 유지한다.
+- 동적 값은 문장에 이어 `key={}` 형태로 적고, `ID: {}`, `(원인: {})`, `실패 -` 같은 변형은 사용하지 않는다.
+- 예외 객체를 마지막 인자로 전달했다면 `error={}`에 `e.getMessage()`를 다시 넣지 않는다. 스택 트레이스에 같은 정보가 포함된다.
 
 ```java
-// NaverAuthService에도 동일한 이름의 fetchUser가 있어 클래스명까지 명시
-log.error("[KakaoAuthService.fetchUser] 카카오 사용자 정보 조회 중 네트워크 오류 발생: ", e);
+log.error("[migrateRedisToLogTable] Redis 데이터를 DB로 마이그레이션하는 중 오류가 발생했습니다. targetHour={}",
+        targetHourKey, e);
 ```
 
-기존 스케줄러 코드처럼 `[RoundDrop]`, `[ChallengeStartScheduler]`같은 "작업명" 스타일 접두사가 이미 있는 곳은 그 컨벤션을 유지해도 된다 — 핵심은 "이 로그가 어디서 왔는지 태그 하나로 알 수 있어야 한다"는 것.
+나쁜 예:
 
-## 3. 예외를 잡아서 다시 던질 때
+```java
+log.error("[Retry Failed] migration error - Target: {}, reason: {}", target, e.getMessage(), e);
+```
 
-- `GlobalException`으로 감싸 던질 때는 원인을 체이닝한다: `new GlobalException(ErrorCode.X, e)` (단, 4번 보안 규칙에 해당하면 체이닝하지 않는다).
-- **이중 로깅 주의**: catch해서 `log.error(...)`로 이미 남긴 뒤 다시 던질 거면, 원본 예외를 그대로 `throw e`하지 말고 `GlobalException`으로 감싸서 던질 것. `ExceptionAdvice`의 catch-all(`exception()`)은 `GlobalException`이 아닌 예외만 다시 ERROR로 로깅하므로, 원본을 그대로 던지면 같은 사고에 대해 Discord 알림이 두 번 뜬다.
+## 3. 한 실패는 한 곳에서만 ERROR로 기록
+
+- `GlobalException`으로 감싸 던질 때는 원인을 체이닝한다: `new GlobalException(ErrorCode.X, e)` (단, 5번 보안 규칙에 해당하면 체이닝하지 않는다).
+- 하위 계층이 원인을 충분히 알고 있으면 그곳에서 한 번 기록하고 `GlobalException`으로 변환한다. 상위 계층은 `catch (GlobalException e) { throw e; }`로 전달만 한다.
+- 하위 계층이 기록하지 않은 예상 밖 예외만 상위 계층에서 ERROR로 기록한다.
+- ERROR로 기록한 원본 예외를 그대로 `throw e`하면 framework 또는 `ExceptionAdvice`가 다시 기록할 수 있다. 중복되지 않도록 예외 소유 지점을 명확히 정한다.
+- 외부 API client와 이를 호출하는 service가 같은 실패를 각각 기록하지 않는다. client가 네트워크 실패를 기록했다면 service는 해당 `GlobalException`을 다시 기록하지 않는다.
 
 ## 4. 배치/루프 처리 — 건별 ERROR 금지
 
-루프 안에서 개별 항목 처리가 실패해도 다음 항목을 계속 처리하는 패턴(스케줄러 등)에서는, 건별 실패를 WARN으로 남기고 **루프가 끝난 뒤 실패 건수가 0보다 클 때만 ERROR로 한 번 집계**한다. 하나의 근본 원인으로 루프 전체가 실패하면 N번의 Discord 알림이 뜨는 것을 방지하기 위함.
+루프 안에서 개별 항목 처리가 실패해도 다음 항목을 계속 처리하는 패턴(스케줄러 등)에서는, 건별 실패를 WARN으로 남기고 **루프가 끝난 뒤 실패 건수가 0보다 클 때만 ERROR로 한 번 집계**한다. 최종 ERROR에는 Discord에서 원인을 확인할 수 있도록 첫 번째 대표 예외를 마지막 인자로 전달한다.
 
 ```java
 int failCount = 0;
@@ -49,12 +70,13 @@ for (Round round : rounds) {
     try {
         process(round);
     } catch (Exception e) {
-        log.warn("[dropNonContinuersAt] 드랍 처리 실패. roundId={}", round.getId(), e);
+        log.warn("[dropNonContinuersAt] 드랍 처리에 실패했습니다. roundId={}", round.getId(), e);
         failCount++;
     }
 }
 if (failCount > 0) {
-    log.error("[dropNonContinuersAt] 드랍 처리 총 {}건 중 {}건 실패", rounds.size(), failCount);
+    log.error("[dropNonContinuersAt] 드랍 처리 대상 총 {}건 중 {}건을 실패했습니다.",
+            rounds.size(), failCount);
 }
 ```
 
@@ -63,15 +85,19 @@ if (failCount > 0) {
 ERROR 로그는 외부 Discord 웹훅으로 나간다는 걸 항상 염두에 둔다.
 
 - **원본 토큰/시크릿/비밀번호/private key**를 로그 메시지에 직접 넣지 않는다.
+- **DB 원문, 외부 API 응답 body, 요청 DTO/비동기 메서드 인자 전체, S3 object key**를 통째로 남기지 않는다. 필요한 경우 상태 코드, 개수, boolean 존재 여부, 내부 식별자만 남긴다.
 - **시크릿이 URL 쿼리 파라미터에 포함된 요청에서 발생한 예외는 `e`를 그대로 로깅하거나 체이닝하지 않는다.** Spring의 `RestClientException`(특히 `ResourceAccessException`) 등은 실패한 요청의 **URL 전체**를 예외 메시지에 그대로 담기 때문에, `log.error(msg, e)`로 넘기는 순간 스택트레이스를 통해 시크릿이 그대로 노출된다. 이런 경로에서는 `e.getClass().getSimpleName()`만 안전하게 남긴다.
   - 실제 사례: `NaverAuthService`가 `client_secret`/`access_token`/`refresh_token`을 쿼리 파라미터로 보내는데, 네트워크 에러 시 `e`를 그대로 로깅해서 Discord로 시크릿이 나갈 뻔했다. 가능하면 애초에 시크릿을 URL이 아니라 요청 바디/헤더로 보내는 것(Kakao/Apple 연동이 이 방식)이 근본적으로 더 안전하다.
 - **디코딩한 JWT payload 전체를 로깅하지 않는다** — Apple id_token 등은 email 같은 PII를 담고 있을 수 있다. 필요하면 어떤 필드가 있는지(키 목록)만 남긴다.
-- **요청 헤더/파라미터를 통째로 덤프하지 않는다.** 디버그 목적으로 꼭 필요하면 `Authorization`/`Cookie`/`token`/`secret`/`code` 등 이름에 민감한 키워드가 들어간 항목은 마스킹한다.
+- **요청 헤더/파라미터를 통째로 덤프하지 않는다.** 디버그 목적으로 꼭 필요하면 값 공개가 안전하다고 명시한 allowlist 외에는 전부 마스킹한다.
+- 외부 시스템이 반환한 `error_description`이나 예외 메시지는 사용자 입력을 포함할 수 있으므로 그대로 출력하지 않는다. 허용된 error code, HTTP status, 예외 클래스명처럼 범위가 정해진 값만 사용한다.
 
 ## 6. Discord 알림에 자동으로 실리는 정보
 
 `log.error(...)`를 어디서 호출하든(직접 호출/`ExceptionAdvice`의 catch-all/`AsyncConfig`의 비동기 예외 핸들러 등) 별도 코드 없이 Discord 알림에 다음이 자동으로 포함된다:
 - 예외 클래스명(title), 로그 메시지(description), Logger/Thread/발생시간, 스택트레이스(최대 15줄)
-- HTTP 요청 스레드에서 난 에러면 호출 API(`RequestContextLoggingFilter`가 MDC에 심어둔 값) — 스케줄러/비동기처럼 요청 컨텍스트가 없으면 안내 문구로 대체됨
+- HTTP 요청 스레드에서 난 에러면 HTTP method와 controller handler 이름(예: `POST ChallengeController.joinChallenge`) — raw URL, route, path/query 값은 외부로 보내지 않음
+- 최종 payload 생성 시 token/secret/password와 주요 PII, Authorization/Cookie, JWT, private key, Discord webhook URL 패턴을 한 번 더 마스킹함
+- 예외 메시지는 사용자 입력이나 외부 응답을 포함할 수 있으므로 Discord stack trace에서는 제외하고 예외 클래스와 frame만 전송함
 
-그러니 메시지에 굳이 "어느 API에서 났는지"를 반복해서 적을 필요는 없다 — `[메소드명]` 접두사와 함께라면 이미 충분한 컨텍스트가 자동으로 붙는다.
+최종 마스킹은 실수에 대한 방어선일 뿐이므로 민감정보를 로그 인자로 넘겨도 된다는 뜻은 아니다. 메시지에 굳이 "어느 API에서 났는지"를 반복해서 적을 필요도 없다. `[methodName]` 접두사와 자동 요청 컨텍스트면 충분하다.

@@ -39,11 +39,10 @@ public class ChallengeEmbeddingEventListener {
         Long challengeId = event.challengeId();
         String challengeText = event.challengeText();
 
-        log.error(
-                "[Retry Failed] 임베딩 계산 재시도 모두 실패. challengeId={}, error={}", challengeId, e.getMessage(), e
-        );
+        log.error("[recover] 임베딩 계산 재시도를 모두 실패했습니다. challengeId={}", challengeId, e);
 
         // 최종 실패 시 768 길이 0벡터로 강제 저장
         challengeEmbeddingAsyncService.saveZeroEmbeddingFallback(challengeId, challengeText);
+        log.warn("[recover] 임베딩 계산 실패에 대한 zero embedding fallback 저장을 완료했습니다. challengeId={}", challengeId);
     }
 }

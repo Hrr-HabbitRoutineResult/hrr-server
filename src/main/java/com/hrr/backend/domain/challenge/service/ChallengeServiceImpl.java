@@ -488,6 +488,8 @@ public class ChallengeServiceImpl implements ChallengeService {
         eventPublisher.publishEvent(
                 new ChallengeCreatedEvent(saved.getId(), challengeText)
         );
+		log.info("[createChallenge] 챌린지 생성을 완료했습니다. challengeId={}, ownerId={}, isPublic={}",
+				saved.getId(), user.getId(), saved.getIsPublic());
 
 
         return challengeConverter.toCreateResponseDto(saved);
@@ -537,7 +539,9 @@ public class ChallengeServiceImpl implements ChallengeService {
         challengeStaticsService.updateChallengeStatics(challenge);
 
         // 현재 인원 포함한 응답
-		return challengeConverter.toJoinResponseDto(challenge);
+		log.info("[joinChallenge] 챌린지 참여를 완료했습니다. challengeId={}, userId={}, currentParticipants={}",
+				challengeId, user.getId(), challenge.getCurrentParticipants());
+			return challengeConverter.toJoinResponseDto(challenge);
 	}
 
     // 챌린지 나가기
@@ -575,6 +579,9 @@ public class ChallengeServiceImpl implements ChallengeService {
         if (wasFull && challenge.getCurrentParticipants() < challenge.getMaxParticipants()) {
             eventPublisher.publishEvent(new ChallengeVacancyEvent(challenge.getId()));
         }
+
+        log.info("[leaveChallenge] 챌린지 나가기를 완료했습니다. challengeId={}, userId={}, currentParticipants={}",
+                challengeId, user.getId(), challenge.getCurrentParticipants());
 
         return challengeConverter.toLeaveResponseDto(challenge);
     }
@@ -696,7 +703,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 				// 재조회 결과가 없다면 유니크 제약 위반이 아닌 다른 무결성 에러이므로 로그 남기고 원본 예외 재던짐
 				// GlobalException으로 감싸서 던져야 ExceptionAdvice의 catch-all(Exception)에서 같은 예외가
 				// 또다시 로깅되는 이중 로깅을 피할 수 있다 (GlobalException은 onThrowException에서 로그 없이 처리됨)
-				log.error("[likeChallenge] 좋아요 처리 중 예상치 못한 무결성 오류. challengeId={}, userId={}",
+				log.error("[likeChallenge] 좋아요 처리 중 예상하지 못한 DB 무결성 오류가 발생했습니다. challengeId={}, userId={}",
 						challengeId, user.getId(), e);
 				throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR, e);
 			}
@@ -1037,7 +1044,7 @@ public class ChallengeServiceImpl implements ChallengeService {
 		// 라운드가 존재하지 않는 경우
 		if (challenge.getCurrentRound() == null) {
 
-			log.error("[Data Error] 챌린지의 현재 라운드(CurrentRound)가 null입니다. challengeId={}", challenge.getId());
+			log.error("[validateJoinRequest] 챌린지의 currentRound가 null입니다. challengeId={}", challenge.getId());
 			throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
 		}
 	}

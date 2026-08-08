@@ -11,6 +11,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,14 +20,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Optional;
-
 /**
  * JWT 인증 필터
  * 모든 요청의 Authorization 헤더를 검사하게 하고 토큰이 유효하면 SecurityContext에 인증 정보 주입함
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -58,6 +58,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		if (token != null) {
 			// 토큰이 블랙리스트에 등록되어 있는지 확인
 			if (jwtService.isTokenBlacklisted(token)) {
+				// Security filter 단계에서는 controller handler를 아직 알 수 없으므로 raw URI 대신 method만 남긴다.
+				log.warn("[doFilterInternal] blacklist에 등록된 JWT 인증 요청을 거부했습니다. httpMethod={}",
+					request.getMethod());
 				// 블랙리스트에 있으면 유효기간이 남아도 즉시 무효화
 				SecurityContextHolder.clearContext();
 
@@ -81,7 +84,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // DB에서 유저 조회
                 User user = userRepository.findById(userId)
-                        .orElseThrow(() -> new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND));
+                        .orElseThrow(() -> {
+                            log.warn("[doFilterInternal] JWT의 userId에 해당하는 User를 찾을 수 없습니다. userId={}", userId);
+                            return new GlobalException(ErrorCode.AUTH_USER_NOT_FOUND);
+                        });
 
                 // CustomUserDetails 객체로 userDetails를 대신함
                 UserDetails userDetails = new CustomUserDetails(user);

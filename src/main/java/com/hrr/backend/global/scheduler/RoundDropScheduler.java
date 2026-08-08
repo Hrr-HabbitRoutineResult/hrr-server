@@ -22,7 +22,7 @@ public class RoundDropScheduler {
     @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Seoul")
     public void dropNonContinuers() {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        log.info("[RoundDropScheduler] 드랍 처리 시작. endDate={}", today);
+        log.info("[dropNonContinuers] 라운드 미연장 참여자 드랍 처리를 시작합니다. endDate={}", today);
         roundDropService.dropNonContinuersAt(today);
     }
 

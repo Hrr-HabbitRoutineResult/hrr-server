@@ -36,14 +36,14 @@ public class ModelApiClient {
                     restTemplate.exchange(modelApiUrl, HttpMethod.POST, entity, ModelApiResponse.class);
 
             if (response.getBody() == null) {
+                log.error("[requestRecommendations] 추천 Model API 응답 body가 비어 있습니다.");
                 throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
             }
             return response.getBody();
 
             } catch (ResourceAccessException e) {
-                log.error("[requestRecommendations] 추천 모델 API 호출 실패: ", e);
+                log.error("[requestRecommendations] 추천 Model API 통신 중 오류가 발생했습니다.", e);
                 throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
             }
     }
 }
-

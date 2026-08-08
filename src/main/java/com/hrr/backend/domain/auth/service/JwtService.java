@@ -80,6 +80,7 @@ public class JwtService {
      * 유효하면 true 반환하도록 진행*/
     public boolean validateToken(String token) {
         if (isTokenBlacklisted(token)) {
+            log.warn("[validateToken] blacklist에 등록된 JWT 인증 요청을 거부했습니다.");
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
         try {
@@ -89,8 +90,11 @@ public class JwtService {
                     .parseClaimsJws(token);
             return true;
         } catch (ExpiredJwtException e) {
+            log.warn("[validateToken] 만료된 JWT 인증 요청을 거부했습니다.");
             throw new GlobalException(ErrorCode.AUTH_TOKEN_EXPIRED);
         } catch (UnsupportedJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e) {
+            log.warn("[validateToken] 유효하지 않은 JWT 인증 요청을 거부했습니다. exception={}",
+                    e.getClass().getSimpleName());
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
         }
     }
@@ -126,7 +130,8 @@ public class JwtService {
                     .getBody();
             return Long.parseLong(claims.getSubject());
         } catch (JwtException e) {
-            log.warn("[extractUserId] 토큰에서 userId 추출 실패: {}", e.getMessage());
+            log.warn("[extractUserId] JWT에서 userId를 추출할 수 없습니다. exception={}",
+                    e.getClass().getSimpleName());
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN, e);
         }
     }
@@ -143,7 +148,8 @@ public class JwtService {
             return Long.parseLong(e.getClaims().getSubject());
         } catch (Exception e) {
             // 그 외 서명 불일치 등은 유효하지 않은 토큰 처리
-            log.warn("[getUserIdFromToken] 토큰에서 userId 추출 실패: {}", e.getMessage());
+            log.warn("[getUserIdFromToken] JWT에서 userId를 추출할 수 없습니다. exception={}",
+                    e.getClass().getSimpleName());
             throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN, e);
         }
     }
