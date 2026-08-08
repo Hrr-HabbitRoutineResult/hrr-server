@@ -26,10 +26,15 @@ class DiscordEmbedPayloadBuilderTest {
         String payload = builder.buildPayload(event);
 
         JsonNode embed = objectMapper.readTree(payload).get("embeds").get(0);
-        assertThat(embed.get("title").asText()).isEqualTo("com.hrr.backend.Sample");
-        assertThat(embed.get("description").asText()).isEqualTo("테스트 에러 메시지");
+        // 패키지 없이 클래스 단순명만 title에 노출 (title = "🚨 Sample")
+        assertThat(embed.get("title").asText()).isEqualTo("🚨 Sample");
+        // description 맨 위엔 author/title(헤더)과 본문을 나누는 구분선이 붙고, 그 아래에 실제 메시지가 온다
+        assertThat(embed.get("description").asText()).endsWith("\n테스트 에러 메시지");
         assertThat(embed.get("color").asInt()).isEqualTo(0xE74C3C);
+        assertThat(embed.get("author").get("name").asText()).isEqualTo("Hrr Backend · 실시간 에러 로그 알림");
+        assertThat(findField(embed.get("fields"), "Logger").get("value").asText()).isEqualTo("`com.hrr.backend.Sample`");
         assertThat(findField(embed.get("fields"), "Thread")).isNotNull();
+        assertThat(findField(embed.get("fields"), "Thread").get("inline").asBoolean()).isTrue();
         assertThat(findField(embed.get("fields"), "Time (Asia/Seoul)")).isNotNull();
     }
 
@@ -41,7 +46,8 @@ class DiscordEmbedPayloadBuilderTest {
         String payload = builder.buildPayload(event);
         String description = objectMapper.readTree(payload).get("embeds").get(0).get("description").asText();
 
-        assertThat(description.length()).isLessThanOrEqualTo(3500);
+        // 구분선(헤더) 길이만큼의 여유를 두고 본문(메시지)이 3500자 이내로 truncate됐는지 확인
+        assertThat(description.length()).isLessThanOrEqualTo(3500 + 50);
         assertThat(description).endsWith("... (truncated)");
     }
 
@@ -62,10 +68,14 @@ class DiscordEmbedPayloadBuilderTest {
         ILoggingEvent event = mockEvent("logger", "에러 발생", throwableProxy);
 
         String payload = builder.buildPayload(event);
-        JsonNode fields = objectMapper.readTree(payload).get("embeds").get(0).get("fields");
+        JsonNode embed = objectMapper.readTree(payload).get("embeds").get(0);
 
-        JsonNode stackTraceField = findField(fields, "Stack Trace");
+        // 예외가 있을 때는 title이 로거명이 아니라 예외 클래스 단순명으로 뜬다
+        assertThat(embed.get("title").asText()).isEqualTo("🚨 RuntimeException");
+
+        JsonNode stackTraceField = findField(embed.get("fields"), "Stack Trace");
         assertThat(stackTraceField).isNotNull();
+        assertThat(stackTraceField.get("inline").asBoolean()).isFalse();
         assertThat(stackTraceField.get("value").asText().length()).isLessThanOrEqualTo(1024);
     }
 
