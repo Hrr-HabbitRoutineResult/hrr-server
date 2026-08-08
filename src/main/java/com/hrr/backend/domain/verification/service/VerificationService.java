@@ -69,6 +69,8 @@ public interface VerificationService {
     VerificationResponseDto.ScrapResponseDto scrapVerification(Long verificationId, User currentUser);
 
     VerificationResponseDto.ScrapResponseDto unscrapVerification(Long verificationId, User currentUser);
+
+    VerificationResponseDto.LikeResponseDto likeVerification(Long verificationId, User currentUser);
   
     /**
      * 사용자 인증 기록 조회

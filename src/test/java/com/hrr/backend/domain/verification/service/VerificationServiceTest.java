@@ -15,9 +15,11 @@ import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.VerificationLike;
 import com.hrr.backend.domain.verification.entity.VerificationScrap;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationLikeRepository;
 import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.domain.point.service.PointService;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
@@ -81,6 +83,9 @@ class VerificationServiceTest {
 
     @Mock
     private VerificationScrapRepository verificationScrapRepository;
+
+    @Mock
+    private VerificationLikeRepository verificationLikeRepository;
 
     // --- Helper Methods ---
 
@@ -384,6 +389,101 @@ class VerificationServiceTest {
         Mockito.verify(verificationScrapRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
         Mockito.verify(verificationScrapRepository, Mockito.never()).save(any(VerificationScrap.class));
         Mockito.verify(verificationScrapRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("성공: 좋아요가 없는 인증글에 좋아요를 등록하면 INSERT IGNORE를 호출하고 isLiked=true를 반환한다")
+    void likeVerification_usesInsertIgnoreAndReturnsLiked() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto result = verificationService.likeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsLiked()).isTrue();
+        Mockito.verify(verificationLikeRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+        Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("성공: 이미 좋아요한 인증글에 다시 요청해도 중복 저장 없이 isLiked=true를 반환한다")
+    void likeVerification_whenAlreadyLiked_returnsLikedWithoutDuplicateSave() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto firstResult = verificationService.likeVerification(verificationId, currentUser);
+        VerificationResponseDto.LikeResponseDto secondResult = verificationService.likeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(firstResult.getIsLiked()).isTrue();
+        assertThat(secondResult.getIsLiked()).isTrue();
+        Mockito.verify(verificationLikeRepository, times(2)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+        Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("실패: 존재하지 않는 인증글 좋아요 등록 요청은 VERIFICATION_NOT_FOUND를 반환한다")
+    void likeVerification_whenVerificationDoesNotExist_throwsNotFound() {
+        // given
+        Long verificationId = 999L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.likeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+    }
+
+    @Test
+    @DisplayName("성공: 동일 사용자와 동일 인증글 조합은 repository save가 아니라 INSERT IGNORE로만 처리한다")
+    void likeVerification_sameUserAndVerification_doesNotUseJpaSavePath() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+
+        // when
+        verificationService.likeVerification(verificationId, currentUser);
+        verificationService.likeVerification(verificationId, currentUser);
+
+        // then
+        Mockito.verify(verificationLikeRepository, times(2)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+        Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
     }
 
     @Test

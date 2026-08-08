@@ -227,6 +227,13 @@ public class VerificationConverter {
                 .build();
     }
 
+    public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification) {
+        return VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verification.getId())
+                .isLiked(true)
+                .build();
+    }
+
     private String firstNonNull(String a, String b, String c) {
         if (a != null) return a;
         if (b != null) return b;

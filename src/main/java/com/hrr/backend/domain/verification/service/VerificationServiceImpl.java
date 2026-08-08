@@ -47,6 +47,7 @@ import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationLikeRepository;
 import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
@@ -76,6 +77,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final ApplicationEventPublisher eventPublisher;
     private final PointService pointService;
     private final VerificationScrapRepository verificationScrapRepository;
+    private final VerificationLikeRepository verificationLikeRepository;
 
 
     @Override
@@ -638,6 +640,17 @@ public class VerificationServiceImpl implements VerificationService {
         verificationScrapRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
 
         return verificationConverter.toScrapResponseDto(verification, false);
+    }
+
+    @Override
+    @Transactional
+    public VerificationResponseDto.LikeResponseDto likeVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        verificationLikeRepository.insertIgnore(currentUser.getId(), verificationId);
+
+        return verificationConverter.toLikeResponseDto(verification);
     }
 
     private void validateScrapRoundParticipation(Verification verification, User currentUser) {
