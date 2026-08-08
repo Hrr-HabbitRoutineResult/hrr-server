@@ -67,7 +67,8 @@ export APPLE_P8_KEY=$(echo "$SECRET_JSON" | jq -r '.APPLE_P8_KEY')
 export NAVER_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_ID')
 export NAVER_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.NAVER_CLIENT_SECRET')
 export MODEL_SERVER_URL=$(echo "$SECRET_JSON" | jq -r '.MODEL_SERVER_URL')
-export DISCORD_WEBHOOK_URL=$(echo "$SECRET_JSON" | jq -r '.DISCORD_WEBHOOK_URL')
+# 키가 아직 등록되지 않은 환경에서는 빈 값으로 두어 Discord appender가 안전하게 비활성화되도록 한다.
+export DISCORD_WEBHOOK_URL=$(echo "$SECRET_JSON" | jq -r '.DISCORD_WEBHOOK_URL // empty')
 
 # --- 3/6: 배포 대상(Blue/Green) 결정 ---
 echo "--- 3/6: 배포 대상 확인 ---"

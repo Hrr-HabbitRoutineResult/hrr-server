@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class DiscordAlertThrottleTest {
 
     @Test
-    void 동일_키는_dedup_윈도우_내에서_억제된다() {
+    void shouldSuppress_suppressesSameKey_withinDedupWindow() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
@@ -16,7 +16,7 @@ class DiscordAlertThrottleTest {
     }
 
     @Test
-    void dedup_윈도우가_지나면_다시_허용된다() {
+    void shouldSuppress_allowsAgain_afterDedupWindowPasses() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
@@ -25,7 +25,7 @@ class DiscordAlertThrottleTest {
     }
 
     @Test
-    void 서로_다른_키는_독립적으로_판단된다() {
+    void shouldSuppress_treatsDifferentKeysIndependently() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
@@ -34,7 +34,22 @@ class DiscordAlertThrottleTest {
     }
 
     @Test
-    void 분당_상한을_초과하면_거부된다() {
+    void shouldSuppress_removesExpiredKeys_duringPeriodicCleanup() {
+        DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
+        long now = 1_000_000L;
+
+        throttle.shouldSuppress("expired-a", now);
+        throttle.shouldSuppress("expired-b", now);
+        assertThat(throttle.trackedKeyCount()).isEqualTo(2);
+
+        throttle.shouldSuppress("current", now + 300_001L);
+
+        assertThat(throttle.trackedKeyCount()).isEqualTo(1);
+        assertThat(throttle.shouldSuppress("current", now + 300_002L)).isTrue();
+    }
+
+    @Test
+    void tryAcquireGlobalSlot_rejectsOnceOverPerMinuteLimit() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 3);
         long now = 1_000_000L;
 
@@ -45,7 +60,7 @@ class DiscordAlertThrottleTest {
     }
 
     @Test
-    void 윈도우가_지나면_상한_카운트가_초기화된다() {
+    void tryAcquireGlobalSlot_resetsCount_afterWindowRollsOver() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 2);
         long now = 1_000_000L;
 
@@ -53,6 +68,6 @@ class DiscordAlertThrottleTest {
         assertThat(throttle.tryAcquireGlobalSlot(now + 10L)).isTrue();
         assertThat(throttle.tryAcquireGlobalSlot(now + 20L)).isFalse();
 
-        assertThat(throttle.tryAcquireGlobalSlot(now + 60_001L)).isTrue();
+        assertThat(throttle.tryAcquireGlobalSlot(now + 60_000L)).isTrue();
     }
 }

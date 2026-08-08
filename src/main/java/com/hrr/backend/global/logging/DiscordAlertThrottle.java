@@ -1,7 +1,6 @@
 package com.hrr.backend.global.logging;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -14,9 +13,10 @@ public class DiscordAlertThrottle {
     private final int maxPerMinute;
 
     private final ConcurrentHashMap<String, Long> lastSentAt = new ConcurrentHashMap<>();
+    private final AtomicLong lastCleanupAt = new AtomicLong(0L);
 
-    private final AtomicLong windowStart = new AtomicLong(0L);
-    private final AtomicInteger windowCount = new AtomicInteger(0);
+    private long windowStart;
+    private int windowCount;
 
     public DiscordAlertThrottle(int dedupWindowSeconds, int maxPerMinute) {
         this.dedupWindowMillis = dedupWindowSeconds * 1000L;
@@ -28,26 +28,44 @@ public class DiscordAlertThrottle {
      * 아니면 전송 시각을 기록하고 false를 반환한다.
      */
     public boolean shouldSuppress(String key, long nowMillis) {
-        Long last = lastSentAt.get(key);
-        if (last != null && (nowMillis - last) < dedupWindowMillis) {
-            return true;
-        }
-        lastSentAt.put(key, nowMillis);
-        return false;
+        cleanupExpiredEntries(nowMillis);
+
+        boolean[] suppressed = {false};
+        lastSentAt.compute(key, (ignored, last) -> {
+            if (last != null && (nowMillis - last) < dedupWindowMillis) {
+                suppressed[0] = true;
+                return last;
+            }
+            return nowMillis;
+        });
+        return suppressed[0];
     }
 
     /**
      * 60초 고정 윈도우 내 최대 maxPerMinute건까지만 전송을 허용한다.
      */
-    public boolean tryAcquireGlobalSlot(long nowMillis) {
-        long currentWindowStart = windowStart.get();
-
-        if (nowMillis - currentWindowStart > 60_000L) {
-            if (windowStart.compareAndSet(currentWindowStart, nowMillis)) {
-                windowCount.set(0);
-            }
+    public synchronized boolean tryAcquireGlobalSlot(long nowMillis) {
+        if (nowMillis - windowStart >= 60_000L) {
+            windowStart = nowMillis;
+            windowCount = 0;
         }
 
-        return windowCount.incrementAndGet() <= maxPerMinute;
+        windowCount++;
+        return windowCount <= maxPerMinute;
+    }
+
+    private void cleanupExpiredEntries(long nowMillis) {
+        long cleanupIntervalMillis = Math.max(1_000L, Math.min(dedupWindowMillis, 60_000L));
+        long previousCleanupAt = lastCleanupAt.get();
+        if (nowMillis - previousCleanupAt < cleanupIntervalMillis
+                || !lastCleanupAt.compareAndSet(previousCleanupAt, nowMillis)) {
+            return;
+        }
+
+        lastSentAt.entrySet().removeIf(entry -> nowMillis - entry.getValue() >= dedupWindowMillis);
+    }
+
+    int trackedKeyCount() {
+        return lastSentAt.size();
     }
 }
