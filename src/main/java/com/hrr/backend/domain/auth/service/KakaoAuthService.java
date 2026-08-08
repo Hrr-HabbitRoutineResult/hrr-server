@@ -85,7 +85,9 @@ public class KakaoAuthService {
                     .bodyToMono(KakaoTokenResponse.class)
                     .block(Duration.ofSeconds(5)); // 블록에도 최대 대기시간 명시
         } catch (Exception e) {
-            throw new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR);
+            // 타임아웃/연결거부 등 네트워크 레벨 실패 (위 onStatus 매퍼를 타지 않는 경우)
+            log.error("[exchangeToken] 카카오 토큰 요청 중 네트워크 오류 발생: ", e);
+            throw new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR, e);
         }
     }
 
@@ -108,7 +110,10 @@ public class KakaoAuthService {
                     .bodyToMono(KakaoUserResponse.class)
                     .block(Duration.ofSeconds(5));
         } catch (Exception e) {
-            throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR);
+            // 타임아웃/연결거부 등 네트워크 레벨 실패 (위 onStatus 매퍼를 타지 않는 경우)
+            // NaverAuthService에도 동일한 이름의 fetchUser가 있어 클래스명까지 명시
+            log.error("[KakaoAuthService.fetchUser] 카카오 사용자 정보 조회 중 네트워크 오류 발생: ", e);
+            throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR, e);
         }
     }
 

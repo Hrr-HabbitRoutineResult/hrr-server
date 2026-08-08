@@ -6,6 +6,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Date;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class JwtService {
@@ -124,7 +126,8 @@ public class JwtService {
                     .getBody();
             return Long.parseLong(claims.getSubject());
         } catch (JwtException e) {
-            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+            log.warn("[extractUserId] 토큰에서 userId 추출 실패: {}", e.getMessage());
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN, e);
         }
     }
     public Long getUserIdFromToken(String token) {
@@ -140,7 +143,8 @@ public class JwtService {
             return Long.parseLong(e.getClaims().getSubject());
         } catch (Exception e) {
             // 그 외 서명 불일치 등은 유효하지 않은 토큰 처리
-            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+            log.warn("[getUserIdFromToken] 토큰에서 userId 추출 실패: {}", e.getMessage());
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN, e);
         }
     }
 

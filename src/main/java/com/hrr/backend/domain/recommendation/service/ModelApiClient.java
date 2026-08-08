@@ -4,6 +4,7 @@ import com.hrr.backend.domain.recommendation.dto.response.ModelApiResponse;
 import com.hrr.backend.domain.recommendation.dto.request.ModelApiRequest;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 
+@Slf4j
 @Service
 public class ModelApiClient {
 
@@ -39,7 +41,8 @@ public class ModelApiClient {
             return response.getBody();
 
             } catch (ResourceAccessException e) {
-                throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
+                log.error("[requestRecommendations] 추천 모델 API 호출 실패: ", e);
+                throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
             }
     }
 }

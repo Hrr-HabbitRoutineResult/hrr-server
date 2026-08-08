@@ -76,7 +76,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 외부 카카오 서버 통신 오류 처리
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[socialLogin] 카카오 로그인 중 오류 발생: ", e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         }
     }
 
@@ -163,7 +164,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 외부 카카오 서버 통신 오류 처리
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[kakaoLogin] 카카오 로그인(SDK) 중 오류 발생: ", e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         }
     }
 
@@ -210,7 +212,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 애플 서버 통신 오류 처리
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[appleLogin] 애플 로그인 중 오류 발생: ", e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         }
     }
 

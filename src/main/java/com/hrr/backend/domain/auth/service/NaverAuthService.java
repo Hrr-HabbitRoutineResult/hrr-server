@@ -60,11 +60,12 @@ public class NaverAuthService {
 			}
 		} catch (HttpClientErrorException.Unauthorized e) {
 			// 401 Unauthorized 에러 발생 시 (토큰 만료 등)
-			log.warn("네이버 토큰이 유효하지 않음: {}", e.getMessage());
+			// KakaoAuthService에도 동일한 이름의 fetchUser가 있어 클래스명까지 명시
+			log.warn("[NaverAuthService.fetchUser] 네이버 토큰이 유효하지 않음: {}", e.getMessage());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_TOKEN_INVALID);
 		} catch (Exception e) {
 			// 그 외 통신 장애 등 모든 외부 API 오류
-			log.error("네이버 API 호출 중 예상치 못한 오류 발생: {}", e.getMessage());
+			log.error("[NaverAuthService.fetchUser] 네이버 API 호출 중 예상치 못한 오류 발생: {}", e.getMessage());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		}
 	}

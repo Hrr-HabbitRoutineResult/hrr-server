@@ -4,6 +4,7 @@ import com.hrr.backend.domain.challenge.dto.EmbeddingRequestDto;
 import com.hrr.backend.domain.challenge.dto.EmbeddingResponseDto;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.exception.GlobalException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 
+@Slf4j
 @Component
 public class EmbeddingClient {
 
@@ -39,7 +41,8 @@ public class EmbeddingClient {
 
             return response.getEmbedding();
         } catch (RestClientException e) {
-            throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
+            log.error("[getEmbedding] 임베딩 API 호출 실패: ", e);
+            throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
         }
     }
 

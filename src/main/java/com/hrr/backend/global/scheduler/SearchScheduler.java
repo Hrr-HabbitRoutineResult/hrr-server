@@ -40,13 +40,13 @@ public class SearchScheduler {
 	@Transactional
 	@Scheduled(cron = "5 0 * * * *")
 	public void migrateRedisToLogTable() {
-		try {
-			// 직전 시간(HH-1)의 키를 계산 e.g. 현재 20시면 19시 키 (YYYYMMDD19)를 가져와야 함
-			LocalDateTime targetHour = LocalDateTime.now().minusHours(1);
-			String targetHourKey = POPULAR_SEARCH_KEY + ":" + targetHour.format(
-				java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHH")
-			);
+		// 직전 시간(HH-1)의 키를 계산 e.g. 현재 20시면 19시 키 (YYYYMMDD19)를 가져와야 함
+		LocalDateTime targetHour = LocalDateTime.now().minusHours(1);
+		String targetHourKey = POPULAR_SEARCH_KEY + ":" + targetHour.format(
+			java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHH")
+		);
 
+		try {
 			log.info("[SearchScheduler] Redis 마이그레이션 시작. 타켓 시간: {}", targetHourKey);
 
 			// Redis에서 해당 ZSET의 모든 keyword, count 조회
@@ -84,9 +84,9 @@ public class SearchScheduler {
 
 
 		} catch (Exception e) {
-			log.error("[SearchScheduler] Redis 마이그레이션 실패. 다음에 재시도 필요.");
+			log.error("[migrateRedisToLogTable] Redis 마이그레이션 실패. 타켓 시간: {}. 다음에 재시도 필요.", targetHourKey, e);
 			// 트랜잭션 롤백으로 DB 저장 취소, Redis 데이터는 보존되어 재시도 가능
-			throw new GlobalException(ErrorCode.MIGRATION_REDIS_TO_DB_FAILED);
+			throw new GlobalException(ErrorCode.MIGRATION_REDIS_TO_DB_FAILED, e);
 		}
 
 	}
@@ -97,10 +97,10 @@ public class SearchScheduler {
 	@Scheduled(cron = "30 0 * * * *")	// 먼저 실행될 migrateRedisToLogTable와의 간격 유지
 	@Transactional
 	public void aggregateLogToFinalTable() {
-		try {
-			// 현재 시점으로부터 30일 전
-			LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
+		// 현재 시점으로부터 30일 전
+		LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
 
+		try {
 			log.info("[SearchScheduler] 최종 집계 시작. 최근 30일 데이터 기준 시점: {}", targetDateTime);
 
 			// Repository의 UPSERT 쿼리 호출
@@ -109,8 +109,8 @@ public class SearchScheduler {
 
 			log.info("[SearchScheduler] 최종 집계 완료. 총 {}개 키워드 업데이트/생성됨.", affectedRows);
 		} catch (Exception e) {
-			log.error("[SearchScheduler] 최종 집계 실패.");
-			throw new GlobalException(ErrorCode.COUNTING_LOG_TABLE_FAILED);
+			log.error("[aggregateLogToFinalTable] 최종 집계 실패. 기준 시점: {}.", targetDateTime, e);
+			throw new GlobalException(ErrorCode.COUNTING_LOG_TABLE_FAILED, e);
 		}
 
 	}
