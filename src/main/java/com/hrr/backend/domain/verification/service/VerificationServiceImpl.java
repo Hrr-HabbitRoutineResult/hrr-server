@@ -653,6 +653,17 @@ public class VerificationServiceImpl implements VerificationService {
         return verificationConverter.toLikeResponseDto(verification);
     }
 
+    @Override
+    @Transactional
+    public VerificationResponseDto.LikeResponseDto unlikeVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        verificationLikeRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+
+        return verificationConverter.toLikeResponseDto(verification, false);
+    }
+
     private void validateScrapRoundParticipation(Verification verification, User currentUser) {
         Round postRound = verification.getRoundRecord().getRound();
         Long challengeId = postRound.getChallenge().getId();

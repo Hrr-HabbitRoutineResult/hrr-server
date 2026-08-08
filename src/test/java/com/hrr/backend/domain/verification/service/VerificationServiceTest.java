@@ -487,6 +487,73 @@ class VerificationServiceTest {
     }
 
     @Test
+    @DisplayName("성공: 좋아요가 존재하는 인증글에 좋아요 취소를 요청하면 삭제하고 isLiked=false를 반환한다")
+    void unlikeVerification_deletesLikeAndReturnsUnliked() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(false)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(verificationConverter.toLikeResponseDto(verification, false)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto result = verificationService.unlikeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsLiked()).isFalse();
+        Mockito.verify(verificationLikeRepository, times(1))
+                .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+    }
+
+    @Test
+    @DisplayName("성공: 좋아요 데이터가 없어도 좋아요 취소는 예외 없이 isLiked=false를 반환한다")
+    void unlikeVerification_succeedsWhenLikeDoesNotExist() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(false)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(verificationConverter.toLikeResponseDto(verification, false)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto result = verificationService.unlikeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsLiked()).isFalse();
+        Mockito.verify(verificationLikeRepository, times(1))
+                .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+    }
+
+    @Test
+    @DisplayName("실패: 존재하지 않는 인증글 좋아요 취소 요청은 VERIFICATION_NOT_FOUND를 반환한다")
+    void unlikeVerification_whenVerificationDoesNotExist_throwsNotFound() {
+        // given
+        Long verificationId = 999L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.unlikeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never())
+                .deleteByUserIdAndVerificationId(anyLong(), anyLong());
+    }
+
+    @Test
     @DisplayName("성공: 스크랩 데이터가 없어도 스크랩 해제는 예외 없이 미스크랩 상태를 반환한다")
     void unscrapVerification_succeedsWhenScrapDoesNotExist() {
         // given

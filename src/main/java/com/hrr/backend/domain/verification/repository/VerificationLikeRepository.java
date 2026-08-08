@@ -17,4 +17,6 @@ public interface VerificationLikeRepository extends JpaRepository<VerificationLi
             nativeQuery = true
     )
     void insertIgnore(@Param("userId") Long userId, @Param("verificationId") Long verificationId);
+
+    void deleteByUserIdAndVerificationId(Long userId, Long verificationId);
 }

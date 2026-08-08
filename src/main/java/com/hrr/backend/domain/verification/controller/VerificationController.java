@@ -213,6 +213,18 @@ public class VerificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    @DeleteMapping("/{verificationId}/likes")
+    @Operation(summary = "인증 게시글 좋아요 취소", description = "로그인한 사용자가 인증 게시글 좋아요를 취소합니다. 좋아요 데이터가 없어도 성공 처리합니다.")
+    public ApiResponse<VerificationResponseDto.LikeResponseDto> unlikeVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        VerificationResponseDto.LikeResponseDto response =
+                verificationService.unlikeVerification(verificationId, userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
 
 
 }

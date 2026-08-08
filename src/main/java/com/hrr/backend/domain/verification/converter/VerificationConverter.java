@@ -228,9 +228,13 @@ public class VerificationConverter {
     }
 
     public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification) {
+        return toLikeResponseDto(verification, true);
+    }
+
+    public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification, boolean isLiked) {
         return VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verification.getId())
-                .isLiked(true)
+                .isLiked(isLiked)
                 .build();
     }
 
