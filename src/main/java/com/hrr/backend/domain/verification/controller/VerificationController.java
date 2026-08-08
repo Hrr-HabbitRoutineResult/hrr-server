@@ -10,6 +10,9 @@ import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -172,6 +175,30 @@ public class VerificationController {
         verificationService.deleteVerification(verificationId, userDetails.getUser().getId());
 
         return ApiResponse.onSuccess(SuccessCode.VERIFICATION_DELETE_OK, null);
+    }
+
+    @PutMapping("/{verificationId}/scrap")
+    @Operation(summary = "인증 게시글 스크랩 등록", description = "로그인한 사용자가 인증 게시글을 스크랩합니다. 이미 스크랩한 게시글이면 중복 저장하지 않고 성공 처리합니다.")
+    public ApiResponse<VerificationResponseDto.ScrapResponseDto> scrapVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        VerificationResponseDto.ScrapResponseDto response =
+                verificationService.scrapVerification(verificationId, userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @DeleteMapping("/{verificationId}/scrap")
+    @Operation(summary = "인증 게시글 스크랩 해제", description = "로그인한 사용자가 인증 게시글 스크랩을 해제합니다. 스크랩 데이터가 없어도 성공 처리합니다.")
+    public ApiResponse<VerificationResponseDto.ScrapResponseDto> unscrapVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        VerificationResponseDto.ScrapResponseDto response =
+                verificationService.unscrapVerification(verificationId, userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
 

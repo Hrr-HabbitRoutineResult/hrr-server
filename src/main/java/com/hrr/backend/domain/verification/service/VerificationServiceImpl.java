@@ -47,6 +47,7 @@ import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
 import com.hrr.backend.global.exception.GlobalException;
@@ -74,6 +75,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final UserBlockRepository userBlockRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PointService pointService;
+    private final VerificationScrapRepository verificationScrapRepository;
 
 
     @Override
@@ -610,6 +612,44 @@ public class VerificationServiceImpl implements VerificationService {
         pointService.revokePointsForVerification(verification);
 
         verificationRepository.delete(verification);
+    }
+
+    @Override
+    @Transactional
+    public VerificationResponseDto.ScrapResponseDto scrapVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        validateScrapRoundParticipation(verification, currentUser);
+
+        verificationScrapRepository.insertIgnore(currentUser.getId(), verificationId);
+
+        return verificationConverter.toScrapResponseDto(verification);
+    }
+
+    @Override
+    @Transactional
+    public VerificationResponseDto.ScrapResponseDto unscrapVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        validateScrapRoundParticipation(verification, currentUser);
+
+        verificationScrapRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+
+        return verificationConverter.toScrapResponseDto(verification, false);
+    }
+
+    private void validateScrapRoundParticipation(Verification verification, User currentUser) {
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+
+        UserChallenge userChallenge = userChallengeRepository
+                .findByUserIdAndChallengeId(currentUser.getId(), challengeId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED));
+
+        roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED));
     }
 
     /**

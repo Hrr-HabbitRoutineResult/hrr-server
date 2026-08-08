@@ -215,6 +215,18 @@ public class VerificationConverter {
                 .verifiedAt(verification.getCreatedAt())
                 .build();
     }
+
+    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification) {
+        return toScrapResponseDto(verification, true);
+    }
+
+    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification, boolean isScrapped) {
+        return VerificationResponseDto.ScrapResponseDto.builder()
+                .verificationId(verification.getId())
+                .isScrapped(isScrapped)
+                .build();
+    }
+
     private String firstNonNull(String a, String b, String c) {
         if (a != null) return a;
         if (b != null) return b;
