@@ -201,6 +201,30 @@ public class VerificationController {
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
 
+    @PutMapping("/{verificationId}/likes")
+    @Operation(summary = "인증 게시글 좋아요 등록", description = "로그인한 사용자가 인증 게시글에 좋아요를 등록합니다. 이미 좋아요한 게시글이면 중복 저장하지 않고 성공 처리합니다.")
+    public ApiResponse<VerificationResponseDto.LikeResponseDto> likeVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        VerificationResponseDto.LikeResponseDto response =
+                verificationService.likeVerification(verificationId, userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @DeleteMapping("/{verificationId}/likes")
+    @Operation(summary = "인증 게시글 좋아요 취소", description = "로그인한 사용자가 인증 게시글 좋아요를 취소합니다. 좋아요 데이터가 없어도 성공 처리합니다.")
+    public ApiResponse<VerificationResponseDto.LikeResponseDto> unlikeVerification(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        VerificationResponseDto.LikeResponseDto response =
+                verificationService.unlikeVerification(verificationId, userDetails.getUser());
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
 
 
 }

@@ -47,6 +47,7 @@ import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationLikeRepository;
 import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
@@ -76,6 +77,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final ApplicationEventPublisher eventPublisher;
     private final PointService pointService;
     private final VerificationScrapRepository verificationScrapRepository;
+    private final VerificationLikeRepository verificationLikeRepository;
 
 
     @Override
@@ -383,14 +385,11 @@ public class VerificationServiceImpl implements VerificationService {
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
 
-        // 차단된 게시글 접근 시 예외 발생
-        if (verification.getStatus() == VerificationStatus.BLOCKED) {
-            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
-        }
-
         RoundRecord roundRecord = verification.getRoundRecord();
         User author = roundRecord.getUserChallenge().getUser();
         Challenge challenge = roundRecord.getRound().getChallenge();
+
+        validateVerificationPostAccess(verification, author, currentUserId);
 
         // 3. 권한 체크용 변수 설정
         boolean isMine = currentUserId != null && author.getId().equals(currentUserId);
@@ -406,25 +405,6 @@ public class VerificationServiceImpl implements VerificationService {
             // 작성자 본인도 아니고, 참여자도 아니라면 접근 거부
             if (!isMine && !isJoined) {
                 throw new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED);
-            }
-        }
-
-        // 5.현재 사용자가 로그인한 경우 차단 관계 확인
-        if (author.isNotActive()) {
-            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
-        }
-
-        if (currentUserId != null) {
-            // 내가 작성자를 차단한 경우
-            boolean iBlockedAuthor = userBlockRepository.existsByBlockerIdAndBlockedId(currentUserId, author.getId());
-            if (iBlockedAuthor) {
-                throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
-            }
-
-            // 작성자가 나를 차단한 경우
-            boolean authorBlockedMe = userBlockRepository.existsByBlockerIdAndBlockedId(author.getId(), currentUserId);
-            if (authorBlockedMe) {
-                throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
             }
         }
 
@@ -620,7 +600,8 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-        validateScrapRoundParticipation(verification, currentUser);
+        validateVerificationRoundParticipation(verification, currentUser);
+        validateVerificationPostAccess(verification, currentUser.getId());
 
         verificationScrapRepository.insertIgnore(currentUser.getId(), verificationId);
 
@@ -633,14 +614,43 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-        validateScrapRoundParticipation(verification, currentUser);
+        validateVerificationRoundParticipation(verification, currentUser);
+        validateVerificationPostAccess(verification, currentUser.getId());
 
         verificationScrapRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
 
         return verificationConverter.toScrapResponseDto(verification, false);
     }
 
-    private void validateScrapRoundParticipation(Verification verification, User currentUser) {
+    @Override
+    @Transactional
+    public VerificationResponseDto.LikeResponseDto likeVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        validateVerificationRoundParticipation(verification, currentUser);
+        validateVerificationPostAccess(verification, currentUser.getId());
+
+        verificationLikeRepository.insertIgnore(currentUser.getId(), verificationId);
+
+        return verificationConverter.toLikeResponseDto(verification);
+    }
+
+    @Override
+    @Transactional
+    public VerificationResponseDto.LikeResponseDto unlikeVerification(Long verificationId, User currentUser) {
+        Verification verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        validateVerificationRoundParticipation(verification, currentUser);
+        validateVerificationPostAccess(verification, currentUser.getId());
+
+        verificationLikeRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+
+        return verificationConverter.toLikeResponseDto(verification, false);
+    }
+
+    private void validateVerificationRoundParticipation(Verification verification, User currentUser) {
         Round postRound = verification.getRoundRecord().getRound();
         Long challengeId = postRound.getChallenge().getId();
 
@@ -650,6 +660,45 @@ public class VerificationServiceImpl implements VerificationService {
 
         roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_ACCESS_DENIED));
+    }
+
+    /**
+     * 게시글 작성자를 조회한 뒤 인증 게시글 접근 권한을 검증합니다.
+     */
+    private void validateVerificationPostAccess(Verification verification, Long currentUserId) {
+        User author = verification.getRoundRecord()
+                .getUserChallenge()
+                .getUser();
+
+        validateVerificationPostAccess(verification, author, currentUserId);
+    }
+
+    private void validateVerificationPostAccess(Verification verification, User author, Long currentUserId) {
+        // 차단된 게시글 접근 시 예외 발생
+        if (verification.getStatus() == VerificationStatus.BLOCKED) {
+            throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        }
+
+        // 현재 사용자가 로그인한 경우 차단 관계 확인
+        if (author.isNotActive()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
+        if (currentUserId == null) {
+            return;
+        }
+
+        // 내가 작성자를 차단한 경우
+        boolean iBlockedAuthor = userBlockRepository.existsByBlockerIdAndBlockedId(currentUserId, author.getId());
+        if (iBlockedAuthor) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
+        // 작성자가 나를 차단한 경우
+        boolean authorBlockedMe = userBlockRepository.existsByBlockerIdAndBlockedId(author.getId(), currentUserId);
+        if (authorBlockedMe) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
     }
 
     /**
