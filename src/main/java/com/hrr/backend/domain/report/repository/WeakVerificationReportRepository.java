@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.hrr.backend.domain.report.entity.WeakVerificationReport;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.entity.Verification;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface WeakVerificationReportRepository extends JpaRepository<WeakVerificationReport, Long> {
 
@@ -13,4 +16,9 @@ public interface WeakVerificationReportRepository extends JpaRepository<WeakVeri
 
 	// 중복 체크 - 특정 사용자가 특정 인증을 신고한 내역이 있는지 조회
 	boolean existsByReporterAndVerification(User reporter, Verification targetVerification);
+
+    // 특정 인증글에 달린 부실인증 신고 전체 삭제
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM WeakVerificationReport w WHERE w.verification.id = :verificationId")
+    void deleteByVerificationId(@Param("verificationId") Long verificationId);
 }
