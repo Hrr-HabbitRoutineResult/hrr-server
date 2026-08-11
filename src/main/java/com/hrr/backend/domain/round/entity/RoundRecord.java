@@ -79,6 +79,14 @@ public class RoundRecord extends BaseEntity {
         this.verificationCount++;
     }
 
+    // 인증글 삭제 시 인증 횟수를 감소
+    // 기존 데이터에 삭제분이 반영되어 있지 않아 음수가 발생할 수 있으므로 하한(0) 처리
+    public void decreaseVerificationCount() {
+        if (this.verificationCount > 0) {
+            this.verificationCount--;
+        }
+    }
+
     public void updateFinalRank(Integer rank) {
         this.finalRank = rank;
     }
