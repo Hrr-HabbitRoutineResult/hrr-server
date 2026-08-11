@@ -114,14 +114,18 @@ public class VerificationConverter {
      */
     public VerificationResponseDto.MyProfileDto toMyProfileDto(
             UserChallenge userChallenge,
-            Long totalVerificationCount,
+            Integer verificationCount,
+            Integer weakVerificationCount,
+            Integer warningCount,
             Long currentRoundSequence,
             SliceResponseDto<VerificationResponseDto.FeedDto> verifications
     ) {
         return VerificationResponseDto.MyProfileDto.builder()
                 .nickname(userChallenge.getUser().getDisplayNickname())
-                .totalVerificationCount(totalVerificationCount)
-                .warningCount(userChallenge.getKickWarnings())
+                .verificationCount(verificationCount)
+                // 현재 라운드 부실 인증 횟수
+                .weakVerificationCount(weakVerificationCount)
+                .warningCount(warningCount)
                 .currentRoundSequence(currentRoundSequence)
                 .verifications(verifications)
                 .build();
