@@ -87,10 +87,13 @@ public class VerificationResponseDto {
         @Schema(description = "사용자 닉네임", example = "해빗")
         private String nickname;
 
-        @Schema(description = "누적 인증 횟수 (해당 챌린지 내 전체)", example = "15")
-        private Long totalVerificationCount;
+        @Schema(description = "현재 진행 중인 라운드의 인증 횟수", example = "5")
+        private Integer verificationCount;
 
-        @Schema(description = "누적 경고 횟수", example = "1")
+        @Schema(description = "현재 진행 중인 라운드의 부실 인증 횟수 (0~2)", example = "2")
+        private Integer weakVerificationCount;
+
+        @Schema(description = "현재 진행 중인 라운드의 경고 횟수 (부실 인증 3회당 1회)", example = "1")
         private Integer warningCount;
 
         @Schema(description = "현재 참여 중인 라운드 순서 (예: 1회차, 2회차...)", example = "3")
