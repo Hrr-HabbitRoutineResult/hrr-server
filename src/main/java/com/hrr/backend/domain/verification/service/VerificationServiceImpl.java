@@ -627,7 +627,7 @@ public class VerificationServiceImpl implements VerificationService {
         // point_history와 마찬가지로 verification을 지우기 전에 신고 내역을 먼저 정리해야 함
         weakVerificationReportRepository.deleteByVerificationId(verificationId);
 
-        verificationRepository.delete(verification);
+        verificationRepository.findByIdWithPessimisticLock(verificationId);
         verificationRepository.flush(); // 아래 경고 재동기화 전에 삭제를 DB에 반영
 
         // 삭제된 인증글만큼 현재 라운드 인증 횟수 감소
