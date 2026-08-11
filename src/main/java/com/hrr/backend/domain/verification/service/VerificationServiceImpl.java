@@ -31,10 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.report.repository.WeakVerificationReportRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
+import com.hrr.backend.domain.round.service.RoundRecordService;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
@@ -78,6 +80,8 @@ public class VerificationServiceImpl implements VerificationService {
     private final PointService pointService;
     private final VerificationScrapRepository verificationScrapRepository;
     private final VerificationLikeRepository verificationLikeRepository;
+    private final WeakVerificationReportRepository weakVerificationReportRepository;
+    private final RoundRecordService roundRecordService;
 
 
     @Override
@@ -176,7 +180,30 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 통계 데이터 조회
         Long roundSequence = roundRecordRepository.countByUserChallengeId(userChallengeId);
-        Long totalVerification = roundRecordRepository.sumVerificationCountByUserChallengeId(userChallengeId);
+
+        // 전체 라운드 누적(sumVerificationCountByUserChallengeId) -> 현재 진행 중인 라운드 기준으로 변경
+        // 인증 / 부실 인증 / 경고 세 카운트 모두 현재 라운드 기준이며, 라운드가 바뀌면 자연히 0부터 다시 시작함
+        int verificationCount = 0;
+        int weakVerificationCount = 0;
+        int warningCount = 0;
+
+        // 현재 진행 중인 라운드 조회
+        RoundRecord currentRoundRecord = roundRepository
+                .findCurrentRoundByChallengeId(challengeId, LocalDate.now())
+                .flatMap(currentRound -> roundRecordRepository.findByUserChallengeAndRoundId(
+                        userChallenge,
+                        currentRound.getId()
+                ))
+                .orElse(null);
+
+        if (currentRoundRecord != null) {
+            // 현재 라운드의 부실 인증 신고 건수를 1회 조회해 부실 인증 / 경고를 함께 산출
+            long weakReportCount = weakVerificationReportRepository.countByRoundRecordId(currentRoundRecord.getId());
+
+            verificationCount = currentRoundRecord.getVerificationCount();
+            weakVerificationCount = (int) (weakReportCount % 3);
+            warningCount = (int) (weakReportCount / 3);
+        }
 
         // 내 인증글 목록 조회
         Pageable pageable = PageRequest.of(page, size);
@@ -193,7 +220,9 @@ public class VerificationServiceImpl implements VerificationService {
         // 최종 응답 변환
         return verificationConverter.toMyProfileDto(
                 userChallenge,
-                totalVerification,
+                verificationCount,
+                weakVerificationCount,
+                warningCount,
                 roundSequence,
                 sliceResponse
         );
@@ -591,7 +620,21 @@ public class VerificationServiceImpl implements VerificationService {
         // point_history가 verification을 FK로 참조하므로, verification을 지우기 전에 먼저 회수 처리해야 함
         pointService.revokePointsForVerification(verification);
 
+        // 인증 횟수 감소 및 경고 재동기화 대상이 되는 라운드 기록
+        RoundRecord roundRecord = verification.getRoundRecord();
+
+        // weak_verification_report도 verification을 FK로 참조하나 ON DELETE CASCADE가 없으므로,
+        // point_history와 마찬가지로 verification을 지우기 전에 신고 내역을 먼저 정리해야 함
+        weakVerificationReportRepository.deleteByVerificationId(verificationId);
+
         verificationRepository.delete(verification);
+        verificationRepository.flush(); // 아래 경고 재동기화 전에 삭제를 DB에 반영
+
+        // 삭제된 인증글만큼 현재 라운드 인증 횟수 감소
+        roundRecord.decreaseVerificationCount();
+
+        // 부실 인증 신고가 함께 사라졌으므로 경고 횟수를 다시 계산
+        roundRecordService.synchronizeWarnCount(roundRecord.getId());
     }
 
     @Override
