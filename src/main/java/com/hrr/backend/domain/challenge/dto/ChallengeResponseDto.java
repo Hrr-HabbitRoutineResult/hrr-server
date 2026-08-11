@@ -308,4 +308,30 @@ public class ChallengeResponseDto {
         @Schema(description = "챌린지 이미지 미리보기 URL", example = "https://example.com/challenges/uuid_image.jpg")
         private String imageUrl;
     }
+
+    // 챌린지 참가 중인 챌린저 목록 조회
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @Schema(description = "챌린지 참가 중인 챌린저 정보 DTO")
+    public static class ParticipantDto {
+
+        @Schema(description = "챌린저 유저 ID", example = "1")
+        private Long userId;
+
+        @Schema(description = "챌린저 닉네임", example = "김흐르")
+        private String nickname;
+
+        @Schema(description = "챌린저 프로필 이미지 URL", example = "https://example.com/profile.jpg")
+        private String profileImageUrl;
+
+        @Schema(description = "방장 여부 (true인 경우 닉네임 옆에 방장 표식 노출)", example = "true")
+        private Boolean isOwner;
+
+        @Schema(description = "현재 로그인한 유저 본인 여부 (true인 경우 팔로우 버튼 미노출)", example = "false")
+        private Boolean isMe;
+
+        @Schema(description = "현재 로그인한 유저가 해당 챌린저를 팔로우 중인지 여부 (본인이면 항상 false)", example = "false")
+        private Boolean isFollowing;
+    }
 }

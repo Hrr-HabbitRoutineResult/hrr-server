@@ -2,6 +2,7 @@ package com.hrr.backend.domain.user.repository;
 
 import com.hrr.backend.domain.user.dto.UserResponseDto;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
@@ -33,4 +34,12 @@ public interface UserChallengeRepositoryCustom {
      * @return 종료한 챌린지 정보 Slice
      */
     Slice<UserResponseDto.CompletedChallengeDto> findCompletedChallengesByUser(User user, Pageable pageable);
+
+    /**린지에 참가 중인(JOINED) 챌린저 목록 조회 (페이징) */
+    Slice<UserChallenge> findParticipantsByChallengeId(
+            Long challengeId,
+            Long currentUserId,
+            List<Long> excludedUserIds,
+            Pageable pageable
+    );
 }

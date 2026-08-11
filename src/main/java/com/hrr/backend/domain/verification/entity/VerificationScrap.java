@@ -24,16 +24,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "verification_like",
+        name = "verification_scrap",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_verification_like_user_verification", columnNames = {"user_id", "verification_id"})
+                @UniqueConstraint(name = "uk_verification_scrap_user_verification", columnNames = {"user_id", "verification_id"})
         },
         indexes = {
-                @Index(name = "idx_verification_like_user_id", columnList = "user_id"),
-                @Index(name = "idx_verification_like_verification_id", columnList = "verification_id")
+                @Index(name = "idx_verification_scrap_user_id", columnList = "user_id"),
+                @Index(name = "idx_verification_scrap_verification_id", columnList = "verification_id")
         }
 )
-public class VerificationLike extends BaseEntity {
+public class VerificationScrap extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,8 +47,8 @@ public class VerificationLike extends BaseEntity {
     @JoinColumn(name = "verification_id", nullable = false)
     private Verification verification;
 
-    public static VerificationLike create(User user, Verification verification) {
-        return VerificationLike.builder()
+    public static VerificationScrap create(User user, Verification verification) {
+        return VerificationScrap.builder()
                 .user(user)
                 .verification(verification)
                 .build();

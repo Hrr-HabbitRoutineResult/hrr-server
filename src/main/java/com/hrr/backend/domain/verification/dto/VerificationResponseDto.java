@@ -194,4 +194,32 @@ public class VerificationResponseDto {
         @Schema(description = "인증 기록 리스트 (비공개시 빈 배열)")
         private SliceResponseDto<HistoryDto> verifications;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "인증 게시글 스크랩 등록 응답 DTO")
+    public static class ScrapResponseDto {
+
+        @Schema(description = "인증 게시글 ID", example = "125")
+        private Long verificationId;
+
+        @Schema(description = "스크랩 여부", example = "true")
+        private Boolean isScrapped;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "인증 게시글 좋아요 등록 응답 DTO")
+    public static class LikeResponseDto {
+
+        @Schema(description = "인증 게시글 ID", example = "125")
+        private Long verificationId;
+
+        @Schema(description = "좋아요 여부", example = "true")
+        private Boolean isLiked;
+    }
 }

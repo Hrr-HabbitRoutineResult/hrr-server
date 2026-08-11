@@ -5,6 +5,7 @@ import com.hrr.backend.domain.comment.dto.CommentListResponseDto;
 import com.hrr.backend.domain.comment.service.CommentService;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
+import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
@@ -12,9 +13,14 @@ import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.verification.converter.VerificationConverter;
 import com.hrr.backend.domain.verification.dto.VerificationDetailResponseDto;
+import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
 import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.VerificationLike;
+import com.hrr.backend.domain.verification.entity.VerificationScrap;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationLikeRepository;
+import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.domain.point.service.PointService;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.global.common.enums.ChallengeDays;
@@ -26,11 +32,13 @@ import com.hrr.backend.global.response.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
@@ -70,6 +78,15 @@ class VerificationServiceTest {
     @Mock
     private PointService pointService;
 
+    @Mock
+    private RoundRecordRepository roundRecordRepository;
+
+    @Mock
+    private VerificationScrapRepository verificationScrapRepository;
+
+    @Mock
+    private VerificationLikeRepository verificationLikeRepository;
+
     // --- Helper Methods ---
 
     private User createUser(Long id, UserStatus status) {
@@ -101,6 +118,24 @@ class VerificationServiceTest {
                 .isQuestion(false)
                 .isResolved(false)
                 .build();
+    }
+
+    private void givenRoundParticipation(Verification verification, User currentUser) {
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+        RoundRecord userRoundRecord = RoundRecord.builder()
+                .round(postRound)
+                .userChallenge(userChallenge)
+                .build();
+
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.of(userRoundRecord));
     }
 
     // --- Tests ---
@@ -332,5 +367,440 @@ class VerificationServiceTest {
         InOrder inOrder = Mockito.inOrder(pointService, verificationRepository);
         inOrder.verify(pointService, times(1)).revokePointsForVerification(verification);
         inOrder.verify(verificationRepository, times(1)).delete(verification);
+    }
+
+    @Test
+    @DisplayName("성공: 스크랩 등록은 INSERT IGNORE를 호출하고 isScrapped=true를 반환한다")
+    void scrapVerification_usesInsertIgnoreAndReturnsScrapped() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+        RoundRecord userRoundRecord = RoundRecord.builder()
+                .round(postRound)
+                .userChallenge(userChallenge)
+                .build();
+        VerificationResponseDto.ScrapResponseDto expected = VerificationResponseDto.ScrapResponseDto.builder()
+                .verificationId(verificationId)
+                .isScrapped(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.of(userRoundRecord));
+        given(verificationConverter.toScrapResponseDto(verification)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.ScrapResponseDto result = verificationService.scrapVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsScrapped()).isTrue();
+        Mockito.verify(verificationScrapRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationScrapRepository, Mockito.never()).save(any(VerificationScrap.class));
+        Mockito.verify(verificationScrapRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("실패: 차단된 인증글은 스크랩을 등록할 수 없다")
+    void scrapVerification_whenVerificationIsBlocked_throwsAccessDeniedBeforeInsert() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.BLOCKED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.scrapVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        Mockito.verify(verificationScrapRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("실패: 비활성 작성자의 인증글은 스크랩을 등록할 수 없다")
+    void scrapVerification_whenAuthorIsInactive_throwsNotFoundBeforeInsert() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.INACTIVE), VerificationStatus.COMPLETED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.scrapVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationScrapRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("실패: 작성자와 차단 관계가 있으면 스크랩을 해제할 수 없다")
+    void unscrapVerification_whenBlockedRelationExists_throwsNotFoundBeforeDelete() {
+        // given
+        Long verificationId = 125L;
+        Long authorId = 20L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(authorId, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(userBlockRepository.existsByBlockerIdAndBlockedId(currentUser.getId(), authorId)).willReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.unscrapVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationScrapRepository, Mockito.never())
+                .deleteByUserIdAndVerificationId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("성공: 좋아요가 없는 인증글에 좋아요를 등록하면 INSERT IGNORE를 호출하고 isLiked=true를 반환한다")
+    void likeVerification_usesInsertIgnoreAndReturnsLiked() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto result = verificationService.likeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsLiked()).isTrue();
+        Mockito.verify(verificationLikeRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+        Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("실패: 차단된 인증글은 좋아요를 등록할 수 없다")
+    void likeVerification_whenVerificationIsBlocked_throwsAccessDeniedBeforeInsert() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.BLOCKED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.likeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED_REPORTED_POST);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("실패: 비활성 작성자의 인증글은 좋아요를 등록할 수 없다")
+    void likeVerification_whenAuthorIsInactive_throwsNotFoundBeforeInsert() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.INACTIVE), VerificationStatus.COMPLETED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.likeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("실패: 작성자와 차단 관계가 있으면 좋아요를 등록할 수 없다")
+    void likeVerification_whenBlockedRelationExists_throwsNotFoundBeforeInsert() {
+        // given
+        Long verificationId = 125L;
+        Long authorId = 20L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(authorId, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(userBlockRepository.existsByBlockerIdAndBlockedId(authorId, currentUser.getId())).willReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.likeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("성공: 이미 좋아요한 인증글에 다시 요청해도 중복 저장 없이 isLiked=true를 반환한다")
+    void likeVerification_whenAlreadyLiked_returnsLikedWithoutDuplicateSave() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto firstResult = verificationService.likeVerification(verificationId, currentUser);
+        VerificationResponseDto.LikeResponseDto secondResult = verificationService.likeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(firstResult.getIsLiked()).isTrue();
+        assertThat(secondResult.getIsLiked()).isTrue();
+        Mockito.verify(verificationLikeRepository, times(2)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+        Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("실패: 존재하지 않는 인증글 좋아요 등록 요청은 VERIFICATION_NOT_FOUND를 반환한다")
+    void likeVerification_whenVerificationDoesNotExist_throwsNotFound() {
+        // given
+        Long verificationId = 999L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.likeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+    }
+
+    @Test
+    @DisplayName("실패: 인증글이 속한 라운드에 참여하지 않은 사용자는 좋아요를 등록할 수 없다")
+    void likeVerification_whenUserDidNotParticipateInRound_throwsAccessDeniedBeforeInsert() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.likeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_ACCESS_DENIED);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).insertIgnore(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("성공: 동일 사용자와 동일 인증글 조합은 repository save가 아니라 INSERT IGNORE로만 처리한다")
+    void likeVerification_sameUserAndVerification_doesNotUseJpaSavePath() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(true)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+
+        // when
+        verificationService.likeVerification(verificationId, currentUser);
+        verificationService.likeVerification(verificationId, currentUser);
+
+        // then
+        Mockito.verify(verificationLikeRepository, times(2)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
+        Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
+    }
+
+    @Test
+    @DisplayName("성공: 좋아요가 존재하는 인증글에 좋아요 취소를 요청하면 삭제하고 isLiked=false를 반환한다")
+    void unlikeVerification_deletesLikeAndReturnsUnliked() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(false)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(verificationConverter.toLikeResponseDto(verification, false)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto result = verificationService.unlikeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsLiked()).isFalse();
+        Mockito.verify(verificationLikeRepository, times(1))
+                .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+    }
+
+    @Test
+    @DisplayName("성공: 좋아요 데이터가 없어도 좋아요 취소는 예외 없이 isLiked=false를 반환한다")
+    void unlikeVerification_succeedsWhenLikeDoesNotExist() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
+                .verificationId(verificationId)
+                .isLiked(false)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(verificationConverter.toLikeResponseDto(verification, false)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.LikeResponseDto result = verificationService.unlikeVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsLiked()).isFalse();
+        Mockito.verify(verificationLikeRepository, times(1))
+                .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+    }
+
+    @Test
+    @DisplayName("실패: 존재하지 않는 인증글 좋아요 취소 요청은 VERIFICATION_NOT_FOUND를 반환한다")
+    void unlikeVerification_whenVerificationDoesNotExist_throwsNotFound() {
+        // given
+        Long verificationId = 999L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.unlikeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never())
+                .deleteByUserIdAndVerificationId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("실패: 인증글이 속한 라운드에 참여하지 않은 사용자는 좋아요를 취소할 수 없다")
+    void unlikeVerification_whenUserDidNotParticipateInRound_throwsAccessDeniedBeforeDelete() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.unlikeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_ACCESS_DENIED);
+        Mockito.verify(verificationLikeRepository, Mockito.never())
+                .deleteByUserIdAndVerificationId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("실패: 작성자와 차단 관계가 있으면 좋아요를 취소할 수 없다")
+    void unlikeVerification_whenBlockedRelationExists_throwsNotFoundBeforeDelete() {
+        // given
+        Long verificationId = 125L;
+        Long authorId = 20L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(authorId, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        givenRoundParticipation(verification, currentUser);
+        given(userBlockRepository.existsByBlockerIdAndBlockedId(currentUser.getId(), authorId)).willReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.unlikeVerification(verificationId, currentUser))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+        Mockito.verify(verificationLikeRepository, Mockito.never())
+                .deleteByUserIdAndVerificationId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("성공: 스크랩 데이터가 없어도 스크랩 해제는 예외 없이 미스크랩 상태를 반환한다")
+    void unscrapVerification_succeedsWhenScrapDoesNotExist() {
+        // given
+        Long verificationId = 125L;
+        User currentUser = createUser(10L, UserStatus.ACTIVE);
+        Verification verification = createVerification(verificationId, createUser(20L, UserStatus.ACTIVE), VerificationStatus.COMPLETED);
+        Round postRound = verification.getRoundRecord().getRound();
+        Long challengeId = postRound.getChallenge().getId();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .user(currentUser)
+                .challenge(postRound.getChallenge())
+                .build();
+        RoundRecord userRoundRecord = RoundRecord.builder()
+                .round(postRound)
+                .userChallenge(userChallenge)
+                .build();
+        VerificationResponseDto.ScrapResponseDto expected = VerificationResponseDto.ScrapResponseDto.builder()
+                .verificationId(verificationId)
+                .isScrapped(false)
+                .build();
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+        given(userChallengeRepository.findByUserIdAndChallengeId(currentUser.getId(), challengeId))
+                .willReturn(Optional.of(userChallenge));
+        given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
+                .willReturn(Optional.of(userRoundRecord));
+        given(verificationConverter.toScrapResponseDto(verification, false)).willReturn(expected);
+
+        // when
+        VerificationResponseDto.ScrapResponseDto result = verificationService.unscrapVerification(verificationId, currentUser);
+
+        // then
+        assertThat(result.getVerificationId()).isEqualTo(verificationId);
+        assertThat(result.getIsScrapped()).isFalse();
+        Mockito.verify(verificationScrapRepository, times(1))
+                .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
     }
 }
