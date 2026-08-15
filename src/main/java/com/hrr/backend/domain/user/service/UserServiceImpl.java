@@ -35,8 +35,11 @@ import lombok.RequiredArgsConstructor;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.entity.ChallengeDayJoin;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.verification.entity.Verification;
+import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.domain.verification.repository.VerificationScrapRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 
 import java.time.LocalDate;
@@ -55,6 +58,7 @@ public class UserServiceImpl implements UserService {
 
     private final ChallengeRepository challengeRepository;
     private final VerificationRepository verificationRepository;
+    private final VerificationScrapRepository verificationScrapRepository;
 
     private final S3UrlUtil s3UrlUtil;
     private final ApplicationEventPublisher eventPublisher;
@@ -390,6 +394,57 @@ public class UserServiceImpl implements UserService {
 
         // SliceResponseDto로 변환하여 반환
         return new SliceResponseDto<>(slice);
+    }
+
+    @Override
+    public SliceResponseDto<UserResponseDto.ScrappedVerificationDto> getScrappedVerifications(
+            User currentUser,
+            VerificationPostType type,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Slice<Verification> verificationSlice = verificationScrapRepository.findVisibleScrappedVerifications(
+                currentUser.getId(),
+                type,
+                VerificationStatus.COMPLETED,
+                pageable
+        );
+
+        Slice<UserResponseDto.ScrappedVerificationDto> dtoSlice =
+                verificationSlice.map(this::toScrappedVerificationDto);
+
+        return new SliceResponseDto<>(dtoSlice);
+    }
+
+    private UserResponseDto.ScrappedVerificationDto toScrappedVerificationDto(Verification verification) {
+        User writer = verification.getRoundRecord().getUserChallenge().getUser();
+
+        boolean hasLink = verification.getTextUrl() != null && !verification.getTextUrl().isBlank();
+        String imageUrl = null;
+
+        if (verification.getType() == VerificationPostType.CAMERA) {
+            if (verification.getPhotoUrl() != null) {
+                imageUrl = s3UrlUtil.toFullUrl(verification.getPhotoUrl());
+            }
+        } else if (verification.getTextImages() != null && !verification.getTextImages().isEmpty()) {
+            imageUrl = s3UrlUtil.toFullUrl(verification.getTextImages().get(0));
+        }
+
+        return UserResponseDto.ScrappedVerificationDto.builder()
+                .verificationId(verification.getId())
+                .type(verification.getType())
+                .title(verification.getTitle())
+                .content(verification.getContent())
+                .imageUrl(imageUrl)
+                .hasLink(hasLink)
+                .isQuestion(verification.getIsQuestion())
+                .isResolved(verification.getIsResolved())
+                .writerNickname(writer.getDisplayNickname())
+                .writerProfileUrl(writer.getProfileImage())
+                .writerId(writer.getId())
+                .createdDate(verification.getCreatedAt())
+                .build();
     }
 
     // 내 정보 수정

@@ -4,6 +4,7 @@ import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.service.UserService;
 import com.hrr.backend.domain.verification.dto.VerificationResponseDto;
+import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import com.hrr.backend.domain.verification.service.VerificationService;
 import com.hrr.backend.global.config.CustomUserDetails;
 import com.hrr.backend.global.response.ApiResponse;
@@ -228,6 +229,38 @@ public class UserController {
     ) {
         VerificationResponseDto.OtherUserHistoryResponse response =
                 verificationService.getOtherUserVerificationHistory(userId, customUserDetails.getUser(), page - 1, size);
+
+        return ApiResponse.onSuccess(SuccessCode.OK, response);
+    }
+
+    @GetMapping("/me/verifications/scrap")
+    @Operation(
+            summary = "스크랩한 인증 글 목록 조회",
+            description = "현재 로그인한 사용자가 스크랩한 인증 글 목록을 최신 스크랩순으로 조회합니다. " +
+                    "type으로 사진 인증(CAMERA)과 글 인증(TEXT)을 구분해 조회할 수 있습니다."
+    )
+    public ApiResponse<SliceResponseDto<UserResponseDto.ScrappedVerificationDto>> getMyScrappedVerifications(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+
+            @RequestParam(name = "type", required = false)
+            @Parameter(description = "인증 유형 필터 (CAMERA: 사진 인증, TEXT: 글 인증)", example = "CAMERA")
+            VerificationPostType type,
+
+            @RequestParam(name = "page", defaultValue = "1")
+            @Min(1)
+            @Parameter(description = "페이지 번호 (1부터 시작)", example = "1") int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            @Min(1) @Max(100)
+            @Parameter(description = "페이지당 데이터 개수", example = "10") int size
+    ) {
+        SliceResponseDto<UserResponseDto.ScrappedVerificationDto> response =
+                userService.getScrappedVerifications(
+                        customUserDetails.getUser(),
+                        type,
+                        page - 1,
+                        size
+                );
 
         return ApiResponse.onSuccess(SuccessCode.OK, response);
     }
