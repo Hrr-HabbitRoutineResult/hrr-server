@@ -101,15 +101,36 @@ class DiscordWebhookAppenderTest {
     }
 
     @Test
-    void rateLimitRetry_respectsFullRetryAfter_withoutApplyingBackoffCap() throws Exception {
+    void rateLimitRetry_usesRetryAfter_withinConfiguredLimit() throws Exception {
         TestAppender appender = startAppender(2);
-        appender.enqueueResponse(429, Map.of("Retry-After", List.of("65")));
+        appender.setMaxServerRetryDelayMillis(1_000);
+        appender.enqueueResponse(429, Map.of("Retry-After", List.of("1")));
         appender.enqueueResponse(204);
 
-        appender.doAppend(mockEvent("긴 Discord rate limit", "긴 Discord rate limit"));
+        appender.doAppend(mockEvent("Discord rate limit", "Discord rate limit"));
 
         assertThat(appender.awaitAttempts(2)).isTrue();
-        assertThat(appender.lastRetryDelayMillis()).isEqualTo(65_000L);
+        assertThat(appender.lastRetryDelayMillis()).isEqualTo(1_000L);
+        assertThat(appender.failedDeliveryEventCount()).isZero();
+    }
+
+    @Test
+    void rateLimitRetry_abandonsDelivery_whenRetryAfterExceedsLimit() throws Exception {
+        TestAppender appender = startAppender(2);
+        appender.setMaxServerRetryDelayMillis(2_000);
+        appender.enqueueResponse(429, Map.of("Retry-After", List.of("65")));
+        ILoggingEvent event = mockEvent("긴 Discord rate limit", "긴 Discord rate limit");
+
+        appender.doAppend(event);
+
+        await(() -> appender.failedDeliveryEventCount() == 1);
+        assertThat(appender.sendCount()).isEqualTo(1);
+        assertThat(appender.lastRetryDelayMillis()).isEqualTo(-1L);
+
+        appender.enqueueResponse(204);
+        appender.doAppend(event);
+
+        assertThat(appender.awaitAttempts(2)).isTrue();
     }
 
     @Test

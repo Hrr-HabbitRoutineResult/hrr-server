@@ -66,17 +66,21 @@ log.error("[Retry Failed] migration error - Target: {}, reason: {}", target, e.g
 
 ```java
 int failCount = 0;
+Exception firstFailure = null;
 for (Round round : rounds) {
     try {
         process(round);
     } catch (Exception e) {
         log.warn("[dropNonContinuersAt] 드랍 처리에 실패했습니다. roundId={}", round.getId(), e);
         failCount++;
+        if (firstFailure == null) {
+            firstFailure = e;
+        }
     }
 }
 if (failCount > 0) {
     log.error("[dropNonContinuersAt] 드랍 처리 대상 총 {}건 중 {}건을 실패했습니다.",
-            rounds.size(), failCount);
+            rounds.size(), failCount, firstFailure);
 }
 ```
 

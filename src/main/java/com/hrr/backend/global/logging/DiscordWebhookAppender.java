@@ -40,6 +40,7 @@ public class DiscordWebhookAppender extends AppenderBase<ILoggingEvent> {
     private int maxAttempts = 3;
     private long retryBaseDelayMillis = 200;
     private long maxRetryDelayMillis = 2_000;
+    private long maxServerRetryDelayMillis = 2_000;
     private int queueCapacity = 256;
     private long maxFlushTimeMillis = 20_000;
 
@@ -79,6 +80,10 @@ public class DiscordWebhookAppender extends AppenderBase<ILoggingEvent> {
 
     public void setMaxRetryDelayMillis(long maxRetryDelayMillis) {
         this.maxRetryDelayMillis = Math.max(0, maxRetryDelayMillis);
+    }
+
+    public void setMaxServerRetryDelayMillis(long maxServerRetryDelayMillis) {
+        this.maxServerRetryDelayMillis = Math.max(0, maxServerRetryDelayMillis);
     }
 
     public void setQueueCapacity(int queueCapacity) {
@@ -241,7 +246,12 @@ public class DiscordWebhookAppender extends AppenderBase<ILoggingEvent> {
                     return DeliveryResult.failed("HTTP_" + statusCode, null);
                 }
 
-                pauseBeforeRetry(retryDelayMillis(response, attempt));
+                RetryDelayDecision retryDelay = retryDelay(response, attempt);
+                if (!retryDelay.retryAllowed()) {
+                    addWarn("Discord webhook Retry-After exceeds configured maximum; delivery will not be retried");
+                    return DeliveryResult.failed("RETRY_AFTER_EXCEEDS_LIMIT", null);
+                }
+                pauseBeforeRetry(retryDelay.delayMillis());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return DeliveryResult.failed("INTERRUPTED", e);
@@ -271,7 +281,7 @@ public class DiscordWebhookAppender extends AppenderBase<ILoggingEvent> {
         return statusCode == 401 || statusCode == 403 || statusCode == 404;
     }
 
-    private long retryDelayMillis(HttpResponse<Void> response, int attempt) {
+    private RetryDelayDecision retryDelay(HttpResponse<Void> response, int attempt) {
         if (response.statusCode() == 429) {
             String retryAfter = response.headers().firstValue("Retry-After")
                     .or(() -> response.headers().firstValue("X-RateLimit-Reset-After"))
@@ -281,14 +291,20 @@ public class DiscordWebhookAppender extends AppenderBase<ILoggingEvent> {
                     double seconds = Double.parseDouble(retryAfter);
                     if (Double.isFinite(seconds) && seconds >= 0) {
                         double delayMillis = Math.ceil(seconds * 1_000.0);
-                        return delayMillis >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) delayMillis;
+                        long serverDelayMillis = delayMillis >= Long.MAX_VALUE
+                                ? Long.MAX_VALUE
+                                : (long) delayMillis;
+                        if (serverDelayMillis > maxServerRetryDelayMillis) {
+                            return RetryDelayDecision.rejected();
+                        }
+                        return RetryDelayDecision.allowed(serverDelayMillis);
                     }
                 } catch (NumberFormatException ignored) {
                     // 숫자 형식이 아니면 기본 exponential backoff을 사용한다.
                 }
             }
         }
-        return exponentialBackoffMillis(attempt);
+        return RetryDelayDecision.allowed(exponentialBackoffMillis(attempt));
     }
 
     private long exponentialBackoffMillis(int attempt) {
@@ -421,6 +437,17 @@ public class DiscordWebhookAppender extends AppenderBase<ILoggingEvent> {
 
         private static DeliveryResult failed(String reason, Exception exception) {
             return new DeliveryResult(false, reason, exception);
+        }
+    }
+
+    private record RetryDelayDecision(boolean retryAllowed, long delayMillis) {
+
+        private static RetryDelayDecision allowed(long delayMillis) {
+            return new RetryDelayDecision(true, delayMillis);
+        }
+
+        private static RetryDelayDecision rejected() {
+            return new RetryDelayDecision(false, 0);
         }
     }
 

@@ -11,6 +11,9 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -37,13 +40,26 @@ public class ModelApiClient {
 
             if (response.getBody() == null) {
                 log.error("[requestRecommendations] 추천 Model API 응답 body가 비어 있습니다.");
-                throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR);
+                throw new GlobalException(ErrorCode.EMBEDDING_API_SERVER_ERROR);
             }
             return response.getBody();
 
-        } catch (RestClientException e) {
-            log.error("[requestRecommendations] 추천 Model API 통신 중 오류가 발생했습니다.", e);
+        } catch (HttpClientErrorException e) {
+            log.warn("[requestRecommendations] 추천 Model API가 요청을 거부했습니다. status={}, exception={}",
+                    e.getStatusCode(), e.getClass().getSimpleName());
             throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
+        } catch (HttpServerErrorException e) {
+            log.error("[requestRecommendations] 추천 Model API 서버에서 오류가 발생했습니다. status={}, exception={}",
+                    e.getStatusCode(), e.getClass().getSimpleName());
+            throw new GlobalException(ErrorCode.EMBEDDING_API_SERVER_ERROR, e);
+        } catch (ResourceAccessException e) {
+            log.error("[requestRecommendations] 추천 Model API에 연결할 수 없습니다. exception={}",
+                    e.getClass().getSimpleName());
+            throw new GlobalException(ErrorCode.EMBEDDING_API_UNAVAILABLE, e);
+        } catch (RestClientException e) {
+            log.error("[requestRecommendations] 추천 Model API 응답 처리 중 오류가 발생했습니다. exception={}",
+                    e.getClass().getSimpleName());
+            throw new GlobalException(ErrorCode.EMBEDDING_API_SERVER_ERROR, e);
         }
     }
 }
