@@ -55,7 +55,7 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler
 	public ResponseEntity<Object> exception(Exception e, WebRequest request) {
-		log.error("Unhandled exception occurred: ", e);
+		log.error("[exception] 처리하지 못한 예외가 발생했습니다.", e);
 
 		return handleExceptionInternalFalse(e, ErrorCode._INTERNAL_SERVER_ERROR, HttpHeaders.EMPTY, ErrorCode._INTERNAL_SERVER_ERROR.getHttpStatus(),request, "서버에 오류가 발생했습니다");
 	}

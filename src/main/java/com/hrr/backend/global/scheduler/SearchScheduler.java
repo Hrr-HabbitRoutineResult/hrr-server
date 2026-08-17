@@ -12,13 +12,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import com.hrr.backend.domain.search.entity.KeywordHourlyLog;
 import com.hrr.backend.domain.search.repository.KeywordHourlyLogRepository;
 import com.hrr.backend.domain.search.repository.PopularKeywordRepository;
-import com.hrr.backend.global.exception.GlobalException;
-import com.hrr.backend.global.response.ErrorCode;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,21 +38,18 @@ public class SearchScheduler {
 	@Transactional
 	@Scheduled(cron = "5 0 * * * *")
 	public void migrateRedisToLogTable() {
+		// 직전 시간(HH-1)의 키를 계산 e.g. 현재 20시면 19시 키 (YYYYMMDD19)를 가져와야 함
+		LocalDateTime targetHour = LocalDateTime.now().minusHours(1);
+		String targetHourKey = POPULAR_SEARCH_KEY + ":" + targetHour.format(
+			java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHH")
+		);
 		try {
-			// 직전 시간(HH-1)의 키를 계산 e.g. 현재 20시면 19시 키 (YYYYMMDD19)를 가져와야 함
-			LocalDateTime targetHour = LocalDateTime.now().minusHours(1);
-			String targetHourKey = POPULAR_SEARCH_KEY + ":" + targetHour.format(
-				java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHH")
-			);
-
-			log.info("[SearchScheduler] Redis 마이그레이션 시작. 타켓 시간: {}", targetHourKey);
-
 			// Redis에서 해당 ZSET의 모든 keyword, count 조회
 			ZSetOperations<String, String> zSetOps = redisTemplate.opsForZSet();
 			Set<ZSetOperations.TypedTuple<String>> entries = zSetOps.reverseRangeWithScores(targetHourKey, 0, -1);
 
 			if (entries == null || entries.isEmpty()) {
-				log.warn("[SearchScheduler] 타켓에서 조회된 데이터 없음: {}", targetHourKey);
+				log.info("[migrateRedisToLogTable] 마이그레이션 대상 Redis 검색어 로그가 없습니다. targetHour={}", targetHourKey);
 				return;
 			}
 
@@ -70,23 +65,31 @@ public class SearchScheduler {
 				.toList();
 
 			// DB에 저장
-			keywordHourlyLogRepository.saveAll(logsToSave);
-			log.info("[SearchScheduler] {}개 로그 KeywordHourlyLog에 저장 완료.", logsToSave.size());
-
+			// commit 시점까지 SQL이 지연되면 아래 catch가 DB 오류를 잡지 못하므로 try 안에서 flush한다.
+			keywordHourlyLogRepository.saveAllAndFlush(logsToSave);
 			// 트랜잭션 커밋 성공 후에만 Redis 키 삭제
 			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-					Boolean deleted = redisTemplate.delete(targetHourKey);
-					log.info("[SearchScheduler] Redis 키 삭제 완료: {} (deleted={})", targetHourKey, deleted);
+					try {
+						Boolean deleted = redisTemplate.delete(targetHourKey);
+						log.info("[migrateRedisToLogTable] Redis 검색어 로그의 DB 저장을 완료했습니다. logCount={}, redisDeleted={}",
+							logsToSave.size(), deleted);
+					} catch (Exception e) {
+						// DB 커밋은 이미 끝났으므로 재던지지 않고, 남은 Redis 키의 수동 정리가 필요함을 한 번 알린다.
+						log.error("[migrateRedisToLogTable] DB commit 후 Redis key 삭제에 실패했습니다. key={}",
+							targetHourKey, e);
+					}
 			}
         });
 
 
 		} catch (Exception e) {
-			log.error("[SearchScheduler] Redis 마이그레이션 실패. 다음에 재시도 필요.");
-			// 트랜잭션 롤백으로 DB 저장 취소, Redis 데이터는 보존되어 재시도 가능
-			throw new GlobalException(ErrorCode.MIGRATION_REDIS_TO_DB_FAILED);
+			log.error("[migrateRedisToLogTable] Redis 데이터를 DB로 마이그레이션하는 중 오류가 발생했습니다. targetHour={}",
+				targetHourKey, e);
+			// 예외를 다시 던지면 Spring Scheduler도 같은 실패를 ERROR로 기록해 Discord 알림이 중복된다.
+			// 현재 트랜잭션만 rollback-only로 표시해 DB 저장을 취소하고 Redis 데이터는 다음 재시도를 위해 보존한다.
+			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
 		}
 
 	}
@@ -97,20 +100,18 @@ public class SearchScheduler {
 	@Scheduled(cron = "30 0 * * * *")	// 먼저 실행될 migrateRedisToLogTable와의 간격 유지
 	@Transactional
 	public void aggregateLogToFinalTable() {
+		// 현재 시점으로부터 30일 전
+		LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
 		try {
-			// 현재 시점으로부터 30일 전
-			LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
-
-			log.info("[SearchScheduler] 최종 집계 시작. 최근 30일 데이터 기준 시점: {}", targetDateTime);
-
 			// Repository의 UPSERT 쿼리 호출
 			// affectedRows = 변경된 레코드의 수
 			int affectedRows = popularKeywordRepository.upsertPopularKeywords(targetDateTime);
 
-			log.info("[SearchScheduler] 최종 집계 완료. 총 {}개 키워드 업데이트/생성됨.", affectedRows);
+			log.info("[aggregateLogToFinalTable] 검색어 최종 집계를 완료했습니다. affectedCount={}", affectedRows);
 		} catch (Exception e) {
-			log.error("[SearchScheduler] 최종 집계 실패.");
-			throw new GlobalException(ErrorCode.COUNTING_LOG_TABLE_FAILED);
+			log.error("[aggregateLogToFinalTable] 검색어 최종 집계에 실패했습니다. targetDateTime={}",
+				targetDateTime, e);
+			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
 		}
 
 	}

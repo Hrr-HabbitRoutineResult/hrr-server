@@ -80,6 +80,8 @@ public class PointServiceImpl implements PointService {
         // CANCELLED는 나가기 시 RoundRecord가 삭제되어 애초에 조회되지 않음
         // 종료된 라운드에 속한 모든 RoundRecord 조회 (JOINED/DROPPED 대상)
         List<RoundRecord> records = roundRecordRepository.findAllByRoundIdWithUserAndChallenge(endedRound.getId());
+        int failCount = 0;
+        Exception firstFailure = null;
 
         for (RoundRecord record : records) {
             try {
@@ -102,8 +104,16 @@ public class PointServiceImpl implements PointService {
 
                 awardPoint(user, PointType.FLAWLESS_ROUND, challenge, endedRound, null, null);
             } catch (Exception e) {
-                log.error("[Point] 무결석 완주 포인트 지급 실패. roundRecordId={}", record.getId(), e);
+                log.warn("[checkAndEarnFlawlessRoundPoints] 무결석 완주 포인트 지급에 실패했습니다. roundRecordId={}",
+                        record.getId(), e);
+                failCount++;
+                if (firstFailure == null) firstFailure = e;
             }
+        }
+
+        if (failCount > 0) {
+            log.error("[checkAndEarnFlawlessRoundPoints] 포인트 지급 대상 총 {}건 중 {}건을 실패했습니다. roundId={}",
+                    records.size(), failCount, endedRound.getId(), firstFailure);
         }
     }
 
@@ -197,9 +207,9 @@ public class PointServiceImpl implements PointService {
         // 이 메서드는 인증 삭제와 같은 트랜잭션 안에서 호출되어, 인증 삭제와 포인트 회수가 함께 성공/실패한다.
         pointHistoryRepository.deleteAll(histories);
         userRepository.decreasePoints(user.getId(), totalToRevoke);
-
-        log.info("[Point] 인증 삭제로 인한 포인트 회수. verificationId={}, userId={}, 회수 포인트={}",
+        log.info("[revokePointsForVerification] 인증 삭제에 따른 포인트 회수를 완료했습니다. verificationId={}, userId={}, revokedPoints={}",
                 verification.getId(), user.getId(), totalToRevoke);
+
     }
 
     /**
@@ -214,8 +224,9 @@ public class PointServiceImpl implements PointService {
     public void awardVerificationTriggeredPoints(Long verificationId) {
         Verification verification = verificationRepository.findById(verificationId).orElse(null);
         if (verification == null) {
-            // 매우 드문 케이스(조회 사이 삭제 등) - 조용히 무시
-            log.warn("[Point] 포인트 지급 대상 인증글을 찾을 수 없습니다. verificationId={}", verificationId);
+            // 매우 드문 케이스(조회 사이 삭제 등) - 비동기 처리 누락 여부를 확인할 수 있도록 남긴다.
+            log.warn("[awardVerificationTriggeredPoints] 포인트 지급 대상 Verification을 찾을 수 없습니다. verificationId={}",
+                    verificationId);
             return;
         }
 
@@ -253,10 +264,10 @@ public class PointServiceImpl implements PointService {
     private void awardPoint(User user, PointType type, Challenge challenge, Round round, RandomMission randomMission, Verification verification) {
         try {
             pointAwardExecutor.execute(user, type, challenge, round, randomMission, verification);
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException ignored) {
             // 동시 요청 등으로 인해 DB 유니크 제약에 걸린 경우 - 이미 지급된 것으로 간주하고 조용히 무시(멱등 처리)
             // 지급 직전에 대상 인증글이 삭제되어 FK 제약에 걸린 경우 -> 지급할 대상이 사라졌으므로 무시
-            log.info("[Point] 포인트 지급을 건너뜁니다(이미 지급됐거나 대상 인증글이 삭제됨). userId={}, type={}",
+            log.info("[awardPoint] 중복 지급이거나 지급 대상이 삭제되어 포인트 지급을 건너뜁니다. userId={}, pointType={}",
                     user.getId(), type);
         }
     }

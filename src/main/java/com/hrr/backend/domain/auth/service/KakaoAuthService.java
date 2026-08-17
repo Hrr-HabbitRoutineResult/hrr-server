@@ -78,14 +78,23 @@ public class KakaoAuthService {
                     // 상태 코드별 에러 처리
                     .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
                             response -> response.bodyToMono(String.class)
+                                    .defaultIfEmpty("")
                                     .map(body -> {
-                                        log.error("Kakao token API error: {}", body);
-                                        return new RuntimeException("카카오 토큰 요청 실패");
+                                        if (response.statusCode().is5xxServerError()) {
+                                            log.error("[exchangeToken] Kakao token API 요청에 실패했습니다. status={}",
+                                                    response.statusCode());
+                                        }
+                                        return new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR);
                                     }))
                     .bodyToMono(KakaoTokenResponse.class)
                     .block(Duration.ofSeconds(5)); // 블록에도 최대 대기시간 명시
+        } catch (GlobalException e) {
+            // onStatus에서 이미 한 번만 ERROR로 기록했다.
+            throw e;
         } catch (Exception e) {
-            throw new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR);
+            // 타임아웃/연결거부 등 네트워크 레벨 실패 (위 onStatus 매퍼를 타지 않는 경우)
+            log.error("[exchangeToken] Kakao token API 통신 중 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR, e);
         }
     }
 
@@ -100,15 +109,24 @@ public class KakaoAuthService {
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
                             response -> response.bodyToMono(String.class)
+                                    .defaultIfEmpty("")
                                     .map(body -> {
-                                        log.error("[Kakao User API Error] status={}, body={}",
-                                                response.statusCode(), body);
+                                        if (response.statusCode().is5xxServerError()) {
+                                            log.error("[fetchUser] Kakao 사용자 정보 API 요청에 실패했습니다. status={}",
+                                                    response.statusCode());
+                                        }
                                         return new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR);
                                     }))
                     .bodyToMono(KakaoUserResponse.class)
                     .block(Duration.ofSeconds(5));
+        } catch (GlobalException e) {
+            // onStatus에서 이미 한 번만 ERROR로 기록했다.
+            throw e;
         } catch (Exception e) {
-            throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR);
+            // 타임아웃/연결거부 등 네트워크 레벨 실패 (위 onStatus 매퍼를 타지 않는 경우)
+            // NaverAuthService에도 동일한 이름의 fetchUser가 있어 클래스명까지 명시
+            log.error("[fetchUser] Kakao 사용자 정보 API 통신 중 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR, e);
         }
     }
 
@@ -135,23 +153,24 @@ public class KakaoAuthService {
 			ResponseEntity<String> response = restTemplate.postForEntity(UNLINK_URL, request, String.class);
 
 			if (response.getStatusCode() == HttpStatus.OK) {
-				log.info("카카오 연결 해제 성공. 회원번호: {}", response.getBody());
+				log.info("[unlink] Kakao 연결 해제를 완료했습니다.");
+				return;
 			}
 		} catch (HttpClientErrorException e) {
 			// 카카오 측에서 보내는 4xx 에러 처리
 			if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-				log.error("카카오 연결 해제 실패: ", e);
-				throw new GlobalException(ErrorCode.AUTH_KAKAO_INVALID_ADMIN_KEY);
+				log.error("[unlink] Kakao 연결 해제에 실패했습니다. reason=Admin Key 인증 오류", e);
+				throw new GlobalException(ErrorCode.AUTH_KAKAO_INVALID_ADMIN_KEY, e);
 			} else if (e.getStatusCode() == HttpStatus.NOT_FOUND || e.getStatusCode() == HttpStatus.BAD_REQUEST) {
 				// 이미 연결이 끊겼거나 잘못된 target_id인 경우
-				log.error("카카오 연결 해제 실패: ", e);
-				throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_NOT_FOUND);
+				throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_NOT_FOUND, e);
 			}
-			throw new GlobalException(ErrorCode.AUTH_KAKAO_UNLINK_ERROR);
+			log.error("[unlink] Kakao 연결 해제에 실패했습니다. status={}", e.getStatusCode(), e);
+			throw new GlobalException(ErrorCode.AUTH_KAKAO_UNLINK_ERROR, e);
 		} catch (Exception e) {
 			// 네트워크 오류나 5xx 에러 처리
-			log.error("카카오 연결 해제 실패: ", e);
-			throw new GlobalException(ErrorCode.AUTH_KAKAO_UNLINK_ERROR);
+			log.error("[unlink] Kakao 연결 해제 API 통신 중 오류가 발생했습니다.", e);
+			throw new GlobalException(ErrorCode.AUTH_KAKAO_UNLINK_ERROR, e);
 		}
 	}
 }

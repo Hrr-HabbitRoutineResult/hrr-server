@@ -10,14 +10,12 @@ import com.hrr.backend.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.MultiValueMap;
@@ -31,8 +29,8 @@ import java.util.Map;
 @Tag(name = "Auth", description = "인증 관련 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/auth")
 @Slf4j
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -64,8 +62,6 @@ public class AuthController {
             HttpServletResponse response
     ) throws IOException {
 
-        log.info("Kakao Callback received. Code received successfully.");
-
         // 서비스 로직 호출 (인가 코드로 토큰 발급 및 유저 처리)
         AuthRequestDto.SocialLoginRequest requestDto = new AuthRequestDto.SocialLoginRequest(code);
         AuthResponseDto.LoginResponse loginResponse = authService.socialLogin(SocialType.KAKAO, requestDto);
@@ -82,10 +78,10 @@ public class AuthController {
                 .encode(StandardCharsets.UTF_8)
                 .toUriString();
 
-        log.info("Login Success! Redirecting to app deep link");
-
         // 리다이렉트 전송 (302 Found) -> 앱 실행.
         response.sendRedirect(redirectUrl);
+        log.info("[kakaoCallback] Kakao 로그인을 완료해 app deep link로 redirect했습니다. userId={}, loginStatus={}",
+                loginResponse.userId(), loginResponse.loginStatus());
     }
 
     /** Swagger 테스트용 카카오 콜백 */
@@ -165,31 +161,4 @@ public class AuthController {
         authService.withdraw(authorizationHeader);
         return ApiResponse.onSuccess(SuccessCode.OK, "회원 탈퇴에 성공했습니다.");
     }
-
-	/**
-	 * 애플 로그인 테스트용 임시 리다이렉트 url
-	 */
-	@Profile("local")	// 로켈 테스트 환경에서만 작동 제한
-	@PostMapping("/login/apple/test")
-	@Operation(summary = "애플 로그인 테스트용 url")
-	public void appleTestCallback(jakarta.servlet.http.HttpServletRequest request) {
-		log.info("======= [DEBUG] APPLE CALLBACK START =======");
-
-		// 헤더 전체 출력
-		java.util.Enumeration<String> headerNames = request.getHeaderNames();
-		while (headerNames.hasMoreElements()) {
-			String name = headerNames.nextElement();
-			log.info("Header -> {}: {}", name, request.getHeader(name));
-		}
-
-		// 파라미터(Body) 전체 출력
-		java.util.Enumeration<String> params = request.getParameterNames();
-		while (params.hasMoreElements()) {
-			String name = params.nextElement();
-			log.info("Param -> {}: {}", name, request.getParameter(name));
-		}
-
-		log.info("======= [DEBUG] APPLE CALLBACK END =======");
-	}
 }
-

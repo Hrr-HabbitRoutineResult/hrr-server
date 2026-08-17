@@ -226,7 +226,7 @@ public class SocialUserService {
 	 */
 	private void checkWithdrawalPeriod(User user) {
 		if (user == null) {
-			log.error("유저가 null 상태입니다.");
+			log.error("[checkWithdrawalPeriod] User가 null입니다.");
 			throw new GlobalException(ErrorCode.USER_NOT_FOUND);
 		}
 

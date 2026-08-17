@@ -9,7 +9,6 @@ import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
@@ -22,7 +21,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -40,9 +38,6 @@ public class FollowListService {
      * @return 팔로워 목록 (SliceResponseDto)
      */
     public SliceResponseDto<FollowListResponseDto> getFollowers(Long userId, Long currentUserId, Pageable pageable) {
-        log.info("팔로워 목록 조회 - userId: {}, currentUserId: {}, page: {}, size: {}",
-                userId, currentUserId, pageable.getPageNumber(), pageable.getPageSize());
-
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
@@ -67,8 +62,6 @@ public class FollowListService {
 
         // 팔로워 목록 조회 (Slice 페이징)
         Slice<User> followersSlice = followRepository.findFollowersByUserId(userId, currentUserId, pageable);
-        log.info("팔로워 목록 조회 완료 - userId: {}, hasNext: {}", userId, followersSlice.hasNext());
-
         // 팔로워가 없으면 빈 Slice 반환
         if (followersSlice.isEmpty()) {
             return new SliceResponseDto<>(followersSlice.map(user ->
@@ -101,9 +94,6 @@ public class FollowListService {
      * @return 팔로잉 목록 (SliceResponseDto)
      */
     public SliceResponseDto<FollowListResponseDto> getFollowings(Long userId, Long currentUserId, Pageable pageable) {
-        log.info("팔로잉 목록 조회 - userId: {}, currentUserId: {}, page: {}, size: {}",
-                userId, currentUserId, pageable.getPageNumber(), pageable.getPageSize());
-
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
@@ -128,8 +118,6 @@ public class FollowListService {
 
         // 팔로잉 목록 조회 (Slice 페이징)
         Slice<User> followingsSlice = followRepository.findFollowingsByUserId(userId, currentUserId, pageable);
-        log.info("팔로잉 목록 조회 완료 - userId: {}, hasNext: {}", userId, followingsSlice.hasNext());
-
         // 팔로잉이 없으면 빈 Slice 반환
         if (followingsSlice.isEmpty()) {
             return new SliceResponseDto<>(followingsSlice.map(user ->

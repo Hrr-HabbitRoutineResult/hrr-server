@@ -809,7 +809,6 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 비공개 계정 체크
         if (!targetUser.getIsPublic()) {
-            log.info("User {} is private. Returning empty list.", targetUserId);
             return VerificationResponseDto.OtherUserHistoryResponse.builder()
                     .isPublic(false)
                     .nickname(targetUser.getNickname())

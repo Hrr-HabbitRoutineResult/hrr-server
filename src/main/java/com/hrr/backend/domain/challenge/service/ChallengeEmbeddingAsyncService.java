@@ -72,7 +72,7 @@ public class ChallengeEmbeddingAsyncService {
             challengeEmbeddingRepository.save(embeddingEntity);
 
         } catch (Exception e) {
-            log.error("임베딩 계산 실패. challengeId={}, error={}", challengeId, e.getMessage(), e);
+            log.warn("[calculateAndSaveEmbedding] 임베딩 계산에 실패했습니다. challengeId={}", challengeId, e);
             throw e;
         }
     }
@@ -100,11 +100,6 @@ public class ChallengeEmbeddingAsyncService {
 
         challengeEmbeddingRepository.save(entity);
 
-        log.warn(
-                "[Fallback Saved] 768 길이 0벡터로 저장했습니다. 수동으로 임베딩 값을 수정해주세요. challengeId={}",
-                challengeId
-        );
-
     }
 
     private void sanitizeEmbedding(float[] embedding, Long challengeId) {
@@ -117,7 +112,8 @@ public class ChallengeEmbeddingAsyncService {
             }
         }
         if (fixedCount > 0) {
-            log.warn("[Embedding] NaN/Inf {}개를 0.0f로 치환했습니다. challengeId={}", fixedCount, challengeId);
+            log.warn("[sanitizeEmbedding] NaN/Inf 값을 0.0f로 치환했습니다. replacementCount={}, challengeId={}",
+                    fixedCount, challengeId);
         }
     }
 

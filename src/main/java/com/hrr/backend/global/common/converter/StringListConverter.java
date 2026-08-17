@@ -25,7 +25,8 @@ public class StringListConverter implements AttributeConverter<List<String>, Str
         try {
             return objectMapper.writeValueAsString(attribute);
         } catch (JsonProcessingException e) {
-            log.error("JSON writing error", e);
+            log.error("[convertToDatabaseColumn] List를 DB JSON으로 변환하는 중 오류가 발생했습니다. exception={}",
+                    e.getClass().getSimpleName());
             return null;
         }
     }
@@ -38,7 +39,8 @@ public class StringListConverter implements AttributeConverter<List<String>, Str
         try {
             return objectMapper.readValue(dbData, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
-            log.error("JSON reading error: {}", dbData, e);
+            log.error("[convertToEntityAttribute] DB JSON을 List로 변환하는 중 오류가 발생했습니다. exception={}",
+                    e.getClass().getSimpleName());
             throw new RuntimeException("Failed to convert JSON string to List<String>", e);
         }
     }
