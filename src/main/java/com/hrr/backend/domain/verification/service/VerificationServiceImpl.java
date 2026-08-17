@@ -244,13 +244,9 @@ public class VerificationServiceImpl implements VerificationService {
             publishQuestionVerificationCreatedEventIfNeeded(savedVerification, userId);
             //포인트 기능
             eventPublisher.publishEvent(new VerificationPointTriggerEvent(savedVerification.getId()));
-            log.info("[createTextVerification] TEXT Verification 생성을 완료했습니다. verificationId={}, challengeId={}, userId={}",
-                    savedVerification.getId(), challengeId, userId);
             return verificationConverter.toResponseDto(savedVerification);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 중복된 인증 생성이 시도될 경우 에러 반환
-            log.warn("[createTextVerification] 중복 Verification 생성을 거부했습니다. challengeId={}, userId={}",
-                    challengeId, userId);
             throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
         }
     }
@@ -302,13 +298,9 @@ public class VerificationServiceImpl implements VerificationService {
             publishQuestionVerificationCreatedEventIfNeeded(saved, userId);
             //포인트 기능
             eventPublisher.publishEvent(new VerificationPointTriggerEvent(saved.getId()));
-            log.info("[createPhotoVerification] PHOTO Verification 생성을 완료했습니다. verificationId={}, challengeId={}, userId={}",
-                    saved.getId(), challengeId, userId);
             return verificationConverter.toResponseDto(saved);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 중복된 인증 생성이 시도될 경우 에러 반환
-            log.warn("[createPhotoVerification] 중복 Verification 생성을 거부했습니다. challengeId={}, userId={}",
-                    challengeId, userId);
             throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
         }
     }
@@ -600,8 +592,6 @@ public class VerificationServiceImpl implements VerificationService {
         pointService.revokePointsForVerification(verification);
 
         verificationRepository.delete(verification);
-        log.info("[deleteVerification] Verification 삭제를 완료했습니다. verificationId={}, userId={}",
-                verificationId, currentUserId);
     }
 
     @Override

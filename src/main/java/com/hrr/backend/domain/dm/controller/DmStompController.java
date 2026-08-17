@@ -32,8 +32,6 @@ public class DmStompController {
             // 해당 대화방 구독자에게 메시지 전송
             messagingTemplate.convertAndSend("/sub/dm/" + messageDto.getConversationId(), saved);
         } catch (GlobalException e) {
-            log.warn("[sendMessage] DM 메시지 요청을 처리할 수 없습니다. conversationId={}, errorCode={}",
-                    messageDto.getConversationId(), e.getErrorCode());
             throw e;
         } catch (RuntimeException e) {
             log.error("[sendMessage] DM 메시지 처리 중 오류가 발생했습니다. conversationId={}",
@@ -50,8 +48,6 @@ public class DmStompController {
             dmReadService.report(dto);
             // 응답 없음: AFTER_COMMIT 리스너가 /sub/dm/{conversationId}/read로 브로드캐스트
         } catch (GlobalException e) {
-            log.warn("[report] DM 읽음 요청을 처리할 수 없습니다. conversationId={}, userId={}, errorCode={}",
-                    dto.getConversationId(), dto.getUserId(), e.getErrorCode());
             throw e;
         } catch (RuntimeException e) {
             // DmReadServiceImpl에도 동일한 이름의 report가 있어 클래스명까지 명시

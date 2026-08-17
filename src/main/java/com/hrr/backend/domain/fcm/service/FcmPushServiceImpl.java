@@ -85,7 +85,7 @@ public class FcmPushServiceImpl implements FcmPushService {
                 .toList();
 
         if (eligibleReceivers.isEmpty()) {
-            log.info("[sendPushForDeliveries] 알림 설정을 충족하는 FCM 발송 대상이 없습니다. deliveryCount={}, category={}",
+            log.debug("[sendPushForDeliveries] 알림 설정을 충족하는 FCM 발송 대상이 없습니다. deliveryCount={}, category={}",
                     deliveries.size(), category);
             return;
         }
@@ -94,7 +94,7 @@ public class FcmPushServiceImpl implements FcmPushService {
         List<String> allTokens = fcmTokenRepository.findAllActiveTokensByUsers(eligibleReceivers);
 
         if (allTokens.isEmpty()) {
-            log.info("[sendPushForDeliveries] 활성 FCM token이 없어 발송을 건너뜁니다. receiverCount={}",
+            log.debug("[sendPushForDeliveries] 활성 FCM token이 없어 발송을 건너뜁니다. receiverCount={}",
                     eligibleReceivers.size());
             return;
         }

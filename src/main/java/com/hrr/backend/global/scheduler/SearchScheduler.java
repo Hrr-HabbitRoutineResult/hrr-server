@@ -43,8 +43,6 @@ public class SearchScheduler {
 		String targetHourKey = POPULAR_SEARCH_KEY + ":" + targetHour.format(
 			java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHH")
 		);
-		log.info("[migrateRedisToLogTable] Redis 검색어 로그의 DB 마이그레이션을 시작합니다. targetHour={}", targetHourKey);
-
 		try {
 			// Redis에서 해당 ZSET의 모든 keyword, count 조회
 			ZSetOperations<String, String> zSetOps = redisTemplate.opsForZSet();
@@ -103,8 +101,6 @@ public class SearchScheduler {
 	public void aggregateLogToFinalTable() {
 		// 현재 시점으로부터 30일 전
 		LocalDateTime targetDateTime = LocalDateTime.now().minusDays(30);
-		log.info("[aggregateLogToFinalTable] 검색어 최종 집계를 시작합니다. targetDateTime={}", targetDateTime);
-
 		try {
 			// Repository의 UPSERT 쿼리 호출
 			// affectedRows = 변경된 레코드의 수

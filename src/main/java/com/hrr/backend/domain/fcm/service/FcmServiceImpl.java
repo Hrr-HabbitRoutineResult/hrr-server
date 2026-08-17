@@ -9,13 +9,11 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional(readOnly = true)
 public class FcmServiceImpl implements FcmService {
 
@@ -38,8 +36,6 @@ public class FcmServiceImpl implements FcmService {
                         () -> fcmTokenRepository.save(FcmConverter.toEntity(request, user))
                 );
 
-        log.info("[registerFcmToken] FCM token 등록 상태를 동기화했습니다. userId={}", user.getId());
-
     }
 
     @Override
@@ -54,7 +50,6 @@ public class FcmServiceImpl implements FcmService {
         if (token.isActive()) {
             token.deactivateToken();
         }
-        log.info("[unregisterFcmToken] FCM token 비활성화를 완료했습니다. userId={}", user.getId());
     }
 
 }

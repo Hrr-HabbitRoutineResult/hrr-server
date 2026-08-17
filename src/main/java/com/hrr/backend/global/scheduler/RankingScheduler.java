@@ -25,16 +25,13 @@ public class RankingScheduler {
     @Transactional
     public void takeWeeklyRankSnapshot() {
         LocalDate today = LocalDate.now(clock);
-        log.info("[takeWeeklyRankSnapshot] 주간 랭킹 snapshot 생성을 시작합니다. snapshotDate={}", today);
         // 같은 날짜로 재실행되는 경우(예: 배치 재처리)를 대비해, 기존 행을 먼저 지우고 다시 적재한다.
         // (ACTIVE 집합에서 빠진 유저의 예전 행이 그대로 남아 total_user_count/노출 순위가 어긋나는 것을 방지)
         int deleted = userRankSnapshotRepository.deleteBySnapshotDate(today);
 
         int affected = userRankSnapshotRepository.upsertWeeklySnapshot(today);
 
-        log.info("[takeWeeklyRankSnapshot] 기존 주간 랭킹 snapshot을 정리했습니다. snapshotDate={}, deletedCount={}",
-                today, deleted);
-        log.info("[takeWeeklyRankSnapshot] 주간 랭킹 snapshot 생성을 완료했습니다. snapshotDate={}, affectedCount={}",
-                today, affected);
+        log.info("[takeWeeklyRankSnapshot] 주간 랭킹 snapshot 생성을 완료했습니다. snapshotDate={}, deletedCount={}, affectedCount={}",
+                today, deleted, affected);
     }
 }

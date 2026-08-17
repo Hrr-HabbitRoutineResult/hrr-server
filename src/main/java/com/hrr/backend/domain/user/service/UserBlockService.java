@@ -20,11 +20,9 @@ import com.hrr.backend.global.response.ErrorCode;
 import com.hrr.backend.global.response.SliceResponseDto;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 // 메소드가 많지 않아 인터페이스 생략
 public class UserBlockService {
 
@@ -69,7 +67,6 @@ public class UserBlockService {
 			.blocked(blocked)
 			.build();
 		userBlockRepository.save(userBlock);
-		log.info("[blockUser] User 차단을 완료했습니다. blockerId={}, blockedId={}", blockerId, blockedId);
 	}
 
 	@Transactional
@@ -86,7 +83,6 @@ public class UserBlockService {
 		}
 
 		userBlockRepository.deleteByBlockerAndBlocked(blocker, blocked);
-		log.info("[unblock] User 차단 해제를 완료했습니다. blockerId={}, blockedId={}", blockerId, blockedId);
 	}
 
 	@Transactional(readOnly = true)

@@ -40,8 +40,6 @@ public class VerificationScheduler {
 
 		// 미인증 대상자 조회
 		List<RoundRecord> absentees = roundRecordRepository.findAbsentees(yesterdayChallengeDay, yesterdayDate);
-		log.info("[checkAbsence] 미인증 처리를 시작합니다. targetDate={}, targetCount={}", yesterdayDate, absentees.size());
-
 		int failCount = 0;
 		Exception firstFailure = null;
 

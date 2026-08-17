@@ -59,8 +59,6 @@ public class ChallengeRecommendationService {
         // 1) 전체 챌린지 메타 조회
         List<ChallengeItemDto> allChallenges = recommendationRepository.findAllChallengeMeta();
         if (allChallenges.isEmpty()) {
-            log.info("[recommendChallenges] 추천 가능한 챌린지가 없어 빈 결과를 반환합니다. userId={}, reason=NO_CHALLENGE",
-                    request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
@@ -81,8 +79,6 @@ public class ChallengeRecommendationService {
         }
 
         if (allChallenges.isEmpty()) {
-            log.info("[recommendChallenges] 차단 User가 소유한 챌린지를 제외한 후 빈 결과를 반환합니다. userId={}",
-                    request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())
@@ -103,8 +99,6 @@ public class ChallengeRecommendationService {
                 .toList();
 
         if (allChallenges.isEmpty()) {
-            log.info("[recommendChallenges] 종료된 챌린지를 제외한 후 빈 결과를 반환합니다. userId={}",
-                    request.getUserId());
             return ChallengeRecommendResult.builder()
                     .userId(request.getUserId())
                     .recommendations(List.of())

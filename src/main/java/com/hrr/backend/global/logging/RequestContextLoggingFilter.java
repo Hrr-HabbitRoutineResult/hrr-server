@@ -16,7 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * 이 필터에서는 개인정보가 포함될 수 있는 raw URI를 넣지 않고 HTTP method만 안전한 fallback으로 설정한다.
  * HandlerMapping 이후에는 RequestContextLoggingInterceptor가 URL 대신 controller handler 식별자로 덮어쓴다.
  * Logback은 이벤트 생성 시점에 MDC 스냅샷을 이벤트에 함께 저장하므로,
- * 비동기 appender(AsyncAppender)를 거쳐도 값이 유실되지 않는다.
+ * Discord appender의 비동기 queue를 거쳐도 값이 유실되지 않는다.
  * DiscordEmbedPayloadBuilder가 이 MDC 값을 읽어 필드로 추가한다 (스케줄러/비동기 리스너처럼
  * HTTP 요청이 아닌 곳에서 난 에러는 이 값이 없어 대신 안내 문구가 표시된다).
  */

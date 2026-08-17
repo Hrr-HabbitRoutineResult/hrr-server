@@ -9,11 +9,9 @@ import org.springframework.stereotype.Component;
 import com.hrr.backend.domain.round.service.RoundDropService;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class RoundDropScheduler {
 
     private final RoundDropService roundDropService;
@@ -22,7 +20,6 @@ public class RoundDropScheduler {
     @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Seoul")
     public void dropNonContinuers() {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        log.info("[dropNonContinuers] 라운드 미연장 참여자 드랍 처리를 시작합니다. endDate={}", today);
         roundDropService.dropNonContinuersAt(today);
     }
 

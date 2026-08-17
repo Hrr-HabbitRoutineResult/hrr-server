@@ -83,9 +83,6 @@ public class KakaoAuthService {
                                         if (response.statusCode().is5xxServerError()) {
                                             log.error("[exchangeToken] Kakao token API 요청에 실패했습니다. status={}",
                                                     response.statusCode());
-										} else {
-											log.warn("[exchangeToken] Kakao token API 요청이 거부되었습니다. status={}",
-												response.statusCode());
                                         }
                                         return new GlobalException(ErrorCode.AUTH_KAKAO_TOKEN_ERROR);
                                     }))
@@ -117,9 +114,6 @@ public class KakaoAuthService {
                                         if (response.statusCode().is5xxServerError()) {
                                             log.error("[fetchUser] Kakao 사용자 정보 API 요청에 실패했습니다. status={}",
                                                     response.statusCode());
-										} else {
-											log.warn("[fetchUser] Kakao 사용자 정보 API 요청이 거부되었습니다. status={}",
-												response.statusCode());
                                         }
                                         return new GlobalException(ErrorCode.AUTH_KAKAO_USER_ERROR);
                                     }))
@@ -169,7 +163,6 @@ public class KakaoAuthService {
 				throw new GlobalException(ErrorCode.AUTH_KAKAO_INVALID_ADMIN_KEY, e);
 			} else if (e.getStatusCode() == HttpStatus.NOT_FOUND || e.getStatusCode() == HttpStatus.BAD_REQUEST) {
 				// 이미 연결이 끊겼거나 잘못된 target_id인 경우
-				log.warn("[unlink] Kakao 연결이 이미 해제되었거나 대상이 올바르지 않습니다. status={}", e.getStatusCode());
 				throw new GlobalException(ErrorCode.AUTH_KAKAO_USER_NOT_FOUND, e);
 			}
 			log.error("[unlink] Kakao 연결 해제에 실패했습니다. status={}", e.getStatusCode(), e);

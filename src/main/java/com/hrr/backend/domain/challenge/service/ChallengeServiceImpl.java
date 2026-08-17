@@ -704,15 +704,6 @@ public class ChallengeServiceImpl implements ChallengeService {
 			challengeRepository.increaseLikeCount(challengeId);
 
 		} catch (DataIntegrityViolationException e) {
-			// 유니크 제약 위반이 맞는지(=이미 좋아요를 누른 경우) 재확인
-			if (!challengeLikeRepository.existsByUserAndChallenge(user, challenge)) {
-				// 재조회 결과가 없다면 유니크 제약 위반이 아닌 다른 무결성 에러이므로 로그 남기고 원본 예외 재던짐
-				// GlobalException으로 감싸서 던져야 ExceptionAdvice의 catch-all(Exception)에서 같은 예외가
-				// 또다시 로깅되는 이중 로깅을 피할 수 있다 (GlobalException은 onThrowException에서 로그 없이 처리됨)
-				log.error("[likeChallenge] 좋아요 처리 중 예상하지 못한 DB 무결성 오류가 발생했습니다. challengeId={}, userId={}",
-						challengeId, user.getId(), e);
-				throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR, e);
-			}
 			// 이미 좋아요가 눌러져 있는 경우이므로 예외를 무시하고 정상 응답 반환
 		}
 

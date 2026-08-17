@@ -29,8 +29,6 @@ public class UserScheduler {
 		// 상태가 INACTIVE 이고, deletedAt 이 30일 이전인 사용자 조회
 		List<User> usersToClean = userRepository
 			.findUserToDelete(threshold);
-		log.info("[cleanupOldDeletedUsers] 탈퇴 회원 정리를 시작합니다. threshold={}, targetCount={}", threshold, usersToClean.size());
-
 		int failCount = 0;
 		Exception firstFailure = null;
 		for (User user : usersToClean) {

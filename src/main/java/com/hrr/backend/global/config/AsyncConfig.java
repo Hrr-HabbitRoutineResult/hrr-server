@@ -9,16 +9,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
-import com.hrr.backend.domain.challenge.event.ChallengeCreatedEvent;
-import com.hrr.backend.domain.notification.event.ChallengeExtensionEvent;
-import com.hrr.backend.domain.notification.event.ChallengeStartEvent;
-import com.hrr.backend.domain.notification.event.ChallengeUpdatedEvent;
-import com.hrr.backend.domain.notification.event.ChallengeVacancyEvent;
-import com.hrr.backend.domain.notification.event.CommentCreatedEvent;
-import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
-import com.hrr.backend.domain.notification.event.QuestionVerificationCreatedEvent;
-import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
-import com.hrr.backend.domain.point.event.VerificationPointTriggerEvent;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -43,29 +33,25 @@ public class AsyncConfig implements AsyncConfigurer {
         return (ex, method, params) -> {
                 int parameterCount = params == null ? 0 : params.length;
                 log.error("[getAsyncUncaughtExceptionHandler] 비동기 메서드 실행 중 오류가 발생했습니다. asyncMethod={}, parameterCount={}, eventContext={}",
-                        method.getName(), parameterCount, safeEventContext(params), ex);
+                        method != null ? method.getName() : "unknown",
+                        parameterCount,
+                        safeEventContext(params),
+                        ex);
         };
     }
 
     private String safeEventContext(Object[] params) {
-        if (params == null || params.length == 0 || params[0] == null) return "none";
-        Object event = params[0];
-        if (event instanceof ChallengeCreatedEvent e) return "challengeId=" + e.challengeId();
-        if (event instanceof ChallengeExtensionEvent e) return "roundId=" + e.roundId();
-        if (event instanceof ChallengeStartEvent e) return "challengeId=" + e.challengeId();
-        if (event instanceof ChallengeUpdatedEvent e) return "challengeId=" + e.challengeId();
-        if (event instanceof ChallengeVacancyEvent e) return "challengeId=" + e.challengeId();
-        if (event instanceof CommentCreatedEvent e) {
-            return "verificationId=" + e.verificationId() + ",commentId=" + e.commentId();
+        if (params == null || params.length == 0 || params[0] == null) {
+            return "none";
         }
-        if (event instanceof QuestionVerificationCreatedEvent e) return "verificationId=" + e.verificationId();
-        if (event instanceof WeakVerificationWarningEvent e) {
-            return "verificationId=" + e.verificationId() + ",warnedUserId=" + e.warnedUserId();
+
+        try {
+            // 비동기 예외 처리기는 원래 예외를 가리는 2차 예외를 절대 만들면 안 된다.
+            // 도메인 객체의 필드나 toString()을 읽지 않고 안전한 클래스명만 남긴다.
+            String simpleName = params[0].getClass().getSimpleName();
+            return simpleName.isBlank() ? "unknown" : simpleName;
+        } catch (RuntimeException ignored) {
+            return "unavailable";
         }
-        if (event instanceof FollowCreatedEvent e) {
-            return "actorId=" + e.actor().getId() + ",receiverId=" + e.receiver().getId();
-        }
-        if (event instanceof VerificationPointTriggerEvent e) return "verificationId=" + e.verificationId();
-        return event.getClass().getSimpleName();
     }
 }

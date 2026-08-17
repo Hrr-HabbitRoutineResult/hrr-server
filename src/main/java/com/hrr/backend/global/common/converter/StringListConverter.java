@@ -41,7 +41,7 @@ public class StringListConverter implements AttributeConverter<List<String>, Str
         } catch (JsonProcessingException e) {
             log.error("[convertToEntityAttribute] DB JSON을 List로 변환하는 중 오류가 발생했습니다. exception={}",
                     e.getClass().getSimpleName());
-            throw new IllegalStateException("DB JSON List 변환에 실패했습니다. exception=" + e.getClass().getSimpleName());
+            throw new RuntimeException("Failed to convert JSON string to List<String>", e);
         }
     }
 }

@@ -5,7 +5,6 @@ import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CustomUserDetailsService implements UserDetailsService {
 	private final UserRepository userRepository;
 
@@ -39,12 +37,8 @@ public class CustomUserDetailsService implements UserDetailsService {
 		// ---- Spring Security 표준 Exception 사용------
 		catch (NumberFormatException e) {
 			// ID 형식이 숫자가 아닌 경우
-			log.warn("[loadUserByUsername] username을 userId로 변환할 수 없습니다. usernameLength={}",
-				username != null ? username.length() : 0);
 			throw new UsernameNotFoundException("사용자 ID 형식이 올바르지 않습니다.");
 		} catch (GlobalException e) {
-			log.warn("[loadUserByUsername] User 인증에 실패했습니다. userId={}, errorCode={}",
-				username, e.getErrorCode());
 			// GlobalException을 UsernameNotFoundException으로 래핑하여 던집니다.
 			if (e.getErrorCode() == ErrorCode.AUTH_USER_NOT_FOUND) {
 				// 내부 상세 메시지를 숨겨 보안 향상

@@ -10,7 +10,6 @@ import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.notification.event.FollowCreatedEvent;
 import com.hrr.backend.domain.notification.service.NotificationCommandService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -18,7 +17,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class NotificationEventListener {
 
     private final NotificationCommandService notificationCommandService;
@@ -30,7 +28,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChallengeExtensionEvent(ChallengeExtensionEvent event) {
-        log.info("[handleChallengeExtensionEvent] 챌린지 연장 알림 이벤트를 처리합니다. roundId={}", event.roundId());
         notificationCommandService.sendChallengeExtensionNotification(event);
     }
 
@@ -41,7 +38,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChallengeStartEvent(ChallengeStartEvent event) {
-        log.info("[handleChallengeStartEvent] 챌린지 시작 알림 이벤트를 처리합니다. challengeId={}", event.challengeId());
         notificationCommandService.sendChallengeStartNotification(event);
     }
 
@@ -52,7 +48,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChallengeUpdatedEvent(ChallengeUpdatedEvent event) {
-        log.info("[handleChallengeUpdatedEvent] 챌린지 수정 알림 이벤트를 처리합니다. challengeId={}", event.challengeId());
         notificationCommandService.sendChallengeUpdatedNotification(event);
     }
 
@@ -63,7 +58,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleChallengeVacancyEvent(ChallengeVacancyEvent event) {
-        log.info("[handleChallengeVacancyEvent] 챌린지 빈자리 알림 이벤트를 처리합니다. challengeId={}", event.challengeId());
         notificationCommandService.sendChallengeVacancyNotification(event);
     }
 
@@ -74,8 +68,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleCommentCreatedEvent(CommentCreatedEvent event) {
-        log.info("[handleCommentCreatedEvent] 인증 댓글 알림 이벤트를 처리합니다. verificationId={}, commentId={}",
-                event.verificationId(), event.commentId());
         notificationCommandService.sendCommentCreatedNotification(event);
     }
 
@@ -86,8 +78,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleQuestionVerificationCreatedEvent(QuestionVerificationCreatedEvent event) {
-        log.info("[handleQuestionVerificationCreatedEvent] 질문 인증 알림 이벤트를 처리합니다. verificationId={}",
-                event.verificationId());
         notificationCommandService.sendQuestionVerificationCreatedNotification(event);
     }
 
@@ -98,8 +88,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWeakVerificationWarningEvent(WeakVerificationWarningEvent event) {
-        log.info("[handleWeakVerificationWarningEvent] 부실 인증 경고 알림 이벤트를 처리합니다. verificationId={}, warnedUserId={}",
-                event.verificationId(), event.warnedUserId());
         notificationCommandService.sendWeakVerificationWarningNotification(event);
     }
 
@@ -110,8 +98,6 @@ public class NotificationEventListener {
     @Async("getAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleFollowCreatedEvent(FollowCreatedEvent event) {
-        log.info("[handleFollowCreatedEvent] 팔로우 알림 이벤트를 처리합니다. actorId={}, receiverId={}",
-                event.actor().getId(), event.receiver().getId());
         notificationCommandService.sendFollowCreatedNotification(event);
     }
 

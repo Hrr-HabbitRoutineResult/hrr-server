@@ -60,10 +60,8 @@ public class NaverAuthService {
 			}
 		} catch (HttpClientErrorException.Unauthorized e) {
 			// 401 Unauthorized 에러 발생 시 (토큰 만료 등)
-			log.warn("[fetchUser] Naver token이 유효하지 않습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_TOKEN_INVALID);
 		} catch (HttpClientErrorException e) {
-			log.warn("[fetchUser] Naver 사용자 정보 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		} catch (Exception e) {
 			// 그 외 통신 장애 등 모든 외부 API 오류
@@ -113,13 +111,11 @@ public class NaverAuthService {
 				return true;
 			} else {
 				// 네이버가 success 가 아닌 에러 코드를 보낸 경우 (이미 해제되었거나 토큰이 잘못된 경우 등)
-				log.warn("[revoke] Naver 연결 해제 요청이 거부되었습니다. error={}", body.getError());
 				throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 			}
 
 		} catch (HttpClientErrorException e) {
 			// 만료되었거나 이미 해제된 token 등 예상 가능한 4xx는 호출자 응답으로 충분하다.
-			log.warn("[revoke] Naver 연결 해제 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		} catch (RestClientException e) {
 			// 주의: revokeUrl에 client_secret/access_token이 쿼리 파라미터로 포함되어 있고,
@@ -160,7 +156,6 @@ public class NaverAuthService {
 			}
 		} catch (HttpClientErrorException e) {
 			// 만료되었거나 유효하지 않은 refresh token은 정상적인 인증 실패로 처리한다.
-			log.warn("[refreshNaverToken] Naver token 갱신 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
 		} catch (Exception e) {
 				// refreshUrl에 client_secret/refresh_token이 쿼리 파라미터로 포함되어 있어, e를 그대로 로깅하면

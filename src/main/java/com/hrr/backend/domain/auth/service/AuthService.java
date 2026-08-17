@@ -124,8 +124,6 @@ public class AuthService {
             jwtService.blacklistToken(refreshToken, remainingExpiration);
         }
 
-        log.info("[reissueToken] JWT 재발급을 완료했습니다. userId={}", userId);
-
         return new AuthResponseDto.TokenReissueResponse(newAccessToken, newRefreshToken);
     }
 
@@ -278,7 +276,6 @@ public class AuthService {
 
         // Refresh Token 삭제 (Redis에서 제거)
         jwtService.deleteRefreshToken(userId);
-        log.info("[logout] 로그아웃 처리를 완료했습니다. userId={}", userId);
     }
 
     /**
@@ -316,7 +313,6 @@ public class AuthService {
 
         // 탈퇴 시 Refresh Token 삭제
         jwtService.deleteRefreshToken(userId);
-        log.info("[withdraw] 회원 탈퇴 유예 상태 전환을 완료했습니다. userId={}", userId);
     }
 
     @Transactional

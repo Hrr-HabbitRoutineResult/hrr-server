@@ -59,7 +59,6 @@ public class AppleAuthService {
 
 			// "sub" 필드가 null 체크
 			if (jsonNode.get("sub") == null || jsonNode.get("sub").isNull() || jsonNode.get("sub").asText().isBlank()) {
-				log.warn("[getAppleAccountId] Apple id_token에 sub 필드가 없습니다.");
 				throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 			}
 
@@ -69,8 +68,6 @@ public class AppleAuthService {
 		} catch (GlobalException e) {
 			throw e;
 		} catch (Exception e) {
-			log.warn("[getAppleAccountId] Apple id_token 파싱에 실패했습니다. exception={}",
-				e.getClass().getSimpleName());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_ID_TOKEN_INVALID);
 		}
 	}
@@ -111,7 +108,6 @@ public class AppleAuthService {
 
 			// 애플 측에서 보낸 에러 메시지가 있는지 확인 (디버깅용)
 			if (body.containsKey("error")) {
-				log.warn("[getAppleTokens] Apple 인증 요청이 거부되었습니다. error={}", body.get("error"));
 				throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 			}
 
@@ -129,7 +125,6 @@ public class AppleAuthService {
 			return Map.of("id_token", idToken, "refresh_token", refreshToken);
 
 		} catch (HttpClientErrorException e) {
-			log.warn("[getAppleTokens] Apple token API 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
 		} catch (GlobalException e) {
 			throw e;
@@ -205,7 +200,6 @@ public class AppleAuthService {
 			}
 			log.info("[revoke] Apple 연결 해제를 완료했습니다.");
 		} catch (HttpClientErrorException e) {
-			log.warn("[revoke] Apple 연결 해제 요청이 거부되었습니다. status={}", e.getStatusCode());
 			throw new GlobalException(ErrorCode.AUTH_APPLE_REVOKE_ERROR);
 		} catch (GlobalException e) {
 			// 비정상 응답 분기에서 이미 한 번 기록했다.
