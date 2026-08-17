@@ -7,45 +7,71 @@ import org.junit.jupiter.api.Test;
 class DiscordAlertThrottleTest {
 
     @Test
-    void shouldSuppress_suppressesSameKey_withinDedupWindow() {
+    void tryReserve_suppressesSameKey_whileDeliveryIsInProgress() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
-        assertThat(throttle.shouldSuppress("key", now)).isFalse();
-        assertThat(throttle.shouldSuppress("key", now + 1_000L)).isTrue();
+        assertThat(throttle.tryReserve("key", now)).isTrue();
+        assertThat(throttle.tryReserve("key", now + 1_000L)).isFalse();
     }
 
     @Test
-    void shouldSuppress_allowsAgain_afterDedupWindowPasses() {
+    void markDelivered_suppressesSameKey_withinDedupWindow() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
-        assertThat(throttle.shouldSuppress("key", now)).isFalse();
-        assertThat(throttle.shouldSuppress("key", now + 300_001L)).isFalse();
+        assertThat(throttle.tryReserve("key", now)).isTrue();
+        throttle.markDelivered("key", now + 100L);
+
+        assertThat(throttle.tryReserve("key", now + 1_000L)).isFalse();
     }
 
     @Test
-    void shouldSuppress_treatsDifferentKeysIndependently() {
+    void release_allowsSameKeyToRetryImmediately_afterDeliveryFailure() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
-        assertThat(throttle.shouldSuppress("key-a", now)).isFalse();
-        assertThat(throttle.shouldSuppress("key-b", now)).isFalse();
+        assertThat(throttle.tryReserve("key", now)).isTrue();
+        throttle.release("key");
+
+        assertThat(throttle.tryReserve("key", now + 1L)).isTrue();
     }
 
     @Test
-    void shouldSuppress_removesExpiredKeys_duringPeriodicCleanup() {
+    void tryReserve_allowsDeliveredKeyAgain_afterDedupWindowPasses() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
-        throttle.shouldSuppress("expired-a", now);
-        throttle.shouldSuppress("expired-b", now);
+        assertThat(throttle.tryReserve("key", now)).isTrue();
+        throttle.markDelivered("key", now);
+
+        assertThat(throttle.tryReserve("key", now + 300_001L)).isTrue();
+    }
+
+    @Test
+    void tryReserve_treatsDifferentKeysIndependently() {
+        DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
+        long now = 1_000_000L;
+
+        assertThat(throttle.tryReserve("key-a", now)).isTrue();
+        assertThat(throttle.tryReserve("key-b", now)).isTrue();
+    }
+
+    @Test
+    void tryReserve_removesExpiredDeliveredKeys_duringPeriodicCleanup() {
+        DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
+        long now = 1_000_000L;
+
+        throttle.tryReserve("expired-a", now);
+        throttle.markDelivered("expired-a", now);
+        throttle.tryReserve("expired-b", now);
+        throttle.markDelivered("expired-b", now);
         assertThat(throttle.trackedKeyCount()).isEqualTo(2);
 
-        throttle.shouldSuppress("current", now + 300_001L);
+        throttle.tryReserve("current", now + 300_001L);
 
         assertThat(throttle.trackedKeyCount()).isEqualTo(1);
-        assertThat(throttle.shouldSuppress("current", now + 300_002L)).isTrue();
+        assertThat(throttle.tryReserve("current", now + 300_002L)).isFalse();
     }
 
     @Test

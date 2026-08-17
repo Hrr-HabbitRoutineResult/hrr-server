@@ -9,10 +9,18 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class DiscordAlertThrottle {
 
+    private enum DeliveryState {
+        RESERVED,
+        DELIVERED
+    }
+
+    private record DedupEntry(DeliveryState state, long timestamp) {
+    }
+
     private final long dedupWindowMillis;
     private final int maxPerMinute;
 
-    private final ConcurrentHashMap<String, Long> lastSentAt = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, DedupEntry> dedupEntries = new ConcurrentHashMap<>();
     private final AtomicLong lastCleanupAt = new AtomicLong(0L);
 
     private long windowStart;
@@ -24,21 +32,40 @@ public class DiscordAlertThrottle {
     }
 
     /**
-     * key가 dedupWindow 내에 이미 전송된 적이 있으면 true(억제 대상).
-     * 아니면 전송 시각을 기록하고 false를 반환한다.
+     * 동일 key가 전송 중이거나 dedupWindow 내에 전송 성공했다면 false를 반환한다.
+     * 전송을 시도해도 된다면 RESERVED 상태로 원자적으로 예약하고 true를 반환한다.
      */
-    public boolean shouldSuppress(String key, long nowMillis) {
+    public boolean tryReserve(String key, long nowMillis) {
         cleanupExpiredEntries(nowMillis);
 
-        boolean[] suppressed = {false};
-        lastSentAt.compute(key, (ignored, last) -> {
-            if (last != null && (nowMillis - last) < dedupWindowMillis) {
-                suppressed[0] = true;
-                return last;
+        boolean[] reserved = {false};
+        dedupEntries.compute(key, (ignored, current) -> {
+            if (current == null
+                    || (current.state() == DeliveryState.DELIVERED
+                    && nowMillis - current.timestamp() >= dedupWindowMillis)) {
+                reserved[0] = true;
+                return new DedupEntry(DeliveryState.RESERVED, nowMillis);
             }
-            return nowMillis;
+            return current;
         });
-        return suppressed[0];
+        return reserved[0];
+    }
+
+    /** Discord가 2xx로 응답한 시점부터 dedupWindow를 적용한다. */
+    public void markDelivered(String key, long deliveredAtMillis) {
+        dedupEntries.computeIfPresent(key, (ignored, current) ->
+                current.state() == DeliveryState.RESERVED
+                        ? new DedupEntry(DeliveryState.DELIVERED, deliveredAtMillis)
+                        : current);
+    }
+
+    /**
+     * rate limit, queue 포화, 최종 전송 실패 시 예약을 해제한다.
+     * 따라서 다음 동일 오류가 5분을 기다리지 않고 다시 전송을 시도할 수 있다.
+     */
+    public void release(String key) {
+        dedupEntries.computeIfPresent(key, (ignored, current) ->
+                current.state() == DeliveryState.RESERVED ? null : current);
     }
 
     /**
@@ -62,10 +89,12 @@ public class DiscordAlertThrottle {
             return;
         }
 
-        lastSentAt.entrySet().removeIf(entry -> nowMillis - entry.getValue() >= dedupWindowMillis);
+        dedupEntries.entrySet().removeIf(entry ->
+                entry.getValue().state() == DeliveryState.DELIVERED
+                        && nowMillis - entry.getValue().timestamp() >= dedupWindowMillis);
     }
 
     int trackedKeyCount() {
-        return lastSentAt.size();
+        return dedupEntries.size();
     }
 }

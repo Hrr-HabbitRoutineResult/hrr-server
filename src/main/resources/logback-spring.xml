@@ -9,28 +9,26 @@
         <webhookUrl>${discordWebhookUrl}</webhookUrl>
         <dedupWindowSeconds>300</dedupWindowSeconds>
         <maxPerMinute>20</maxPerMinute>
-    </appender>
-
-    <appender name="ASYNC_DISCORD" class="ch.qos.logback.classic.AsyncAppender">
-        <queueSize>256</queueSize>
-        <discardingThreshold>0</discardingThreshold>
-        <includeCallerData>false</includeCallerData>
-        <neverBlock>true</neverBlock>
-        <!-- 진행 중인 웹훅 요청의 timeout(5초)보다 길게 두어 정상 종료 시 마지막 알림이 잘리지 않게 한다. -->
-        <maxFlushTime>6000</maxFlushTime>
+        <queueCapacity>256</queueCapacity>
+        <maxAttempts>3</maxAttempts>
+        <retryBaseDelayMillis>200</retryBaseDelayMillis>
+        <!-- 5xx/network exponential backoff 상한. Discord Retry-After에는 적용하지 않는다. -->
+        <maxRetryDelayMillis>2000</maxRetryDelayMillis>
+        <!-- 진행 중인 웹훅 retry cycle이 정상 종료 시 잘리지 않게 한다. -->
+        <maxFlushTimeMillis>20000</maxFlushTimeMillis>
         <filter class="com.hrr.backend.global.logging.DiscordInternalLogFilter" />
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>ERROR</level>
         </filter>
-        <appender-ref ref="DISCORD" />
     </appender>
 
-    <!-- macOS에서 netty-resolver-dns-native-macos 네이티브 라이브러리가 없을 때 뜨는 무해한 경고.
-         JDK 기본 DNS resolver로 정상 대체되며 기능상 문제 없음(로컬 개발 환경 한정) - Discord 알림 노이즈라 억제 -->
-    <logger name="io.netty.resolver.dns.DnsServerAddressStreamProviders" level="OFF" />
+    <springProfile name="local">
+        <!-- macOS에서 native DNS resolver가 없을 때 발생하는 로컬 전용 경고만 억제한다. -->
+        <logger name="io.netty.resolver.dns.DnsServerAddressStreamProviders" level="OFF" />
+    </springProfile>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
-        <appender-ref ref="ASYNC_DISCORD" />
+        <appender-ref ref="DISCORD" />
     </root>
 </configuration>

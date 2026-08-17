@@ -103,6 +103,8 @@ services:
       timeout: 5s     # 5초 안에 응답 없으면 실패
       retries: 10     # 10번 실패하면 unhealthy
       start_period: 30s # 앱 실행 초기 30초는 실패해도 대기
+    # Logback이 종료 시 진행 중인 Discord 알림 retry/queue를 최대 20초간 정리할 수 있게 한다.
+    stop_grace_period: 25s
     restart: always
 
   app-green:
@@ -155,6 +157,8 @@ services:
       timeout: 5s     # 5초 안에 응답 없으면 실패
       retries: 10     # 10번 실패하면 unhealthy
       start_period: 30s # 앱 실행 초기 30초는 실패해도 대기
+    # Logback이 종료 시 진행 중인 Discord 알림 retry/queue를 최대 20초간 정리할 수 있게 한다.
+    stop_grace_period: 25s
     restart: always
 
 
