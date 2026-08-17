@@ -38,14 +38,15 @@ class DiscordAlertThrottleTest {
     }
 
     @Test
-    void tryReserve_allowsDeliveredKeyAgain_afterDedupWindowPasses() {
+    void tryReserve_appliesDedupWindowBoundaryInclusively() {
         DiscordAlertThrottle throttle = new DiscordAlertThrottle(300, 100);
         long now = 1_000_000L;
 
         assertThat(throttle.tryReserve("key", now)).isTrue();
         throttle.markDelivered("key", now);
 
-        assertThat(throttle.tryReserve("key", now + 300_001L)).isTrue();
+        assertThat(throttle.tryReserve("key", now + 299_999L)).isFalse();
+        assertThat(throttle.tryReserve("key", now + 300_000L)).isTrue();
     }
 
     @Test

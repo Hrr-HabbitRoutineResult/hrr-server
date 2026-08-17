@@ -156,6 +156,20 @@ class DiscordEmbedPayloadBuilderTest {
     }
 
     @Test
+    void description_masksSecretsAndBoundsVeryLargeInput() throws Exception {
+        String longMessage = "access_token=secret-value " + "a".repeat(50_000);
+        ILoggingEvent event = mockEvent("logger", longMessage, null);
+
+        String payload = builder.buildPayload(event);
+        String description = objectMapper.readTree(payload).get("embeds").get(0).get("description").asText();
+
+        assertThat(description)
+                .contains("***MASKED***")
+                .doesNotContain("secret-value")
+                .endsWith("... (truncated)");
+    }
+
+    @Test
     void stackTraceField_isAbsent_whenNoException() throws Exception {
         ILoggingEvent event = mockEvent("logger", "에러 발생", null);
 

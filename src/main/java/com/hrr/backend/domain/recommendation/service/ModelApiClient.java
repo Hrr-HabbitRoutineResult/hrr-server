@@ -11,7 +11,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 
@@ -41,9 +41,9 @@ public class ModelApiClient {
             }
             return response.getBody();
 
-            } catch (ResourceAccessException e) {
-                log.error("[requestRecommendations] 추천 Model API 통신 중 오류가 발생했습니다.", e);
-                throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
-            }
+        } catch (RestClientException e) {
+            log.error("[requestRecommendations] 추천 Model API 통신 중 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.EMBEDDING_API_ERROR, e);
+        }
     }
 }

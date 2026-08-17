@@ -60,7 +60,7 @@ public class TestController {
 
 	// 명시적으로 허용한 진단용 항목 외에는 값의 성격을 추측하지 않고 전부 마스킹한다.
 	private static final List<String> SAFE_VALUE_NAMES =
-			List.of("content-type", "user-agent", "accept", "error");
+			List.of("content-type", "user-agent", "accept");
 
 	/** 애플 로그인 테스트용 임시 리다이렉트 url. 애플이 실제로 보내는 헤더/파라미터를 로그로 남긴다(민감한 값은 마스킹). */
 	@PostMapping("/apple-callback")
@@ -84,7 +84,7 @@ public class TestController {
 
 	}
 
-	private String maskIfSensitive(String name, String value) {
+	String maskIfSensitive(String name, String value) {
 		String lowerName = name.toLowerCase(Locale.ROOT);
 		boolean safe = SAFE_VALUE_NAMES.stream().anyMatch(lowerName::equals);
 		return safe ? value : "***MASKED***";

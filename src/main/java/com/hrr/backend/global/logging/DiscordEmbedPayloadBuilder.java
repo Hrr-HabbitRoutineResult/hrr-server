@@ -29,6 +29,7 @@ public class DiscordEmbedPayloadBuilder {
     // Discord는 embed 하나의 모든 텍스트 합계를 6000자로 제한한다. 각 필드의 개별 제한뿐 아니라
     // 전체 제한에도 여유를 남기기 위해 description/API/logger/thread 예산을 따로 둔다.
     private static final int DESCRIPTION_LIMIT = 3000;
+    private static final int RAW_MESSAGE_INPUT_LIMIT = 12_000;
     private static final int FIELD_VALUE_LIMIT = 1000;
     private static final int HANDLER_VALUE_LIMIT = 300;
     private static final int LOGGER_VALUE_LIMIT = 350;
@@ -95,7 +96,10 @@ public class DiscordEmbedPayloadBuilder {
         // ExceptionAdvice의 catch-all은 고정 문구만 로깅하므로,
         // 예외 메시지는 사용자 입력을 포함할 수 있어 클래스명만 안전하게 보여준다
         String rawMessage = event.getFormattedMessage();
-        String messageBody = sanitize(isGenericAdviceMessage(rawMessage) ? throwableClassSummary(throwableProxy) : rawMessage);
+        String messageSource = isGenericAdviceMessage(rawMessage)
+                ? throwableClassSummary(throwableProxy)
+                : truncate(rawMessage, RAW_MESSAGE_INPUT_LIMIT, "... (input truncated)");
+        String messageBody = sanitize(messageSource);
         String description = DIVIDER + "\n" + truncate(messageBody, DESCRIPTION_LIMIT, "\n... (truncated)");
         embed.put("description", description);
         embed.put("color", RED);

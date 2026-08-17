@@ -65,7 +65,8 @@ public class SearchScheduler {
 				.toList();
 
 			// DB에 저장
-			keywordHourlyLogRepository.saveAll(logsToSave);
+			// commit 시점까지 SQL이 지연되면 아래 catch가 DB 오류를 잡지 못하므로 try 안에서 flush한다.
+			keywordHourlyLogRepository.saveAllAndFlush(logsToSave);
 			// 트랜잭션 커밋 성공 후에만 Redis 키 삭제
 			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override

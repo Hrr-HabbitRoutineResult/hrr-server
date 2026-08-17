@@ -44,7 +44,7 @@ class SearchSchedulerTest {
                 .thenReturn(Set.of(tuple));
         when(tuple.getValue()).thenReturn("exercise");
         when(tuple.getScore()).thenReturn(3.0);
-        when(hourlyLogRepository.saveAll(any()))
+        when(hourlyLogRepository.saveAllAndFlush(any()))
                 .thenThrow(new IllegalStateException("database unavailable"));
 
         SearchScheduler scheduler = transactionalProxy(
