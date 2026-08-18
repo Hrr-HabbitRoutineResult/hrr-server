@@ -51,7 +51,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -170,6 +172,11 @@ class VerificationServiceTest {
         given(commentService.getComments(anyLong(), any(), any(Pageable.class)))
                 .willReturn(mockComments);
 
+        given(verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId))
+                .willReturn(true);
+        given(verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId))
+                .willReturn(false);
+
         // 5. Converter Mock (인자 8개 맞춤, canWriteComment=true 예상)
         VerificationDetailResponseDto expectedDto = VerificationDetailResponseDto.builder()
                 .verificationId(verificationId)
@@ -183,8 +190,8 @@ class VerificationServiceTest {
 			anyBoolean(),                   // 4. canEdit
 			anyBoolean(),                   // 5. canDelete
 			anyBoolean(),                   // 6. canSelectComment
-			anyBoolean(),                   // 7. isLiked
-			anyBoolean(),                   // 8. isScrapped
+			eq(true),                       // 7. isLiked
+			eq(false),                      // 8. isScrapped
 			anyBoolean(),                   // 9. canWriteComment
 			any()                           // 10. adoptedCommentId
 		)).willReturn(expectedDto);
