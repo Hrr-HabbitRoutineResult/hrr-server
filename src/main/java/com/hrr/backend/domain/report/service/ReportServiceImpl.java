@@ -1,27 +1,34 @@
 package com.hrr.backend.domain.report.service;
 
-import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hrr.backend.domain.challenge.entity.Challenge;
+import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
 import com.hrr.backend.domain.notification.event.WeakVerificationWarningEvent;
 import com.hrr.backend.domain.report.dto.ReportRequestDto;
+import com.hrr.backend.domain.report.entity.ChallengeReport;
 import com.hrr.backend.domain.report.entity.UserReport;
 import com.hrr.backend.domain.report.entity.VerificationPostReport;
 import com.hrr.backend.domain.report.entity.WeakVerificationReport;
+import com.hrr.backend.domain.report.repository.ChallengeReportRepository;
 import com.hrr.backend.domain.report.repository.UserReportRepository;
 import com.hrr.backend.domain.report.repository.VerificationPostReportRepository;
 import com.hrr.backend.domain.report.repository.WeakVerificationReportRepository;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.service.RoundRecordService;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.user.entity.UserChallenge;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
+import com.hrr.backend.domain.user.entity.enums.UserChallengeRole;
 import com.hrr.backend.domain.user.repository.UserChallengeRepository;
 import com.hrr.backend.domain.user.repository.UserRepository;
 import com.hrr.backend.domain.verification.entity.Verification;
 import com.hrr.backend.domain.verification.entity.enums.VerificationStatus;
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
+import com.hrr.backend.global.common.enums.ReportReason;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
 
@@ -35,6 +42,8 @@ public class ReportServiceImpl implements ReportService {
 
 	private final VerificationRepository verificationRepository;
 	private final VerificationPostReportRepository verificationPostReportRepository;
+	private final ChallengeRepository challengeRepository;
+	private final ChallengeReportRepository challengeReportRepository;
 
 	private final UserRepository userRepository;
 	private final UserReportRepository userReportRepository;
@@ -169,5 +178,44 @@ public class ReportServiceImpl implements ReportService {
 			.build();
 
 		userReportRepository.save(report);
+	}
+
+	@Override
+	@Transactional
+	public void reportChallenge(User reporter, ReportRequestDto request) {
+		Challenge challenge = challengeRepository.findById(request.getTargetId())
+			.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_NOT_FOUND));
+
+		// 현재 참여 중인 사용자만 신고 가능
+		UserChallenge participation = userChallengeRepository.findByUserAndChallenge(reporter, challenge)
+			.filter(userChallenge -> userChallenge.getStatus() == ChallengeJoinStatus.JOINED)
+			.orElseThrow(() -> new GlobalException(ErrorCode.CHALLENGE_REPORT_PARTICIPANT_ONLY));
+
+		// 방장의 자기 챌린지 신고 방지
+		if (participation.getRole() == UserChallengeRole.OWNER) {
+			throw new GlobalException(ErrorCode.CHALLENGE_REPORT_OWNER_NOT_ALLOWED);
+		}
+
+		// 중복 신고 방지
+		if (challengeReportRepository.existsByReporterAndChallenge(reporter, challenge)) {
+			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_REPORTED);
+		}
+
+		// 고정 사유는 enum만, 기타 사유는 상세 내용과 함께 저장
+		ChallengeReport report = ChallengeReport.builder()
+			.reporter(reporter)
+			.challenge(challenge)
+			.reason(request.getReason())
+			.description(request.getReason() == ReportReason.OTHER
+				? request.getDescription().trim()
+				: null)
+			.build();
+
+		try {
+			// 동시 요청에서도 중복 신고 제약을 즉시 확인
+			challengeReportRepository.saveAndFlush(report);
+		} catch (DataIntegrityViolationException exception) {
+			throw new GlobalException(ErrorCode.CHALLENGE_ALREADY_REPORTED, exception);
+		}
 	}
 }

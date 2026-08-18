@@ -3,8 +3,9 @@ package com.hrr.backend.domain.report.dto;
 import com.hrr.backend.global.common.enums.ReportReason;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
 /**
@@ -31,5 +32,13 @@ public class ReportRequestDto {
 	private ReportReason reason;
 
 	@Schema(description = "직접 입력 사유 (기타)", example = "부적절한 광고 이미지가 포함되어 있습니다.")
+	@Size(max = 200, message = "상세 신고 사유는 최대 200자까지 입력 가능합니다.")
 	private String description;
+
+	@AssertTrue(message = "기타 신고 사유를 입력해 주세요.")
+	@Schema(hidden = true)
+	public boolean isOtherDescriptionValid() {
+		return reason != ReportReason.OTHER
+			|| (description != null && !description.isBlank());
+	}
 }

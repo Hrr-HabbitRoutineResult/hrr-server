@@ -65,6 +65,9 @@ public enum ErrorCode implements BaseCode{
     CHALLENGE_LEAVE_FORBIDDEN_OWNER(HttpStatus.FORBIDDEN, "CHALLENGE4033", "방장은 챌린지에서 나갈 수 없습니다."),
     CHALLENGE_LEAVE_PERIOD_EXPIRED(HttpStatus.BAD_REQUEST, "CHALLENGE40019", "챌린지 시작일 이후에는 나갈 수 없습니다."),
     CHALLENGE_PARTICIPANT_COUNT_UNDERFLOW(HttpStatus.INTERNAL_SERVER_ERROR, "CHALLENGE5001", "챌린지 참가자 수를 감소할 수 없는 상태입니다."),
+    CHALLENGE_REPORT_PARTICIPANT_ONLY(HttpStatus.FORBIDDEN, "CHALLENGE4034", "참여 중인 챌린지만 신고할 수 있습니다."),
+    CHALLENGE_REPORT_OWNER_NOT_ALLOWED(HttpStatus.FORBIDDEN, "CHALLENGE4035", "방장은 자신의 챌린지를 신고할 수 없습니다."),
+    CHALLENGE_ALREADY_REPORTED(HttpStatus.CONFLICT, "CHALLENGE4093", "이미 신고한 챌린지입니다."),
     // challenge wait
     CHALLENGE_WAIT_ALREADY_EXIST(HttpStatus.CONFLICT, "WAIT4091", "이미 알림 신청을 완료한 챌린지입니다."),
     CHALLENGE_WAIT_NOT_FOUND(HttpStatus.NOT_FOUND, "WAIT4041", "알림 신청 내역을 찾을 수 없습니다."),
