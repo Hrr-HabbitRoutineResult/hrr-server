@@ -13,4 +13,7 @@ public interface ReportService {
 
 	// 사용자 신고
 	void reportUser(User reporter, ReportRequestDto request);
+
+	// 챌린지 신고
+	void reportChallenge(User reporter, ReportRequestDto request);
 }
