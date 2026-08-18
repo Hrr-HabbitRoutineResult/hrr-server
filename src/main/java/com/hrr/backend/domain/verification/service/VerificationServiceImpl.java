@@ -417,8 +417,12 @@ public class VerificationServiceImpl implements VerificationService {
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
 
-        boolean isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
-        boolean isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        boolean isLiked = false;
+        boolean isScrapped = false;
+        if (currentUserId != null) {
+            isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+            isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        }
 
 		boolean canWriteComment = false;
 		if (currentUserId != null) {
