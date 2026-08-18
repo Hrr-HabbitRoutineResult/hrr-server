@@ -417,6 +417,9 @@ public class VerificationServiceImpl implements VerificationService {
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
 
+        boolean isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        boolean isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+
 		boolean canWriteComment = false;
 		if (currentUserId != null) {
 			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
@@ -444,6 +447,8 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                isLiked,
+                isScrapped,
                 canWriteComment,
                 adoptedCommentId
         );
@@ -541,6 +546,9 @@ public class VerificationServiceImpl implements VerificationService {
                 .findFirst()
                 .orElse(null);
 
+        boolean isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        boolean isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+
         boolean canWriteComment = false;
         if (currentUserId != null) {
 			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
@@ -559,6 +567,8 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                isLiked,
+                isScrapped,
                 canWriteComment,
                 adoptedCommentId
         );

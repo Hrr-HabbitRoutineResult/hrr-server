@@ -179,12 +179,14 @@ class VerificationServiceTest {
 		given(verificationConverter.toDetailDto(
 			any(Verification.class),        // 1. Verification
 			any(CommentListResponseDto.class), // 2. CommentListResponseDto
-			anyBoolean(),                   // 3. isLiked
+			anyBoolean(),                   // 3. isMine
 			anyBoolean(),                   // 4. canEdit
 			anyBoolean(),                   // 5. canDelete
-			anyBoolean(),                   // 6. canReport
-			anyBoolean(),                       // 7. canWriteComment (핵심 검증 대상)
-			any()                           // 8. currentUser (User 객체 혹은 null)
+			anyBoolean(),                   // 6. canSelectComment
+			anyBoolean(),                   // 7. isLiked
+			anyBoolean(),                   // 8. isScrapped
+			anyBoolean(),                   // 9. canWriteComment
+			any()                           // 10. adoptedCommentId
 		)).willReturn(expectedDto);
 
         // when
@@ -230,6 +232,7 @@ class VerificationServiceTest {
 		// Converter Mock 부분도 인자 개수 8개로 맞춤
 		given(verificationConverter.toDetailDto(
 			any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
+			anyBoolean(), anyBoolean(),
 			eq(false), // canWriteComment = false 예상
 			any()
 		)).willReturn(expectedDto);
