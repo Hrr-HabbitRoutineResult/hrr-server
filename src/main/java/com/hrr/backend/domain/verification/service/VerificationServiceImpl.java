@@ -445,6 +445,15 @@ public class VerificationServiceImpl implements VerificationService {
                         && Boolean.TRUE.equals(verification.getIsQuestion())
                         && !isResolved;
 
+        boolean isLiked = false;
+        boolean isScrapped = false;
+        if (currentUserId != null) {
+            isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+            isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        }
+        long likeCount = verificationLikeRepository.countByVerificationId(verificationId);
+        long scrapCount = verificationScrapRepository.countByVerificationId(verificationId);
+
 		boolean canWriteComment = false;
 		if (currentUserId != null) {
 			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
@@ -472,6 +481,10 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                isLiked,
+                likeCount,
+                isScrapped,
+                scrapCount,
                 canWriteComment,
                 adoptedCommentId
         );
@@ -579,6 +592,11 @@ public class VerificationServiceImpl implements VerificationService {
                 .findFirst()
                 .orElse(null);
 
+        boolean isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        boolean isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        long likeCount = verificationLikeRepository.countByVerificationId(verificationId);
+        long scrapCount = verificationScrapRepository.countByVerificationId(verificationId);
+
         boolean canWriteComment = false;
         if (currentUserId != null) {
 			Long challengeId = verification.getRoundRecord().getRound().getChallenge().getId();
@@ -597,6 +615,10 @@ public class VerificationServiceImpl implements VerificationService {
                 canEdit,
                 canDelete,
                 canSelectComment,
+                isLiked,
+                likeCount,
+                isScrapped,
+                scrapCount,
                 canWriteComment,
                 adoptedCommentId
         );

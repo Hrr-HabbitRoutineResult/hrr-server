@@ -51,8 +51,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -185,21 +185,36 @@ class VerificationServiceTest {
         given(commentService.getComments(anyLong(), any(), any(Pageable.class)))
                 .willReturn(mockComments);
 
+        given(verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId))
+                .willReturn(true);
+        given(verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId))
+                .willReturn(false);
+        given(verificationLikeRepository.countByVerificationId(verificationId))
+                .willReturn(3L);
+        given(verificationScrapRepository.countByVerificationId(verificationId))
+                .willReturn(2L);
+
         // 5. Converter Mock (인자 8개 맞춤, canWriteComment=true 예상)
         VerificationDetailResponseDto expectedDto = VerificationDetailResponseDto.builder()
                 .verificationId(verificationId)
                 .canWriteComment(true)
+                .likeCount(3L)
+                .scrapCount(2L)
                 .build();
 
 		given(verificationConverter.toDetailDto(
 			any(Verification.class),        // 1. Verification
 			any(CommentListResponseDto.class), // 2. CommentListResponseDto
-			anyBoolean(),                   // 3. isLiked
+			anyBoolean(),                   // 3. isMine
 			anyBoolean(),                   // 4. canEdit
 			anyBoolean(),                   // 5. canDelete
-			anyBoolean(),                   // 6. canReport
-			anyBoolean(),                       // 7. canWriteComment (핵심 검증 대상)
-			any()                           // 8. currentUser (User 객체 혹은 null)
+			anyBoolean(),                   // 6. canSelectComment
+			eq(true),                       // 7. isLiked
+			eq(3L),                         // 8. likeCount
+			eq(false),                      // 9. isScrapped
+			eq(2L),                         // 10. scrapCount
+			anyBoolean(),                   // 11. canWriteComment
+			any()                           // 12. adoptedCommentId
 		)).willReturn(expectedDto);
 
         // when
@@ -209,6 +224,8 @@ class VerificationServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.isCanWriteComment()).isTrue();
+        assertThat(result.getLikeCount()).isEqualTo(3L);
+        assertThat(result.getScrapCount()).isEqualTo(2L);
     }
 
     @Test
@@ -242,9 +259,10 @@ class VerificationServiceTest {
                 .canWriteComment(false)
                 .build();
 
-		// Converter Mock 부분도 인자 개수 8개로 맞춤
+		// Converter Mock 부분도 인자 개수에 맞춤
 		given(verificationConverter.toDetailDto(
 			any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
+			anyBoolean(), anyLong(), anyBoolean(), anyLong(),
 			eq(false), // canWriteComment = false 예상
 			any()
 		)).willReturn(expectedDto);

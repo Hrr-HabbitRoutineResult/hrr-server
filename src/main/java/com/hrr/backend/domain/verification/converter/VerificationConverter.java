@@ -139,6 +139,10 @@ public class VerificationConverter {
             boolean canEdit,
             boolean canDelete,
             boolean canSelectComment,
+            boolean isLiked,
+            long likeCount,
+            boolean isScrapped,
+            long scrapCount,
             boolean canWriteComment,
             Long adoptedCommentId
     ) {
@@ -190,6 +194,10 @@ public class VerificationConverter {
                 .canEdit(canEdit)
                 .canDelete(canDelete)
                 .canSelectComment(canSelectComment)
+                .isLiked(isLiked)
+                .likeCount(likeCount)
+                .isScrapped(isScrapped)
+                .scrapCount(scrapCount)
                 .canWriteComment(canWriteComment)
                 .adoptedCommentId(adoptedCommentId)
                 .showResolvedBadge(verification.getIsResolved())
