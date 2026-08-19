@@ -87,6 +87,11 @@ public class VerificationResponseDto {
         @Schema(description = "사용자 닉네임", example = "해빗")
         private String nickname;
 
+        // TODO: 하위 호환용 deprecated 필드
+        @Deprecated
+        @Schema(description = "[Deprecated] verificationCount를 사용하세요. 현재 진행 중인 라운드의 인증 횟수", example = "5")
+        private Long totalVerificationCount;
+
         @Schema(description = "현재 진행 중인 라운드의 인증 횟수", example = "5")
         private Integer verificationCount;
 
