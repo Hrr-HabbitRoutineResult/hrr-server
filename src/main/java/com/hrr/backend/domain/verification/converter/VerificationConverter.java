@@ -122,6 +122,8 @@ public class VerificationConverter {
     ) {
         return VerificationResponseDto.MyProfileDto.builder()
                 .nickname(userChallenge.getUser().getDisplayNickname())
+                //  TODO: 프론트 전환 완료 확인 후 DTO 필드와 함께 제거할 것.
+                .totalVerificationCount(verificationCount.longValue())
                 .verificationCount(verificationCount)
                 // 현재 라운드 부실 인증 횟수
                 .weakVerificationCount(weakVerificationCount)
