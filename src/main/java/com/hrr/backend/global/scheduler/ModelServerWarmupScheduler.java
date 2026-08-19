@@ -7,8 +7,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
 import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.atomic.AtomicInteger;
+
 
 @Component
 @Slf4j
@@ -18,6 +19,7 @@ public class ModelServerWarmupScheduler {
 	private String healthUrl;
 
 	private final RestTemplate restTemplate;
+	private final AtomicInteger consecutiveFailures = new AtomicInteger();
 
 	public ModelServerWarmupScheduler(@Qualifier("modelApiRestTemplate") RestTemplate restTemplate) {
 		this.restTemplate = restTemplate;
@@ -33,9 +35,19 @@ public class ModelServerWarmupScheduler {
 	public void warmUpModelServer() {
 		try {
 			restTemplate.getForObject(healthUrl, String.class);
-			log.info("[ModelServerWarmup] 워밍업 핑 성공. url={}", healthUrl);
+			int recoveredFailureCount = consecutiveFailures.getAndSet(0);
+			if (recoveredFailureCount > 0) {
+				log.info("[warmUpModelServer] Model 서버 warmup 요청이 복구되었습니다. previousFailureCount={}",
+					recoveredFailureCount);
+			}
 		} catch (RestClientException e) {
-			log.warn("[ModelServerWarmup] 워밍업 핑 실패. url={}, error={}", healthUrl, e.getMessage());
+			int failureCount = consecutiveFailures.incrementAndGet();
+			log.warn("[warmUpModelServer] Model 서버 warmup 요청에 실패했습니다. exception={}",
+				e.getClass().getSimpleName());
+			if (failureCount == 3 || failureCount % 12 == 0) {
+				log.error("[warmUpModelServer] Model 서버 warmup 요청의 연속 실패가 누적되었습니다. consecutiveFailureCount={}",
+					failureCount, e);
+			}
 		}
 	}
 }

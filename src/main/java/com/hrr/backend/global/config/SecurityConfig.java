@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -28,6 +30,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final Environment environment;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -43,8 +46,8 @@ public class SecurityConfig {
             .formLogin(AbstractHttpConfigurer::disable)
 
             //실제 서비스용
-             .authorizeHttpRequests(auth -> auth
-				 	.requestMatchers(HttpMethod.GET, "/").permitAll()
+             .authorizeHttpRequests(auth -> {
+				 auth.requestMatchers(HttpMethod.GET, "/").permitAll()
                     // Swagger 및 카카오 인증 엔드포인트는 모두 허용
                     .requestMatchers(
                         "/api/v1/auth/login/**",	// 로그인 허용
@@ -53,10 +56,16 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-resources/**",
                         "/webjars/**"
-					).permitAll()
-                    // 그 외 요청은 JWT 인증 필요
-                    .anyRequest().authenticated()
-            )
+					).permitAll();
+
+                 // 테스트 컨트롤러와 공개 규칙 모두 local 프로필에서만 존재하게 해 운영 노출을 구조적으로 차단한다.
+                 if (environment.acceptsProfiles(Profiles.of("local"))) {
+                     auth.requestMatchers("/api/v1/test/**").permitAll();
+                 }
+
+                 // 그 외 요청은 JWT 인증 필요
+                 auth.anyRequest().authenticated();
+             })
             .exceptionHandling(ex -> ex
                     .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                     //.authenticationEntryPoint((req, res, ex1) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))

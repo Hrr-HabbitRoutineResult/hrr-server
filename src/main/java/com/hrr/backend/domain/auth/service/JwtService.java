@@ -124,7 +124,7 @@ public class JwtService {
                     .getBody();
             return Long.parseLong(claims.getSubject());
         } catch (JwtException e) {
-            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN, e);
         }
     }
     public Long getUserIdFromToken(String token) {
@@ -140,7 +140,7 @@ public class JwtService {
             return Long.parseLong(e.getClaims().getSubject());
         } catch (Exception e) {
             // 그 외 서명 불일치 등은 유효하지 않은 토큰 처리
-            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN);
+            throw new GlobalException(ErrorCode.AUTH_INVALID_TOKEN, e);
         }
     }
 

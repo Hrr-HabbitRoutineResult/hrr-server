@@ -53,8 +53,10 @@ public class UserDeleteService {
 		// 소셜 로그인 연결 해제
 		try {
 			authService.revoke(user.getId());
-		} catch (Exception e) {
-			log.warn("소셜 연동 해제 실패. 내부 데이터 정리는 계속 진행합니다. userId: {}", user.getId(), e);
+		} catch (Exception ignored) {
+			// 외부 연동 해제 실패가 내부 개인정보 정리를 막지 않도록 계속 진행하되 결과는 추적한다.
+			log.warn("[processPermanentWithdrawal] 소셜 연결 해제 실패 후 내부 데이터 정리를 계속합니다. userId={}",
+				user.getId());
 		}
 
 		// Social Auth 정보 삭제

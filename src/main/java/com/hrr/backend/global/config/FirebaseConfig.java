@@ -60,12 +60,12 @@ public class FirebaseConfig {
                 }
 
                 FirebaseApp.initializeApp(options);
-                log.info("Firebase App initialized successfully (profile: {}).", activeProfile);
-            } else {
-                log.warn("Firebase App already initialized. Skipping re-initialization.");
+                log.info("[initializeFirebase] Firebase 초기화를 완료했습니다. profile={}", activeProfile);
+			} else {
+				log.info("[initializeFirebase] Firebase가 이미 초기화되어 재초기화를 건너뜁니다. profile={}", activeProfile);
             }
         } catch (IOException e) {
-            log.error("Firebase initialization failed (profile: {}): {}", activeProfile, e.getMessage(), e);
+            log.error("[initializeFirebase] Firebase 초기화에 실패했습니다. profile={}", activeProfile, e);
             throw new IllegalStateException("Failed to initialize Firebase", e);
         }
     }

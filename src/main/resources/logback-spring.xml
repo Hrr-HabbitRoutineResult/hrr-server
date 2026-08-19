@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+    <springProperty scope="context" name="discordWebhookUrl" source="discord.webhook.url" defaultValue="" />
+
+    <appender name="DISCORD" class="com.hrr.backend.global.logging.DiscordWebhookAppender">
+        <webhookUrl>${discordWebhookUrl}</webhookUrl>
+        <dedupWindowSeconds>300</dedupWindowSeconds>
+        <maxPerMinute>20</maxPerMinute>
+        <queueCapacity>256</queueCapacity>
+        <maxAttempts>3</maxAttempts>
+        <retryBaseDelayMillis>200</retryBaseDelayMillis>
+        <!-- 5xx/network exponential backoff 상한. -->
+        <maxRetryDelayMillis>2000</maxRetryDelayMillis>
+        <!-- 이 값을 넘는 Discord Retry-After는 조기 재시도하지 않고 해당 전송을 실패 처리한다. -->
+        <maxServerRetryDelayMillis>2000</maxServerRetryDelayMillis>
+        <!-- 진행 중인 웹훅 retry cycle이 정상 종료 시 잘리지 않게 한다. -->
+        <maxFlushTimeMillis>20000</maxFlushTimeMillis>
+        <filter class="com.hrr.backend.global.logging.DiscordInternalLogFilter" />
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+    </appender>
+
+    <springProfile name="local">
+        <!-- macOS에서 native DNS resolver가 없을 때 발생하는 로컬 전용 경고만 억제한다. -->
+        <logger name="io.netty.resolver.dns.DnsServerAddressStreamProviders" level="OFF" />
+    </springProfile>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="DISCORD" />
+    </root>
+</configuration>

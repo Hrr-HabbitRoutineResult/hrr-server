@@ -40,18 +40,22 @@ public class VerificationScheduler {
 
 		// 미인증 대상자 조회
 		List<RoundRecord> absentees = roundRecordRepository.findAbsentees(yesterdayChallengeDay, yesterdayDate);
-
-		log.info("미인증 대상자 {}건 처리 시작", absentees.size());
 		int failCount = 0;
+		Exception firstFailure = null;
 
 		for (RoundRecord record : absentees) {
 			try {
 				verificationAbsenceService.processAbsentee(record, yesterdayDate); // 인증이 완료되지 않은 요일은 체크 대상인 어제이므로 어제를 미인증날짜로 기록
 			} catch (Exception e) {
-				log.error("미인증 처리 실패 - roundRecordId: {}", record.getId(), e);
+				log.warn("[checkAbsence] 미인증 처리에 실패했습니다. roundRecordId={}", record.getId(), e);
 				failCount++;
+				if (firstFailure == null) firstFailure = e;
 			}
 		}
-		log.info("미인증 처리 완료 - 총: {}, 실패: {}", absentees.size(), failCount);
+		if (failCount > 0) {
+			log.error("[checkAbsence] 미인증 처리 대상 총 {}건 중 {}건을 실패했습니다.",
+				absentees.size(), failCount, firstFailure);
+		}
+		log.info("[checkAbsence] 미인증 처리를 완료했습니다. targetCount={}, failedCount={}", absentees.size(), failCount);
 	}
 }

@@ -1,11 +1,13 @@
 package com.hrr.backend.domain.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.user.entity.enums.UserLevel;
 import com.hrr.backend.domain.user.entity.enums.UserRole;
 import com.hrr.backend.domain.user.entity.enums.UserStatus;
+import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -210,5 +212,50 @@ public class UserResponseDto {
         @JsonProperty("image")
         @Schema(description = "챌린지 대표 이미지 URL", example = "http://example.com/challenge_301.jpg")
         private String image;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "스크랩한 인증글 목록 항목 DTO")
+    public static class ScrappedVerificationDto {
+
+        @Schema(description = "인증 ID", example = "10")
+        private Long verificationId;
+
+        @Schema(description = "인증 유형 (CAMERA: 사진, TEXT: 글)", example = "TEXT")
+        private VerificationPostType type;
+
+        @Schema(description = "제목", example = "오늘의 질문입니다!")
+        private String title;
+
+        @Schema(description = "내용 (글 인증 미리보기용)", example = "이 부분 어떻게 해결하나요?")
+        private String content;
+
+        @Schema(description = "인증 사진 URL (사진 인증인 경우)", example = "https://example.com/photo.jpg")
+        private String imageUrl;
+
+        @Schema(description = "외부 링크 포함 여부 (true: 링크 있음, false: 없음)", example = "true")
+        private Boolean hasLink;
+
+        @Schema(description = "질문글 여부 (Q 마크 표시)", example = "true")
+        private Boolean isQuestion;
+
+        @Schema(description = "질문 해결 여부 (채택 완료됨 - 정렬 후순위)", example = "false")
+        private Boolean isResolved;
+
+        @Schema(description = "작성자 닉네임", example = "해빗")
+        private String writerNickname;
+
+        @Schema(description = "작성자 프로필 URL", example = "https://example.com/profile.jpg")
+        private String writerProfileUrl;
+
+        @Schema(description = "작성자 ID (본인 글 확인용)", example = "1")
+        private Long writerId;
+
+        @Schema(description = "작성일자", example = "2025.12.05")
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy.MM.dd")
+        private LocalDateTime createdDate;
     }
 }

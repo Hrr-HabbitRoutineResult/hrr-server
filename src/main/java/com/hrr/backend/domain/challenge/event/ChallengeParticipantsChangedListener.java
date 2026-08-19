@@ -20,7 +20,8 @@ public class ChallengeParticipantsChangedListener {
             challengeStaticsUpdater.recalculateInNewTx(e.challengeId());
         } catch (Exception ex) {
             // 라운드는 이미 커밋됨. 여기서 예외 터져도 라운드 전환은 유지됨.
-            log.error("[Statics] update failed after commit. challengeId={}", e.challengeId(), ex);
+            log.error("[onParticipantsChanged] 트랜잭션 commit 후 챌린지 통계 갱신에 실패했습니다. challengeId={}",
+                    e.challengeId(), ex);
         }
     }
 }

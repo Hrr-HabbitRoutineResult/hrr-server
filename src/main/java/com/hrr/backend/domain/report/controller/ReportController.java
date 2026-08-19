@@ -72,4 +72,20 @@ public class ReportController {
 		return ApiResponse.onSuccess(SuccessCode.OK, null);
 	}
 
+	@PostMapping("/challenge")
+	@Operation(
+		summary = "챌린지 신고",
+		description = "참여 중인 챌린지를 신고합니다. 방장은 자신의 챌린지를 신고할 수 없으며 중복 신고할 수 없습니다."
+	)
+	public ApiResponse<Void> reportChallenge(
+		@Valid @RequestBody ReportRequestDto request,
+
+		@Parameter(hidden = true)
+		@AuthenticationPrincipal CustomUserDetails userDetails
+	) {
+		reportService.reportChallenge(userDetails.getUser(), request);
+
+		return ApiResponse.onSuccess(SuccessCode.OK, null);
+	}
+
 }

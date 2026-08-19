@@ -31,11 +31,8 @@ public class ChallengeScheduler {
 	public void initializeDailyChallengeClicks() {
 
 		// 오늘의 클릭 수를 담고 있는 Sorted Set Key 자체를 삭제
-		Boolean isDeleted = redisTemplate.delete(TODAY_CHALLENGE_RANKING_KEY);
-
-		if (isDeleted) {
-			log.info("00시 초기화 완료. 클릭수 Sorted Set 삭제됨.");
-		}
+		Boolean deleted = redisTemplate.delete(TODAY_CHALLENGE_RANKING_KEY);
+		log.info("[initializeDailyChallengeClicks] 일간 챌린지 클릭 수를 초기화했습니다. redisDeleted={}", deleted);
 	}
 
 	/**
@@ -56,7 +53,7 @@ public class ChallengeScheduler {
 		);
 
 		if (idsToStart.isEmpty()) {
-			log.info("[Scheduler] 챌린지 상태 변경 대상 없음. 기준 시각: {}", referenceTime);
+			log.info("[updateChallengeStatus] 상태 변경 대상 챌린지가 없습니다. referenceTime={}", referenceTime);
 			return;
 		}
 
@@ -69,7 +66,7 @@ public class ChallengeScheduler {
 
 		// 변경 로그 (기준 시각 + 변경 건수 + 대상 ID)
 		log.info(
-				"[Scheduler] 챌린지 상태 변경 완료. 기준 시각: {}, 변경 건수: {}, 대상 ID: {}",
+			"[updateChallengeStatus] 챌린지 상태 변경을 완료했습니다. referenceTime={}, changedCount={}, challengeIds={}",
 				referenceTime,
 				updatedCount,
 				idsToStart

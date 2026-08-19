@@ -36,9 +36,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationCommandServiceImpl implements NotificationCommandService {
 
     private final ChallengeRepository challengeRepository;
@@ -65,6 +65,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         // 멱등성 체크
         if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
                 ResourceType.ROUND, roundId, typeName, targetDate)) {
+            log.debug("[sendDeadlineNotification] 중복 알림 이벤트 생성을 차단했습니다. roundId={}, typeName={}", roundId, typeName);
             return;
         }
 
@@ -78,7 +79,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 인증 마감 알림 이벤트 생성이 차단되었습니다. (RoundId={}, Type={})", roundId, typeName);
+            log.debug("[sendDeadlineNotification] 동시 요청으로 발생한 중복 알림 이벤트 생성을 차단했습니다. roundId={}, typeName={}",
+                    roundId, typeName);
             return;
         }
 
@@ -101,6 +103,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
         }
+        log.info("[sendDeadlineNotification] 인증 마감 알림 생성을 완료했습니다. eventId={}, deliveryCount={}, roundId={}, typeName={}",
+                notificationEvent.getId(), allDeliveries.size(), roundId, typeName);
     }
 
     @Override
@@ -139,7 +143,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 댓글 생성 알림 이벤트 생성이 차단되었습니다. (CommentId={})", comment.getId());
+            log.debug("[sendCommentCreatedNotification] 중복 알림 이벤트 생성을 차단했습니다. commentId={}", comment.getId());
             return;
         }
 
@@ -154,6 +158,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         if (receiver.getNotificationSetting().isVerificationEnabled()) {
             eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
         }
+        log.info("[sendCommentCreatedNotification] 댓글 알림 생성을 완료했습니다. eventId={}, deliveryCount=1, commentId={}",
+                notificationEvent.getId(), comment.getId());
     }
 
     @Override
@@ -188,7 +194,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 질문 인증 알림 이벤트 생성이 차단되었습니다. (VerificationId={})", verification.getId());
+            log.debug("[sendQuestionVerificationCreatedNotification] 중복 알림 이벤트 생성을 차단했습니다. verificationId={}",
+                    verification.getId());
             return;
         }
 
@@ -218,6 +225,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
         }
+        log.info("[sendQuestionVerificationCreatedNotification] 질문 인증 알림 생성을 완료했습니다. eventId={}, deliveryCount={}, verificationId={}",
+                notificationEvent.getId(), allDeliveries.size(), verification.getId());
     }
 
     @Override
@@ -249,7 +258,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 부실 인증 경고 알림 이벤트 생성이 차단되었습니다. (VerificationId={}, WarnedUserId={})",
+            log.debug("[sendWeakVerificationWarningNotification] 중복 알림 이벤트 생성을 차단했습니다. verificationId={}, warnedUserId={}",
                     verification.getId(), receiver.getId());
             return;
         }
@@ -265,6 +274,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         if (receiver.getNotificationSetting().isVerificationEnabled()) {
             eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
         }
+        log.info("[sendWeakVerificationWarningNotification] 부실 인증 경고 알림 생성을 완료했습니다. eventId={}, deliveryCount=1, verificationId={}, warnedUserId={}",
+                notificationEvent.getId(), verification.getId(), receiver.getId());
     }
 
     @Override
@@ -275,6 +286,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         // 멱등성 체크
         if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
                 ResourceType.ROUND, roundId, NotificationTypeName.CHALLENGE_EXTENSION, LocalDate.now())) {
+            log.debug("[sendChallengeExtensionNotification] 중복 알림 이벤트 생성을 차단했습니다. roundId={}", roundId);
             return;
         }
 
@@ -288,7 +300,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 챌린지 연장 안내 이벤트 생성이 차단되었습니다. (RoundId={})", roundId);
+            log.debug("[sendChallengeExtensionNotification] 동시 요청으로 발생한 중복 알림 이벤트 생성을 차단했습니다. roundId={}", roundId);
             return;
         }
 
@@ -309,6 +321,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
         }
+        log.info("[sendChallengeExtensionNotification] 챌린지 연장 알림 생성을 완료했습니다. eventId={}, deliveryCount={}, roundId={}",
+                notificationEvent.getId(), allDeliveries.size(), roundId);
     }
 
     @Override
@@ -320,6 +334,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         // 멱등성 체크
         if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
                 ResourceType.CHALLENGE, challengeId, NotificationTypeName.CHALLENGE_START, today)) {
+            log.debug("[sendChallengeStartNotification] 중복 알림 이벤트 생성을 차단했습니다. challengeId={}", challengeId);
             return;
         }
 
@@ -336,7 +351,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 챌린지 시작 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            log.debug("[sendChallengeStartNotification] 동시 요청으로 발생한 중복 알림 이벤트 생성을 차단했습니다. challengeId={}", challengeId);
             return;
         }
 
@@ -358,6 +373,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
         }
+        log.info("[sendChallengeStartNotification] 챌린지 시작 알림 생성을 완료했습니다. eventId={}, deliveryCount={}, challengeId={}",
+                notificationEvent.getId(), allDeliveries.size(), challengeId);
     }
 
     @Override
@@ -369,6 +386,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         // 멱등성 체크
         if (eventRepository.existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(
                 ResourceType.CHALLENGE, challengeId, NotificationTypeName.CHALLENGE_UPDATED, today)) {
+            log.debug("[sendChallengeUpdatedNotification] 중복 알림 이벤트 생성을 차단했습니다. challengeId={}", challengeId);
             return;
         }
 
@@ -384,7 +402,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 챌린지 수정 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            log.debug("[sendChallengeUpdatedNotification] 동시 요청으로 발생한 중복 알림 이벤트 생성을 차단했습니다. challengeId={}", challengeId);
             return;
         }
 
@@ -406,6 +424,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
         }
+        log.info("[sendChallengeUpdatedNotification] 챌린지 수정 알림 생성을 완료했습니다. eventId={}, deliveryCount={}, challengeId={}",
+                notificationEvent.getId(), allDeliveries.size(), challengeId);
     }
 
     @Override
@@ -440,7 +460,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         try {
             eventRepository.saveAndFlush(notificationEvent);
         } catch (DataIntegrityViolationException e) {
-            log.info("중복된 챌린지 빈자리 알림 이벤트 생성이 차단되었습니다. (ChallengeId={})", challengeId);
+            log.debug("[sendChallengeVacancyNotification] 중복 알림 이벤트 생성을 차단했습니다. challengeId={}", challengeId);
             return;
         }
 
@@ -467,6 +487,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 eventPublisher.publishEvent(new FcmPushSendEvent(pushTargets, notificationEvent));
             }
         }
+        log.info("[sendChallengeVacancyNotification] 챌린지 빈자리 알림 생성을 완료했습니다. eventId={}, deliveryCount={}, challengeId={}",
+                notificationEvent.getId(), allDeliveries.size(), challengeId);
     }
 
     @Override
@@ -501,6 +523,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         if (receiver.getNotificationSetting().isFollowEnabled()) {
             eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), mergedEvent));
         }
+        log.info("[sendFollowCreatedNotification] 팔로우 알림 생성을 완료했습니다. eventId={}, deliveryCount=1, actorId={}, receiverId={}",
+                mergedEvent.getId(), actor.getId(), receiver.getId());
     }
 
     private NotificationEvent createFollowEvent(User actor, NotificationType type, LocalDate createdDate) {

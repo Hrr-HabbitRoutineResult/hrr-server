@@ -66,3 +66,7 @@ naver:
   client-id: ${NAVER_CLIENT_ID}
   client-secret: ${NAVER_CLIENT_SECRET}
 
+discord:
+  webhook:
+    url: ${DISCORD_WEBHOOK_URL:}
+

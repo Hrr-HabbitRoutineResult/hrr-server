@@ -3,6 +3,7 @@ package com.hrr.backend.domain.user.service;
 import com.hrr.backend.domain.user.dto.*;
 import com.hrr.backend.global.response.SliceResponseDto;
 import com.hrr.backend.domain.user.entity.User;
+import com.hrr.backend.domain.verification.entity.enums.VerificationPostType;
 
 public interface UserService {
 
@@ -57,6 +58,16 @@ public interface UserService {
      */
     SliceResponseDto<UserResponseDto.CompletedChallengeDto> getCompletedChallenges(
             Long userId,
+            int page,
+            int size
+    );
+
+    /**
+     * 현재 로그인한 사용자가 스크랩한 인증글 목록 조회 (페이징)
+     */
+    SliceResponseDto<UserResponseDto.ScrappedVerificationDto> getScrappedVerifications(
+            User currentUser,
+            VerificationPostType type,
             int page,
             int size
     );

@@ -76,7 +76,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 외부 카카오 서버 통신 오류 처리
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[socialLogin] Kakao 로그인 중 예상하지 못한 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         }
     }
 
@@ -163,7 +164,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 외부 카카오 서버 통신 오류 처리
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[kakaoLogin] Kakao SDK 로그인 중 예상하지 못한 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         }
     }
 
@@ -180,7 +182,6 @@ public class AuthService {
 
             // id_token 자체가 오지 않은 경우 처리
             if (appleTokens == null || appleTokens.get("id_token") == null) {
-                log.error("애플 id_token이 유효하지 않습니다.");
                 throw new GlobalException(ErrorCode.AUTH_APPLE_TOKEN_ERROR);
             }
 
@@ -210,7 +211,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 애플 서버 통신 오류 처리
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[appleLogin] Apple 로그인 중 예상하지 못한 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         }
     }
 
@@ -249,8 +251,8 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             // 그 외 서버 내부 로직 오류 시 공통 외부 에러 처리
-            log.error("네이버 로그인 중 오류 발생: ", e);
-            throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR);
+            log.error("[naverLogin] Naver 로그인 중 예상하지 못한 오류가 발생했습니다.", e);
+            throw new GlobalException(ErrorCode.AUTH_NAVER_EXTERNAL_ERROR, e);
         }
     }
 
@@ -329,17 +331,19 @@ public class AuthService {
                 case NAVER -> naverAuthService.revoke(socialAuth.getSocialRefreshToken());
                 case APPLE -> appleAuthService.revoke(socialAuth.getSocialRefreshToken());
                 case KAKAO -> kakaoAuthService.unlink(socialAuth.getSocialId());
-                default -> throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
+                default -> {
+                    log.error("[revoke] 지원하지 않는 socialType입니다. userId={}, socialType={}",
+                            userId, socialAuth.getSocialType());
+                    throw new GlobalException(ErrorCode.AUTH_INVALID_SOCIAL_TYPE);
+                }
             }
         } catch (GlobalException e) {
-            // GlobalException(AUTH_INVALID_SOCIAL_TYPE 등 내부 분기 오류)은
-            // catch(Exception)에 덮이지 않도록 먼저 통과시킴
-            // → 내부 로직 오류를 외부 API 오류(AUTH_EXTERNAL_API_ERROR)로 오진하는 문제 방지
-            log.error("Social revoke internal error for userId: {}", userId, e);
+            // 하위 소셜 서비스가 원인을 이미 정확한 위치에서 기록한다. 여기서 다시 기록하면
+            // 하나의 연동 실패가 Discord에 두 번 전송되므로 오류 코드만 보존해 전달한다.
             throw e;
         } catch (Exception e) {
-            log.error("Social revoke failed for userId: {}", userId, e);
-            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR);
+            log.error("[revoke] 소셜 연결 해제 중 예상하지 못한 오류가 발생했습니다. userId={}", userId, e);
+            throw new GlobalException(ErrorCode.AUTH_EXTERNAL_API_ERROR, e);
         } finally {
             // 외부 연동 해제 실패 여부와 상관없이 내부 Refresh Token은 삭제하여 재로그인 방지
             jwtService.deleteRefreshToken(userId);

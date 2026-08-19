@@ -26,20 +26,26 @@ public class UserScheduler {
 		// 현재 시간으로부터 한 달 전 시점 계산
 		LocalDateTime threshold = LocalDateTime.now().minusMonths(1);
 
-		log.info("한 달 경과 탈퇴 회원 삭제 시작: 기준 시점 {}", threshold);
-
 		// 상태가 INACTIVE 이고, deletedAt 이 30일 이전인 사용자 조회
 		List<User> usersToClean = userRepository
 			.findUserToDelete(threshold);
-
+		int failCount = 0;
+		Exception firstFailure = null;
 		for (User user : usersToClean) {
 			try {
 				userDeleteService.processPermanentWithdrawal(user);
 			} catch (Exception e) {
 				// 특정 사용자 처리 실패 시 로그를 남기고 다음 사용자 진행
-				log.error("탈퇴 회원 정리 중 오류 발생: {}", user.getId(), e);
+				log.warn("[cleanupOldDeletedUsers] 탈퇴 회원 정리에 실패했습니다. userId={}", user.getId(), e);
+				failCount++;
+				if (firstFailure == null) firstFailure = e;
 			}
 		}
-		log.info("탈퇴 회원 정리가 완료되었습니다.");
+		if (failCount > 0) {
+			log.error("[cleanupOldDeletedUsers] 탈퇴 회원 정리 대상 총 {}건 중 {}건을 실패했습니다.",
+				usersToClean.size(), failCount, firstFailure);
+		}
+		log.info("[cleanupOldDeletedUsers] 탈퇴 회원 정리를 완료했습니다. targetCount={}, failedCount={}",
+			usersToClean.size(), failCount);
 	}
 }

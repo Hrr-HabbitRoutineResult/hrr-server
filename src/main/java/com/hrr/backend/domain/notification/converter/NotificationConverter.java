@@ -17,7 +17,7 @@ public class NotificationConverter {
     public NotificationResponseDto.InfoDto toInfoDto(NotificationDelivery delivery, String imageUrl) {
         // 전달받은 배달 객체가 null인 경우
         if (delivery == null) {
-            log.error("[Critical] NotificationDelivery is null during conversion process");
+            log.error("[toInfoDto] 변환 대상 NotificationDelivery가 null입니다.");
             throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
         }
 
@@ -25,13 +25,14 @@ public class NotificationConverter {
 
         // 연결된 이벤트 정보가 없는 경우
         if (event == null) {
-            log.error("[Data Integrity Error] NotificationDelivery(ID: {}) has no associated NotificationEvent", delivery.getId());
+            log.error("[toInfoDto] NotificationDelivery에 연결된 NotificationEvent가 없습니다. deliveryId={}",
+                    delivery.getId());
             throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
         }
 
         // 알림 타입이 없는 경우
         if (event.getType() == null) {
-            log.error("[Data Integrity Error] NotificationEvent(ID: {}) has no associated NotificationType", event.getId());
+            log.error("[toInfoDto] NotificationEvent에 연결된 NotificationType이 없습니다. eventId={}", event.getId());
             throw new GlobalException(ErrorCode._INTERNAL_SERVER_ERROR);
         }
 

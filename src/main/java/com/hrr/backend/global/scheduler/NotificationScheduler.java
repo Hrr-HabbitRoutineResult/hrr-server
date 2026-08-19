@@ -43,32 +43,37 @@ public class NotificationScheduler {
         LocalDateTime endExclusive = targetDate.plusDays(1).atStartOfDay();
 
         try {
-            log.info("[ChallengeStartScheduler] 챌린지 시작 하루 전 알림 스케줄러 시작 (대상 날짜: {})", targetDate);
-
             List<Challenge> targetChallenges = challengeRepository
                     .findAllByStartDateGreaterThanEqualAndStartDateLessThan(startInclusive, endExclusive);
 
-            log.info("[ChallengeStartScheduler] 대상 날짜({})에 시작하는 챌린지 총 {}건 발견", targetDate, targetChallenges.size());
-
             if (targetChallenges.isEmpty()) {
-                log.info("[ChallengeStartScheduler] 알림을 보낼 대상 챌린지가 없습니다.");
+                log.info("[scheduleChallengeStartNotifications] 챌린지 시작 알림 대상이 없습니다. targetDate={}", targetDate);
                 return;
             }
 
+            int failCount = 0;
+            Exception firstFailure = null;
             for (Challenge challenge : targetChallenges) {
                 try {
                     eventPublisher.publishEvent(new ChallengeStartEvent(challenge.getId()));
-                    log.info("[ChallengeStartScheduler] 이벤트 발행 완료 - ChallengeId: {}", challenge.getId());
                 } catch (Exception e) {
-                    log.error("[ChallengeStartScheduler] 이벤트 발행 실패 - ChallengeId: {}, 사유: {}",
-                            challenge.getId(), e.getMessage());
+                    log.warn("[scheduleChallengeStartNotifications] 이벤트 발행에 실패했습니다. challengeId={}",
+                            challenge.getId(), e);
+                    failCount++;
+                    if (firstFailure == null) firstFailure = e;
                 }
             }
 
-            log.info("[ChallengeStartScheduler] 스케줄러 작업 정상 종료");
+            if (failCount > 0) {
+                log.error("[scheduleChallengeStartNotifications] 알림 이벤트 발행 대상 총 {}건 중 {}건을 실패했습니다.",
+                        targetChallenges.size(), failCount, firstFailure);
+            }
+            log.info("[scheduleChallengeStartNotifications] 챌린지 시작 알림 이벤트 발행을 완료했습니다. targetDate={}, targetCount={}, failedCount={}",
+                    targetDate, targetChallenges.size(), failCount);
 
         } catch (Exception e) {
-            log.error("[ChallengeStartScheduler] 스케줄러 실행 중 심각한 오류 발생 (대상 날짜: {}), 에러: ", targetDate, e);
+            log.error("[scheduleChallengeStartNotifications] 챌린지 시작 알림 처리 중 오류가 발생했습니다. targetDate={}",
+                    targetDate, e);
         }
     }
 
@@ -79,35 +84,38 @@ public class NotificationScheduler {
         LocalDate targetDate = LocalDate.now().plusDays(Challenge.CHALLENGER_DECISION_DAYS);
 
         try {
-            // 스케줄러 시작 및 대상 날짜 로깅
-            log.info("[ChallengeExtensionScheduler] 챌린지 연장 알림 스케줄러 시작 (대상 날짜: {})", targetDate);
-
             List<Round> targetRounds = roundRepository.findAllByEndDate(targetDate);
 
-            // 발견된 라운드 수 로깅
-            log.info("[ChallengeExtensionScheduler] 대상 날짜({})에 종료되는 라운드 총 {}건 발견", targetDate, targetRounds.size());
-
             if (targetRounds.isEmpty()) {
-                log.info("[ChallengeExtensionScheduler] 알림을 보낼 대상 라운드가 없습니다.");
+                log.info("[scheduleChallengeExtensionNotifications] 챌린지 연장 알림 대상이 없습니다. targetDate={}", targetDate);
                 return;
             }
 
+            int failCount = 0;
+            Exception firstFailure = null;
             for (Round round : targetRounds) {
                 try {
-                    // 각 라운드별 이벤트 발행 시도 로깅
                     eventPublisher.publishEvent(new ChallengeExtensionEvent(round.getId()));
-                    log.info("[ChallengeExtensionScheduler] 이벤트 발행 완료 - RoundId: {}", round.getId());
                 } catch (Exception e) {
-                    // 개별 라운드 처리 중 예외 발생 시 에러 로깅
-                    log.error("[ChallengeExtensionScheduler] 이벤트 발행 실패 - RoundId: {}, 사유: {}", round.getId(), e.getMessage());
+                    // 개별 라운드 처리 중 예외 발생 시 경고 로깅
+                    log.warn("[scheduleChallengeExtensionNotifications] 이벤트 발행에 실패했습니다. roundId={}",
+                            round.getId(), e);
+                    failCount++;
+                    if (firstFailure == null) firstFailure = e;
                 }
             }
 
-            log.info("[ChallengeExtensionScheduler] 스케줄러 작업 정상 종료");
+            if (failCount > 0) {
+                log.error("[scheduleChallengeExtensionNotifications] 알림 이벤트 발행 대상 총 {}건 중 {}건을 실패했습니다.",
+                        targetRounds.size(), failCount, firstFailure);
+            }
+            log.info("[scheduleChallengeExtensionNotifications] 챌린지 연장 알림 이벤트 발행을 완료했습니다. targetDate={}, targetCount={}, failedCount={}",
+                    targetDate, targetRounds.size(), failCount);
 
         } catch (Exception e) {
             // 전체 프로세스 중 예외 발생 시 에러 로깅
-            log.error("[ChallengeExtensionScheduler] 스케줄러 실행 중 심각한 오류 발생 (대상 날짜: {}), 에러: ", targetDate, e);
+            log.error("[scheduleChallengeExtensionNotifications] 챌린지 연장 알림 처리 중 오류가 발생했습니다. targetDate={}",
+                    targetDate, e);
         }
     }
 
@@ -129,6 +137,8 @@ public class NotificationScheduler {
             return;
         }
 
+        int failCount = 0;
+        Exception firstFailure = null;
         for (Round round : targetRounds) {
             try {
                 Challenge challenge = round.getChallenge();
@@ -161,8 +171,16 @@ public class NotificationScheduler {
                     }
                 }
             } catch (Exception e) {
-                log.error("[VerificationPolling] RoundId: {} 처리 실패: {}", round.getId(), e.getMessage());
+                log.warn("[checkAndSendVerificationDeadlineNotifications] 인증 마감 알림 처리에 실패했습니다. roundId={}",
+                        round.getId(), e);
+                failCount++;
+                if (firstFailure == null) firstFailure = e;
             }
+        }
+
+        if (failCount > 0) {
+            log.error("[checkAndSendVerificationDeadlineNotifications] 알림 처리 대상 총 {}건 중 {}건을 실패했습니다.",
+                    targetRounds.size(), failCount, firstFailure);
         }
     }
 

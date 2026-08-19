@@ -19,8 +19,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Optional;
-
 /**
  * JWT 인증 필터
  * 모든 요청의 Authorization 헤더를 검사하게 하고 토큰이 유효하면 SecurityContext에 인증 정보 주입함
