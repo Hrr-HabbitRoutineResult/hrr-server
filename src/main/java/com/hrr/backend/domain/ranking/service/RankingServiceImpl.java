@@ -103,8 +103,6 @@ public class RankingServiceImpl implements RankingService {
         int created = userRankSnapshotRepository.insertWeeklySnapshot(snapshotDate, cutoff);
 
         if (created == 0) {
-            log.warn("[ensureWeeklySnapshot] 대상 ACTIVE 유저가 없어 주간 랭킹 snapshot이 생성되지 않았습니다. snapshotDate={}, cutoff={}",
-                    snapshotDate, cutoff);
             return false;
         }
 
