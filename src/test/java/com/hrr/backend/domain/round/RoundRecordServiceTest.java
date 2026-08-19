@@ -31,64 +31,94 @@ class RoundRecordServiceTest {
 
 	@Mock
 	private RoundRecordRepository roundRecordRepository;
-	@Mock
-	private WeakVerificationReportRepository weakReportRepository;
-	@Mock
-	private VerificationAbsenceLogRepository absenceLogRepository;
+    @Mock
+    private WeakVerificationReportRepository weakVerificationReportRepository;
+    @Mock
+    private VerificationAbsenceLogRepository verificationAbsenceLogRepository;
 	@Mock
 	private UserChallengeRepository userChallengeRepository;
-	@Mock
-	private ChallengeRepository challengeRepository;
+    @Mock
+    private ChallengeRepository challengeRepository;
 
-	@Test
-	@DisplayName("신고와 미인증 로그를 합산하여 경고 점수가 정확히 계산되는지 확인한다")
-	void shouldCalculateWarnCountCorrectly() {
-		// given
-		Long recordId = 1L;
-		Long challengeId = 100L;
+    @Test
+    @DisplayName("부실 인증 신고 3건당 경고 1회로 계산된다")
+    void shouldCalculateWarnCountFromWeakReportsOnly() {
+        // given
+        Long recordId = 1L;
+        RoundRecord roundRecord = RoundRecord.builder().id(recordId).warnCount(0).build();
 
-		Challenge challenge = Challenge.builder().id(100L).currentParticipants(10).build();
-		UserChallenge userChallenge = UserChallenge.builder().challenge(challenge).status(ChallengeJoinStatus.JOINED).build();
-		RoundRecord roundRecord = RoundRecord.builder().id(recordId).userChallenge(userChallenge).warnCount(0).build();
+        given(roundRecordRepository.findByIdWithPessimisticLock(recordId)).willReturn(Optional.of(roundRecord));
+        given(weakVerificationReportRepository.countByRoundRecordId(recordId)).willReturn(7L);
 
-		given(roundRecordRepository.findById(recordId)).willReturn(Optional.of(roundRecord));
-		given(weakReportRepository.countByRoundRecordId(recordId)).willReturn(7L); // 7 / 3 = 2회 경고
-		given(absenceLogRepository.countByRoundRecordId(recordId)).willReturn(1L);  // 1회 경고
+        // when
+        roundRecordService.synchronizeWarnCount(recordId);
 
-		// 퇴출 로직 수행 시 필요한 Mock 설정
-		given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
-		given(userChallengeRepository.countByChallengeIdAndStatus(challengeId, ChallengeJoinStatus.JOINED)).willReturn(9L);
+        // then: 7 / 3 = 2
+        assertEquals(2, roundRecord.getWarnCount());
+    }
 
-		// when
-		roundRecordService.synchronizeWarnCount(recordId);
+    @Test
+    @DisplayName("미인증 로그는 경고 횟수에 더 이상 반영되지 않는다")
+    void shouldNotCountAbsenceLogIntoWarnCount() {
+        // given
+        Long recordId = 1L;
+        RoundRecord roundRecord = RoundRecord.builder().id(recordId).warnCount(0).build();
 
-		// then: (7 / 3) + 1 = 3
-		assertEquals(3, roundRecord.getWarnCount());
-		assertEquals(ChallengeJoinStatus.KICKED, userChallenge.getStatus());
-	}
+        given(roundRecordRepository.findByIdWithPessimisticLock(recordId)).willReturn(Optional.of(roundRecord));
+        given(weakVerificationReportRepository.countByRoundRecordId(recordId)).willReturn(3L);
 
-	@Test
-	@DisplayName("퇴출 발생 시 해당 챌린지의 참여 인원 재계산 로직이 호출된다")
-	void shouldRecalculateParticipantsOnKickOut() {
-		// given
-		Long recordId = 1L;
-		Long challengeId = 100L;
-		Challenge challenge = Challenge.builder().id(challengeId).currentParticipants(10).build();
-		UserChallenge userChallenge = UserChallenge.builder().challenge(challenge).status(ChallengeJoinStatus.JOINED).build();
-		RoundRecord roundRecord = RoundRecord.builder().id(recordId).userChallenge(userChallenge).warnCount(0).build();
+        // when
+        roundRecordService.synchronizeWarnCount(recordId);
 
-		given(roundRecordRepository.findById(recordId)).willReturn(Optional.of(roundRecord));
-		given(weakReportRepository.countByRoundRecordId(recordId)).willReturn(0L);
-		given(absenceLogRepository.countByRoundRecordId(recordId)).willReturn(3L); // 바로 퇴출 조건
+        // then: 부실 신고 3건 -> 경고 1회. 미인증 로그가 아무리 쌓여도 값이 변하지 않아야 한다.
+        assertEquals(1, roundRecord.getWarnCount());
+        // 미인증 로그 조회 자체가 일어나지 않는다 (계산식에서 제거됨)
+        verify(verificationAbsenceLogRepository, never()).countByRoundRecordId(anyLong());
+    }
 
-		given(challengeRepository.findById(challengeId)).willReturn(Optional.of(challenge));
-		given(userChallengeRepository.countByChallengeIdAndStatus(challengeId, ChallengeJoinStatus.JOINED)).willReturn(5L);
+    @Test
+    @DisplayName("부실 인증 신고가 3건 미만이면 경고는 0회다")
+    void shouldNotEarnWarnCountUnderThreeReports() {
+        // given
+        Long recordId = 1L;
+        RoundRecord roundRecord = RoundRecord.builder().id(recordId).warnCount(0).build();
 
-		// when
-		roundRecordService.synchronizeWarnCount(recordId);
+        given(roundRecordRepository.findByIdWithPessimisticLock(recordId)).willReturn(Optional.of(roundRecord));
+        given(weakVerificationReportRepository.countByRoundRecordId(recordId)).willReturn(2L);
 
-		// then
-		assertEquals(5, challenge.getCurrentParticipants()); // 인원이 5명으로 재설정되었는지 확인
-		verify(userChallengeRepository, times(1)).countByChallengeIdAndStatus(any(), any());
-	}
+        // when
+        roundRecordService.synchronizeWarnCount(recordId);
+
+        // then
+        assertEquals(0, roundRecord.getWarnCount());
+    }
+
+    @Test
+    @DisplayName("경고가 누적되어도 참여 상태가 KICKED로 자동 전환되지 않는다")
+    void shouldNotKickOutOnWarnCountAccumulation() {
+        // given
+        Long recordId = 1L;
+        Challenge challenge = Challenge.builder().id(100L).currentParticipants(10).build();
+        UserChallenge userChallenge = UserChallenge.builder()
+                .challenge(challenge)
+                .status(ChallengeJoinStatus.JOINED)
+                .build();
+        RoundRecord roundRecord = RoundRecord.builder()
+                .id(recordId)
+                .userChallenge(userChallenge)
+                .warnCount(0)
+                .build();
+
+        given(roundRecordRepository.findByIdWithPessimisticLock(recordId)).willReturn(Optional.of(roundRecord));
+        given(weakVerificationReportRepository.countByRoundRecordId(recordId)).willReturn(9L); // 경고 3회
+
+        // when
+        roundRecordService.synchronizeWarnCount(recordId);
+
+        // then: 퇴출 기능이 폐지되어 경고 3회에도 JOINED가 유지되고 인원 재계산도 일어나지 않는다
+        assertEquals(3, roundRecord.getWarnCount());
+        assertEquals(ChallengeJoinStatus.JOINED, userChallenge.getStatus());
+        assertEquals(10, challenge.getCurrentParticipants());
+        verify(userChallengeRepository, never()).countByChallengeIdAndStatus(any(), any());
+    }
 }
