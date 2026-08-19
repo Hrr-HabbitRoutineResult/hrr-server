@@ -28,7 +28,6 @@ class RankingSchedulerTest {
     private RankingService rankingService;
 
     // 실행 시점의 실제 시각 대신, 테스트마다 원하는 날짜/시각으로 고정된 Clock을 주입해서 검증한다.
-    // (실제 시각을 그대로 읽으면 테스트 실행 요일에 따라 결과가 달라진다)
     private Clock fixedClockAt(LocalDateTime dateTime) {
         return Clock.fixed(dateTime.atZone(KST).toInstant(), KST);
     }
@@ -41,7 +40,8 @@ class RankingSchedulerTest {
         RankingScheduler rankingScheduler = new RankingScheduler(rankingService, fixedClock);
 
         LocalDate expectedMonday = LocalDate.of(2026, 8, 17);
-        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(120);
+        // thenReturn(120) -> thenReturn(true) (반환 타입 int -> boolean)
+        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(true);
 
         // when
         rankingScheduler.takeWeeklyRankSnapshot();
@@ -58,7 +58,8 @@ class RankingSchedulerTest {
         RankingScheduler rankingScheduler = new RankingScheduler(rankingService, fixedClock);
 
         LocalDate expectedMonday = LocalDate.of(2026, 8, 24);
-        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(120);
+        // thenReturn(120) -> thenReturn(true)
+        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(true);
 
         // when
         rankingScheduler.takeWeeklyRankSnapshot();
@@ -75,7 +76,8 @@ class RankingSchedulerTest {
         RankingScheduler rankingScheduler = new RankingScheduler(rankingService, fixedClock);
 
         LocalDate expectedMonday = LocalDate.of(2026, 8, 17);
-        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(120);
+        // thenReturn(120) -> thenReturn(true)
+        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(true);
 
         // when: 30초 주기로 세 번 깨어난 상황을 가정
         rankingScheduler.takeWeeklyRankSnapshot();
@@ -84,6 +86,48 @@ class RankingSchedulerTest {
 
         // then: 첫 호출에서 확보되었으므로 서비스는 단 한 번만 호출되어야 한다
         verify(rankingService, times(1)).ensureWeeklySnapshot(expectedMonday);
+    }
+
+
+    //  ACTIVE 유저가 없어 스냅샷이 실제로 만들어지지 않은 경우(false 반환),
+    //  스케줄러가 이를 확보 완료로 오인해 그 주 재시도를 중단하면 안 된다.
+    @Test
+    @DisplayName("takeWeeklyRankSnapshot: 스냅샷이 확보되지 않으면(false) 확정하지 않고 다음 주기에 다시 시도한다")
+    void takeWeeklyRankSnapshot_retriesNextCycle_whenSnapshotNotConfirmed() {
+        // given: 대상 ACTIVE 유저가 없어 스냅샷이 생성되지 않은 상황
+        Clock fixedClock = fixedClockAt(LocalDateTime.of(2026, 8, 18, 9, 30));
+        RankingScheduler rankingScheduler = new RankingScheduler(rankingService, fixedClock);
+
+        LocalDate expectedMonday = LocalDate.of(2026, 8, 17);
+        when(rankingService.ensureWeeklySnapshot(expectedMonday)).thenReturn(false);
+
+        // when: 두 주기 연속 실행
+        rankingScheduler.takeWeeklyRankSnapshot();
+        rankingScheduler.takeWeeklyRankSnapshot();
+
+        // then: 확보되지 않았으므로 매 주기마다 다시 시도되어야 한다
+        verify(rankingService, times(2)).ensureWeeklySnapshot(expectedMonday);
+    }
+
+    @Test
+    @DisplayName("takeWeeklyRankSnapshot: 무결성 오류가 나도 확정하지 않고 다음 주기에 DB로 재확인한다")
+    void takeWeeklyRankSnapshot_retriesNextCycle_whenIntegrityViolationOccurs() {
+        // given: 첫 주기에는 무결성 오류, 다음 주기에는 (다른 인스턴스가 만든) 스냅샷이 확인되는 상황
+        Clock fixedClock = fixedClockAt(LocalDateTime.of(2026, 8, 18, 9, 30));
+        RankingScheduler rankingScheduler = new RankingScheduler(rankingService, fixedClock);
+
+        LocalDate expectedMonday = LocalDate.of(2026, 8, 17);
+        when(rankingService.ensureWeeklySnapshot(expectedMonday))
+                .thenThrow(new DataIntegrityViolationException("duplicate key"))
+                .thenReturn(true);
+
+        // when & then: 예외가 스케줄러 밖으로 새어 나가면 안 된다
+        assertThatCode(rankingScheduler::takeWeeklyRankSnapshot).doesNotThrowAnyException();
+        rankingScheduler.takeWeeklyRankSnapshot();  // 두 번째 주기에 확보 확인
+        rankingScheduler.takeWeeklyRankSnapshot();  // 확보 후에는 더 이상 호출되지 않아야 함
+
+        // 1회차(예외) + 2회차(확보 확인) = 2번만 호출되고, 3회차는 캐시에서 걸러진다
+        verify(rankingService, times(2)).ensureWeeklySnapshot(expectedMonday);
     }
 
     @Test
@@ -103,24 +147,5 @@ class RankingSchedulerTest {
 
         // 실패한 경우에는 확보 처리를 하지 않으므로, 다음 주기에도 다시 시도되어야 한다
         verify(rankingService, times(2)).ensureWeeklySnapshot(expectedMonday);
-    }
-
-    @Test
-    @DisplayName("takeWeeklyRankSnapshot: 다른 인스턴스가 먼저 생성해 유니크 제약에 걸려도 정상 종료하고 재시도하지 않는다")
-    void takeWeeklyRankSnapshot_stopsRetrying_whenAnotherInstanceCreatedSnapshot() {
-        // given: 블루/그린 두 인스턴스가 동시에 INSERT를 시도해 늦은 쪽이 롤백된 상황
-        Clock fixedClock = fixedClockAt(LocalDateTime.of(2026, 8, 18, 9, 30));
-        RankingScheduler rankingScheduler = new RankingScheduler(rankingService, fixedClock);
-
-        LocalDate expectedMonday = LocalDate.of(2026, 8, 17);
-        when(rankingService.ensureWeeklySnapshot(expectedMonday))
-                .thenThrow(new DataIntegrityViolationException("duplicate key"));
-
-        // when
-        assertThatCode(rankingScheduler::takeWeeklyRankSnapshot).doesNotThrowAnyException();
-        rankingScheduler.takeWeeklyRankSnapshot();
-
-        // then: 이미 스냅샷이 존재하는 상태이므로 두 번째 주기에는 서비스를 호출하지 않는다
-        verify(rankingService, times(1)).ensureWeeklySnapshot(expectedMonday);
     }
 }

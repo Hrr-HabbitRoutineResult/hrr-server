@@ -11,6 +11,6 @@ public interface RankingService {
     RankingResponseDto.BoardDto getMyRankingBoard(User user);
 
     // 주간 랭킹 스냅샷 보장(catch-up)
-    /** 지정한 월요일자 스냅샷이 없으면 생성한다. (이미 있으면 아무것도 하지 않음) */
-    int ensureWeeklySnapshot(LocalDate snapshotDate);
+    /**지정한 월요일자 스냅샷이 없으면 생성한다. (이미 있으면 아무것도 하지 않음)*/
+    boolean ensureWeeklySnapshot(LocalDate snapshotDate);
 }

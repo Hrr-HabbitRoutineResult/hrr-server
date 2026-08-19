@@ -91,10 +91,10 @@ public class RankingServiceImpl implements RankingService {
     // 존재 확인 후 없을 때만 INSERT  ->  그 주 최초 1회만 값이 확정됨 (월요일 고정값 보장)
     @Override
     @Transactional
-    public int ensureWeeklySnapshot(LocalDate snapshotDate) {
+    public boolean ensureWeeklySnapshot(LocalDate snapshotDate) {
         // 이미 이번 주 스냅샷이 있으면 아무것도 하지 않는다.
         if (userRankSnapshotRepository.existsBySnapshotDate(snapshotDate)) {
-            return 0;
+            return true;
         }
 
         // 컷오프 = 스냅샷일 00:00:00 (미만)
@@ -102,10 +102,16 @@ public class RankingServiceImpl implements RankingService {
 
         int created = userRankSnapshotRepository.insertWeeklySnapshot(snapshotDate, cutoff);
 
+        if (created == 0) {
+            log.warn("[ensureWeeklySnapshot] 대상 ACTIVE 유저가 없어 주간 랭킹 snapshot이 생성되지 않았습니다. snapshotDate={}, cutoff={}",
+                    snapshotDate, cutoff);
+            return false;
+        }
+
         log.info("[ensureWeeklySnapshot] 주간 랭킹 snapshot을 생성했습니다. snapshotDate={}, cutoff={}, createdCount={}",
                 snapshotDate, cutoff, created);
 
-        return created;
+        return true;
     }
 
     // rankChange 값을 기반으로 문구 생성 (이전 데이터 없으면 null)

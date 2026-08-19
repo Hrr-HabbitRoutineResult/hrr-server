@@ -86,7 +86,6 @@ class RankingServiceImplTest {
         assertThat(result.getBoard().getRankChange()).isNull();
         assertThat(result.getBoard().getRankChangeMessage()).isNull();
         assertThat(result.getBoard().getMyPoints()).isNull();
-        // 전체 인원수는 상위 랭커 스냅샷 값이 아니라 countActiveBySnapshotDate 결과다
         assertThat(result.getBoard().getTopRankers()).hasSize(1);
         assertThat(result.getBoard().getTotalUserCount()).isEqualTo(132);
         assertThat(result.getBoard().getSnapshotDate()).isEqualTo(latest);
@@ -116,9 +115,9 @@ class RankingServiceImplTest {
         given(userRankSnapshotRepository.findByUserIdAndSnapshotDate(1L, latest)).willReturn(Optional.of(mySnapshot));
         given(userRankSnapshotRepository.findPreviousSnapshots(eq(1L), eq(latest), any()))
                 .willReturn(List.of(previousSnapshot));
-        // 등수/전체인원은 저장값이 아니라 COUNT 쿼리로 재계산되므로 스텁이 필요하다.
-        //        myRank      = countHigherRankers(latest, 100) + 1 = 89 + 1 = 90
-        //        previousRank= countHigherRankers(previous, 80) + 1 = 99 + 1 = 100
+        // 등수/전체인원은 저장값이 아니라 COUNT 쿼리로 재계산된다.
+        //   myRank       = countHigherRankers(latest, 100) + 1 = 89 + 1 = 90
+        //   previousRank = countHigherRankers(previous, 80) + 1 = 99 + 1 = 100
         given(userRankSnapshotRepository.countActiveBySnapshotDate(latest)).willReturn(1000L);
         given(userRankSnapshotRepository.countHigherRankers(latest, 100L)).willReturn(89L);
         given(userRankSnapshotRepository.countHigherRankers(previous, 80L)).willReturn(99L);
@@ -200,12 +199,8 @@ class RankingServiceImplTest {
         assertThat(result.getBoard().getTopPercent()).isEqualTo(30);
     }
 
-    // ensureWeeklySnapshot() 테스트 2개
-    //  이 메서드가 "이미 있으면 절대 덮어쓰지 않는다"는 점이 핵심
-    //  30초마다 호출되는데 덮어쓰기가 일어나면 '월요일에 고정된 값'이라는 스펙이 깨지기 때문에,
-    //  스킵 동작을 반드시 테스트로 고정해 둔다.
     @Test
-    @DisplayName("ensureWeeklySnapshot: 이미 해당 주 스냅샷이 있으면 생성하지 않고 0을 반환한다")
+    @DisplayName("ensureWeeklySnapshot: 이미 해당 주 스냅샷이 있으면 생성하지 않고 true를 반환한다")
     void ensureWeeklySnapshot_skips_whenSnapshotAlreadyExists() {
         // given
         rankingService = new RankingServiceImpl(userRankSnapshotRepository, rankingConverter);
@@ -214,15 +209,16 @@ class RankingServiceImplTest {
         given(userRankSnapshotRepository.existsBySnapshotDate(monday)).willReturn(true);
 
         // when
-        int created = rankingService.ensureWeeklySnapshot(monday);
+        // int created -> boolean confirmed (반환 타입 변경)
+        boolean confirmed = rankingService.ensureWeeklySnapshot(monday);
 
         // then: INSERT는 절대 호출되지 않아야 한다 (월요일 확정값 덮어쓰기 방지)
-        assertThat(created).isZero();
+        assertThat(confirmed).isTrue();
         verify(userRankSnapshotRepository, never()).insertWeeklySnapshot(any(), any());
     }
 
     @Test
-    @DisplayName("ensureWeeklySnapshot: 스냅샷이 없으면 '월요일 00:00 미만' 컷오프로 생성한다")
+    @DisplayName("ensureWeeklySnapshot: 스냅샷이 없으면 '월요일 00:00 미만' 컷오프로 생성하고 true를 반환한다")
     void ensureWeeklySnapshot_insertsWithMidnightCutoff_whenSnapshotMissing() {
         // given
         rankingService = new RankingServiceImpl(userRankSnapshotRepository, rankingConverter);
@@ -234,10 +230,29 @@ class RankingServiceImplTest {
         given(userRankSnapshotRepository.insertWeeklySnapshot(monday, expectedCutoff)).willReturn(120);
 
         // when
-        int created = rankingService.ensureWeeklySnapshot(monday);
+        // int created -> boolean confirmed
+        boolean confirmed = rankingService.ensureWeeklySnapshot(monday);
 
         // then
-        assertThat(created).isEqualTo(120);
+        assertThat(confirmed).isTrue();
         verify(userRankSnapshotRepository).insertWeeklySnapshot(monday, expectedCutoff);
+    }
+
+    @Test
+    @DisplayName("ensureWeeklySnapshot: 대상 ACTIVE 유저가 없어 0건이 삽입되면 false를 반환한다")
+    void ensureWeeklySnapshot_returnsFalse_whenNoRowInserted() {
+        // given
+        rankingService = new RankingServiceImpl(userRankSnapshotRepository, rankingConverter);
+        LocalDate monday = LocalDate.of(2026, 8, 17);
+        LocalDateTime expectedCutoff = LocalDateTime.of(2026, 8, 17, 0, 0);
+
+        given(userRankSnapshotRepository.existsBySnapshotDate(monday)).willReturn(false);
+        given(userRankSnapshotRepository.insertWeeklySnapshot(monday, expectedCutoff)).willReturn(0);
+
+        // when
+        boolean confirmed = rankingService.ensureWeeklySnapshot(monday);
+
+        // then: 스냅샷이 만들어지지 않았으므로 확보되지 않은 것으로 보고해야 한다
+        assertThat(confirmed).isFalse();
     }
 }
