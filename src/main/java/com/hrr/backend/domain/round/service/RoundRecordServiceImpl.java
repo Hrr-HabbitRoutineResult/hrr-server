@@ -26,7 +26,7 @@ public class RoundRecordServiceImpl implements RoundRecordService {
 
 	private final WeakVerificationReportRepository weakVerificationReportRepository;
 
-	private final VerificationAbsenceLogRepository verificationAbsenceLogRepository;
+    private final VerificationAbsenceLogRepository verificationAbsenceLogRepository;
 
 	private final UserChallengeRepository userChallengeRepository;
 
@@ -39,13 +39,10 @@ public class RoundRecordServiceImpl implements RoundRecordService {
 		RoundRecord roundRecord = roundRecordRepository.findByIdWithPessimisticLock(roundRecordId)
 			.orElseThrow(() -> new GlobalException(ErrorCode.ROUND_RECORD_NOT_FOUND));
 
-		// 부실 인증 신고 수와 미인증 로그 수 조회
-		long weakReportCount = weakVerificationReportRepository.countByRoundRecordId(roundRecordId);
-		long absenceCount = verificationAbsenceLogRepository.countByRoundRecordId(roundRecordId);
+        // 부실 인증 신고 수만 조회
+        long weakReportCount = weakVerificationReportRepository.countByRoundRecordId(roundRecordId);
 
-		// 경고 횟수 계산: (부실 신고 / 3) + 미인증 횟수
-		int calculatedWarnCount = (int) (weakReportCount / 3) + (int) absenceCount;
-
+        int calculatedWarnCount = (int) (weakReportCount / 3);
 		// 경고 횟수 동기화 (퇴출 기능 폐지로 KICKED 자동 전환은 더 이상 발생하지 않음)
         roundRecord.synchronizeWarnCount(calculatedWarnCount);
 	}

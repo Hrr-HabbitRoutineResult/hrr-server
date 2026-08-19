@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.ranking.repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,11 +56,10 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
             Pageable pageable
     );
 
-    // 특정 스냅샷일의 기존 행을 전부 삭제 (같은 트랜잭션에서 upsertWeeklySnapshot 이전에 호출하여 원자적 교체)
-    @Modifying
-    int deleteBySnapshotDate(LocalDate snapshotDate);
+    /** 해당 스냅샷일의 행이 이미 존재하는지 확인. */
+    boolean existsBySnapshotDate(LocalDate snapshotDate);
 
-    /** 매주 월요일 00시, 전체 ACTIVE 유저를 대상으로 포인트 내림차순 등수를 계산하여 스냅샷 테이블에 UPSERT*/
+    /** 지정한 스냅샷일 기준으로 전체 ACTIVE 유저의 주간 랭킹 스냅샷을 생성한다. (컷오프 이전 포인트만 집계) */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
 		INSERT INTO user_rank_snapshot (user_id, ranking, points, total_user_count, snapshot_date, achieved_at, created_at, updated_at)
@@ -74,19 +74,20 @@ public interface UserRankSnapshotRepository extends JpaRepository<UserRankSnapsh
 		    NOW()
 		FROM (
 		    SELECT
-		        u.id,
-		        u.points,
-		        COUNT(*) OVER () AS total_count,
-		        (SELECT MAX(ph.created_at) FROM point_history ph WHERE ph.user_id = u.id) AS achieved_at
+		        u.id                        AS id,
+		        COALESCE(SUM(ph.points), 0) AS points,
+		        COUNT(*) OVER ()            AS total_count,
+		        MAX(ph.created_at)          AS achieved_at
 		    FROM user u
+		    LEFT JOIN point_history ph
+		           ON ph.user_id = u.id
+		          AND ph.created_at < :cutoff
 		    WHERE u.status = 'ACTIVE'
+		    GROUP BY u.id
 		) t
-		ON DUPLICATE KEY UPDATE
-		    ranking = VALUES(ranking),
-		    points = VALUES(points),
-		    total_user_count = VALUES(total_user_count),
-		    achieved_at = VALUES(achieved_at),
-		    updated_at = NOW()
 		""", nativeQuery = true)
-    int upsertWeeklySnapshot(@Param("snapshotDate") LocalDate snapshotDate);
+    int insertWeeklySnapshot(
+            @Param("snapshotDate") LocalDate snapshotDate,
+            @Param("cutoff") LocalDateTime cutoff
+    );
 }

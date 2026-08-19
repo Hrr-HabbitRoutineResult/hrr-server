@@ -43,6 +43,23 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("endOfDay") LocalDateTime endOfDay
     );
 
+    // 해당 인증 시간대에 인증 "이력"이 있는지 확인 (중복 인증 방지 전용)
+    //   - existsTodayVerification : 지금 인증을 완료한 상태인가? (화면 표시용, COMPLETED만)
+    //   - 이 메서드              : 이 시간대를 이미 사용했는가? (중복 방지용, 삭제분 포함)
+    @Query("""
+        SELECT COUNT(v) > 0 
+        FROM Verification v 
+        WHERE v.roundRecord.userChallenge.id = :userChallengeId 
+        AND v.status <> com.hrr.backend.domain.verification.entity.enums.VerificationStatus.TEMPORARY 
+        AND v.createdAt >= :startOfDay 
+        AND v.createdAt <= :endOfDay
+    """)
+    boolean existsVerificationHistoryInWindow(
+            @Param("userChallengeId") Long userChallengeId,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay
+    );
+
     // 가장 최근 인증 날짜 조회 (COMPLETED 상태만)
     @Query("SELECT MAX(v.createdAt) FROM Verification v " +
             "JOIN v.roundRecord r " +
@@ -77,7 +94,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH uc.user " +
             "WHERE v.roundId = :roundId " +
             "AND v.userChallenge.id = :userChallengeId " +
-			"AND v.status != 'BLOCKED' "	+
+            "AND v.status = 'COMPLETED' "	+
             "ORDER BY v.createdAt DESC")
     List<Verification> findByRoundIdAndUserChallengeId(
             @Param("roundId") Long roundId,
@@ -91,7 +108,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             "JOIN FETCH v.userChallenge uc " +
             "JOIN FETCH uc.user " +
             "WHERE v.roundId = :roundId " +
-			"AND v.status != 'BLOCKED' " +
+            "AND v.status = 'COMPLETED' " +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByRoundId(@Param("roundId") Long roundId, Pageable pageable);
 
@@ -101,7 +118,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     @Query("SELECT v FROM Verification v " +
             "JOIN FETCH v.userChallenge uc " +
             "WHERE uc.user.id = :userId " +
-			"AND v.status != 'BLOCKED' " +
+            "AND v.status = 'COMPLETED' " +
             "AND uc.challenge.id = :challengeId " +
             "ORDER BY v.createdAt DESC")
     Page<Verification> findByUserIdAndChallengeId(

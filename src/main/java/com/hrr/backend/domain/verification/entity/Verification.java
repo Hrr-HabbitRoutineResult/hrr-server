@@ -12,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,7 +68,10 @@ public class Verification extends BaseEntity {
     private Boolean isQuestion;
 
     @Enumerated(EnumType.STRING)
-    private VerificationStatus status; // TEMPORARY, COMPLETED, BLOCKED
+    private VerificationStatus status; // TEMPORARY, COMPLETED, BLOCKED, DELETED
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Column(nullable = false)
     @ColumnDefault("false")
@@ -137,6 +141,19 @@ public class Verification extends BaseEntity {
     }
 
     // === 비즈니스 로직 메서드 ===
+
+    // 인증글 soft delete
+    // 신고 이력은 보존해야 하므로 상태만 변경
+    // 같은 날 재인증은 uk_user_challenge_date 유니크 제약에 의해 계속 차단
+    public void softDelete(LocalDateTime deletedAt) {
+        this.status = VerificationStatus.DELETED;
+        this.deletedAt = deletedAt;
+    }
+
+    // [추가] 사용자에게 노출되지 않아야 하는 삭제 상태인지 여부
+    public boolean isDeleted() {
+        return this.status == VerificationStatus.DELETED;
+    }
 
     public void resolve() {
         this.isResolved = true;

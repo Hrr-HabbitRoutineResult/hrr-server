@@ -122,6 +122,19 @@ class VerificationServiceTest {
                 .build();
     }
 
+    // 인증 요일/시간대 검증이 언제 실행해도 통과하도록 매일 + 하루종일 인증 가능한 챌린지 생성
+    private Challenge createAlwaysVerifiableChallenge() {
+        return Challenge.builder()
+                .id(100L)
+                .title("Test Challenge")
+                .verifyStartTime(LocalTime.MIN)
+                .verifyEndTime(LocalTime.MAX)
+                .challengeDays(Arrays.stream(ChallengeDays.values())
+                        .map(day -> ChallengeDayJoin.builder().dayOfWeek(day).build())
+                        .toList())
+                .build();
+    }
+
     private void givenRoundParticipation(Verification verification, User currentUser) {
         Round postRound = verification.getRoundRecord().getRound();
         Long challengeId = postRound.getChallenge().getId();
@@ -383,10 +396,104 @@ class VerificationServiceTest {
         // when
         verificationService.deleteVerification(verificationId, authorId);
 
-        // then: point_history가 verification을 FK로 참조하므로, 반드시 포인트 회수 -> 인증 삭제 순서여야 함
-        InOrder inOrder = Mockito.inOrder(pointService, verificationRepository);
-        inOrder.verify(pointService, times(1)).revokePointsForVerification(verification);
-        inOrder.verify(verificationRepository, times(1)).delete(verification);
+        // then
+        // hard delete -> soft delete 로 전환되어 verificationRepository.delete() 검증을 제거하고
+        //       상태 변경 + 포인트 회수 검증으로 대체한다.
+        //       부실 인증 신고 이력 보존을 위해 인증글 행은 삭제되지 않아야 한다.
+        verify(pointService, times(1)).revokePointsForVerification(verification);
+        verify(verificationRepository, never()).delete(any(Verification.class));
+
+        assertThat(verification.getStatus()).isEqualTo(VerificationStatus.DELETED);
+        assertThat(verification.isDeleted()).isTrue();
+        assertThat(verification.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("성공: 인증 삭제 시 현재 라운드의 인증 횟수가 1 감소한다")
+    void deleteVerification_decreasesVerificationCount() {
+        // given
+        Long verificationId = 1L;
+        Long authorId = 10L;
+        User author = createUser(authorId, UserStatus.ACTIVE);
+
+        Challenge challenge = createAlwaysVerifiableChallenge();
+        Round round = Round.builder().id(200L).challenge(challenge).build();
+        UserChallenge userChallenge = UserChallenge.builder().user(author).challenge(challenge).build();
+        RoundRecord roundRecord = RoundRecord.builder()
+                .round(round)
+                .userChallenge(userChallenge)
+                .verificationCount(3)
+                .build();
+
+        Verification verification = Verification.builder()
+                .id(verificationId)
+                .roundRecord(roundRecord)
+                .status(VerificationStatus.COMPLETED)
+                .isQuestion(false)
+                .isResolved(false)
+                .build();
+        ReflectionTestUtils.setField(verification, "createdAt", LocalDateTime.now());
+
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+
+        // when
+        verificationService.deleteVerification(verificationId, authorId);
+
+        // then
+        assertThat(roundRecord.getVerificationCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("실패: 이미 삭제된(DELETED) 인증글은 다시 삭제할 수 없다")
+    void deleteVerification_whenAlreadyDeleted_throwsNotFound() {
+        // given
+        Long verificationId = 1L;
+        Long authorId = 10L;
+        User author = createUser(authorId, UserStatus.ACTIVE);
+
+        Verification verification = createVerification(verificationId, author, VerificationStatus.DELETED);
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.deleteVerification(verificationId, authorId))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+
+        verify(pointService, never()).revokePointsForVerification(any(Verification.class));
+    }
+
+    @Test
+    @DisplayName("실패: 삭제된(DELETED) 인증글은 상세 조회할 수 없다")
+    void getVerificationDetail_whenDeleted_throwsNotFound() {
+        // given
+        Long verificationId = 1L;
+        Long currentUserId = 20L;
+        User author = createUser(10L, UserStatus.ACTIVE);
+
+        Verification verification = createVerification(verificationId, author, VerificationStatus.DELETED);
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.getVerificationDetail(verificationId, currentUserId, 0, 0))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("실패: 삭제된(DELETED) 인증글은 수정할 수 없다")
+    void updateVerification_whenDeleted_throwsNotFound() {
+        // given
+        Long verificationId = 1L;
+        Long authorId = 10L;
+        User author = createUser(authorId, UserStatus.ACTIVE);
+
+        Verification verification = createVerification(verificationId, author, VerificationStatus.DELETED);
+        given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
+
+        // when & then
+        assertThatThrownBy(() -> verificationService.updateVerification(verificationId, authorId, null))
+                .isInstanceOf(GlobalException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VERIFICATION_NOT_FOUND);
     }
 
     @Test
