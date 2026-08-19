@@ -19,7 +19,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import com.hrr.backend.domain.ranking.service.RankingService;
 
-
 @ExtendWith(MockitoExtension.class)
 class RankingSchedulerTest {
 
