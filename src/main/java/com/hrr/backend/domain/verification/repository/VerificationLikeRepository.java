@@ -21,4 +21,6 @@ public interface VerificationLikeRepository extends JpaRepository<VerificationLi
     void deleteByUserIdAndVerificationId(Long userId, Long verificationId);
 
     boolean existsByUserIdAndVerificationId(Long userId, Long verificationId);
+
+    long countByVerificationId(Long verificationId);
 }

@@ -51,8 +51,14 @@ public class VerificationDetailResponseDto {
     @Schema(description = "현재 로그인 사용자의 좋아요 여부", example = "true")
     private Boolean isLiked;
 
+    @Schema(description = "인증 게시글 좋아요 개수", example = "12")
+    private Long likeCount;
+
     @Schema(description = "현재 로그인 사용자의 스크랩 여부", example = "false")
     private Boolean isScrapped;
+
+    @Schema(description = "인증 게시글 스크랩 개수", example = "5")
+    private Long scrapCount;
 
     //프론트가 받기 쉽게
     private boolean canWriteComment;

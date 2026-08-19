@@ -423,6 +423,8 @@ public class VerificationServiceImpl implements VerificationService {
             isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
             isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
         }
+        long likeCount = verificationLikeRepository.countByVerificationId(verificationId);
+        long scrapCount = verificationScrapRepository.countByVerificationId(verificationId);
 
 		boolean canWriteComment = false;
 		if (currentUserId != null) {
@@ -452,7 +454,9 @@ public class VerificationServiceImpl implements VerificationService {
                 canDelete,
                 canSelectComment,
                 isLiked,
+                likeCount,
                 isScrapped,
+                scrapCount,
                 canWriteComment,
                 adoptedCommentId
         );
@@ -552,6 +556,8 @@ public class VerificationServiceImpl implements VerificationService {
 
         boolean isLiked = verificationLikeRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
         boolean isScrapped = verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId);
+        long likeCount = verificationLikeRepository.countByVerificationId(verificationId);
+        long scrapCount = verificationScrapRepository.countByVerificationId(verificationId);
 
         boolean canWriteComment = false;
         if (currentUserId != null) {
@@ -572,7 +578,9 @@ public class VerificationServiceImpl implements VerificationService {
                 canDelete,
                 canSelectComment,
                 isLiked,
+                likeCount,
                 isScrapped,
+                scrapCount,
                 canWriteComment,
                 adoptedCommentId
         );

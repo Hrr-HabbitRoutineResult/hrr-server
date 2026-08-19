@@ -27,6 +27,8 @@ public interface VerificationScrapRepository extends JpaRepository<VerificationS
 
     boolean existsByUserIdAndVerificationId(Long userId, Long verificationId);
 
+    long countByVerificationId(Long verificationId);
+
     @Query("""
             SELECT v FROM VerificationScrap vs
             JOIN vs.verification v

@@ -176,11 +176,17 @@ class VerificationServiceTest {
                 .willReturn(true);
         given(verificationScrapRepository.existsByUserIdAndVerificationId(currentUserId, verificationId))
                 .willReturn(false);
+        given(verificationLikeRepository.countByVerificationId(verificationId))
+                .willReturn(3L);
+        given(verificationScrapRepository.countByVerificationId(verificationId))
+                .willReturn(2L);
 
         // 5. Converter Mock (인자 8개 맞춤, canWriteComment=true 예상)
         VerificationDetailResponseDto expectedDto = VerificationDetailResponseDto.builder()
                 .verificationId(verificationId)
                 .canWriteComment(true)
+                .likeCount(3L)
+                .scrapCount(2L)
                 .build();
 
 		given(verificationConverter.toDetailDto(
@@ -191,9 +197,11 @@ class VerificationServiceTest {
 			anyBoolean(),                   // 5. canDelete
 			anyBoolean(),                   // 6. canSelectComment
 			eq(true),                       // 7. isLiked
-			eq(false),                      // 8. isScrapped
-			anyBoolean(),                   // 9. canWriteComment
-			any()                           // 10. adoptedCommentId
+			eq(3L),                         // 8. likeCount
+			eq(false),                      // 9. isScrapped
+			eq(2L),                         // 10. scrapCount
+			anyBoolean(),                   // 11. canWriteComment
+			any()                           // 12. adoptedCommentId
 		)).willReturn(expectedDto);
 
         // when
@@ -203,6 +211,8 @@ class VerificationServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.isCanWriteComment()).isTrue();
+        assertThat(result.getLikeCount()).isEqualTo(3L);
+        assertThat(result.getScrapCount()).isEqualTo(2L);
     }
 
     @Test
@@ -236,10 +246,10 @@ class VerificationServiceTest {
                 .canWriteComment(false)
                 .build();
 
-		// Converter Mock 부분도 인자 개수 8개로 맞춤
+		// Converter Mock 부분도 인자 개수에 맞춤
 		given(verificationConverter.toDetailDto(
 			any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(),
-			anyBoolean(), anyBoolean(),
+			anyBoolean(), anyLong(), anyBoolean(), anyLong(),
 			eq(false), // canWriteComment = false 예상
 			any()
 		)).willReturn(expectedDto);
