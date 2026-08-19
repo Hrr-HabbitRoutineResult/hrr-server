@@ -63,6 +63,12 @@ public class ReportServiceImpl implements ReportService {
 		Verification targetVerification = verificationRepository.findByIdWithPessimisticLock(verificationId)
 			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        // 삭제된 인증글은 존재하지 않는 것으로 처리
+        //   soft delete로 행이 남아있으므로 명시적으로 걸러야 신고가 들어오지 않는다.
+        if (targetVerification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
 		// 차단 확인 (가장 먼저!)
 		// 이미 게시글 신고 5회 누적으로 차단된 글이라면 다른 검증을 할 필요도 없이 바로 예외를 던짐
 		if (VerificationStatus.BLOCKED.equals(targetVerification.getStatus())) {
@@ -121,6 +127,12 @@ public class ReportServiceImpl implements ReportService {
 		// 신고 대상 조회
 		Verification verification = verificationRepository.findByIdWithPessimisticLock(request.getTargetId())
 			.orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        // 삭제된 인증글은 존재하지 않는 것으로 처리
+        //   soft delete로 행이 남아있으므로 명시적으로 걸러야 신고가 들어오지 않는다.
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
 
 		// 차단 확인 (가장 먼저!)
 		// 이미 차단된 글이라면 다른 검증을 할 필요도 없이 바로 예외를 던집니다.

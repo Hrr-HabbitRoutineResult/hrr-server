@@ -16,9 +16,4 @@ public interface WeakVerificationReportRepository extends JpaRepository<WeakVeri
 
 	// 중복 체크 - 특정 사용자가 특정 인증을 신고한 내역이 있는지 조회
 	boolean existsByReporterAndVerification(User reporter, Verification targetVerification);
-
-    // 특정 인증글에 달린 부실인증 신고 전체 삭제
-    @Modifying(flushAutomatically = true)
-    @Query("DELETE FROM WeakVerificationReport w WHERE w.verification.id = :verificationId")
-    void deleteByVerificationId(@Param("verificationId") Long verificationId);
 }
