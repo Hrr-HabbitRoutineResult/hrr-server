@@ -5,9 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.hrr.backend.domain.report.entity.WeakVerificationReport;
 import com.hrr.backend.domain.user.entity.User;
 import com.hrr.backend.domain.verification.entity.Verification;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+
 
 public interface WeakVerificationReportRepository extends JpaRepository<WeakVerificationReport, Long> {
 
