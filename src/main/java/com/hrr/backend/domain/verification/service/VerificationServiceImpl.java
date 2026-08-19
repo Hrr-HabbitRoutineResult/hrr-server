@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.hrr.backend.domain.user.repository.UserBlockRepository;
 import com.hrr.backend.domain.challenge.entity.Challenge;
 import com.hrr.backend.domain.challenge.repository.ChallengeRepository;
+import com.hrr.backend.domain.report.repository.WeakVerificationReportRepository;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.entity.RoundRecord;
 import com.hrr.backend.domain.round.repository.RoundRecordRepository;
@@ -78,6 +79,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final PointService pointService;
     private final VerificationScrapRepository verificationScrapRepository;
     private final VerificationLikeRepository verificationLikeRepository;
+    private final WeakVerificationReportRepository weakVerificationReportRepository;
 
 
     @Override
@@ -176,7 +178,30 @@ public class VerificationServiceImpl implements VerificationService {
 
         // 통계 데이터 조회
         Long roundSequence = roundRecordRepository.countByUserChallengeId(userChallengeId);
-        Long totalVerification = roundRecordRepository.sumVerificationCountByUserChallengeId(userChallengeId);
+
+        // 전체 라운드 누적(sumVerificationCountByUserChallengeId) -> 현재 진행 중인 라운드 기준으로 변경
+        // 인증 / 부실 인증 / 경고 세 카운트 모두 현재 라운드 기준이며, 라운드가 바뀌면 자연히 0부터 다시 시작함
+        int verificationCount = 0;
+        int weakVerificationCount = 0;
+        int warningCount = 0;
+
+        // 현재 진행 중인 라운드 조회
+        RoundRecord currentRoundRecord = roundRepository
+                .findCurrentRoundByChallengeId(challengeId, LocalDate.now())
+                .flatMap(currentRound -> roundRecordRepository.findByUserChallengeAndRoundId(
+                        userChallenge,
+                        currentRound.getId()
+                ))
+                .orElse(null);
+
+        if (currentRoundRecord != null) {
+            // 현재 라운드의 부실 인증 신고 건수를 1회 조회해 부실 인증 / 경고를 함께 산출
+            long weakReportCount = weakVerificationReportRepository.countByRoundRecordId(currentRoundRecord.getId());
+
+            verificationCount = currentRoundRecord.getVerificationCount();
+            weakVerificationCount = (int) (weakReportCount % 3);
+            warningCount = (int) (weakReportCount / 3);
+        }
 
         // 내 인증글 목록 조회
         Pageable pageable = PageRequest.of(page, size);
@@ -193,7 +218,9 @@ public class VerificationServiceImpl implements VerificationService {
         // 최종 응답 변환
         return verificationConverter.toMyProfileDto(
                 userChallenge,
-                totalVerification,
+                verificationCount,
+                weakVerificationCount,
+                warningCount,
                 roundSequence,
                 sliceResponse
         );
@@ -330,14 +357,15 @@ public class VerificationServiceImpl implements VerificationService {
         LocalDateTime windowEnd = LocalDateTime.of(currentWindowDate, challenge.getVerifyEndTime());
 
         // 5) 해당 시간대에 이미 완료된 인증이 있는지 확인
-        boolean alreadyVerified = verificationRepository.existsTodayVerification(
+        boolean alreadyVerified = verificationRepository.existsVerificationHistoryInWindow(
                 userChallengeId,
-                VerificationStatus.COMPLETED,
                 windowStart,
                 windowEnd
         );
 
         if (alreadyVerified) {
+            log.info("[validateDuplicateVerification] 해당 인증 시간대에 이미 인증 이력이 있어 인증을 거부했습니다. userChallengeId={}, windowStart={}, windowEnd={}",
+                    userChallengeId, windowStart, windowEnd);
             throw new GlobalException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
         }
     }
@@ -457,6 +485,11 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        // 삭제된 인증글에서는 댓글을 채택할 수 없음
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         // 작성자(질문 올린 유저) 확인
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
@@ -497,6 +530,11 @@ public class VerificationServiceImpl implements VerificationService {
 
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        // 삭제된 인증글은 존재하지 않는 것으로 처리
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
 
         // 차단된 게시글 접근 시 예외 발생
         if (verification.getStatus() == VerificationStatus.BLOCKED) {
@@ -571,6 +609,11 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        // 이미 삭제된 인증글은 존재하지 않는 것으로 처리 (중복 삭제 요청 방어)
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         // 차단된 게시글 접근 시 예외 발생
         if (verification.getStatus() == VerificationStatus.BLOCKED) {
             throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);
@@ -591,7 +634,19 @@ public class VerificationServiceImpl implements VerificationService {
         // point_history가 verification을 FK로 참조하므로, verification을 지우기 전에 먼저 회수 처리해야 함
         pointService.revokePointsForVerification(verification);
 
-        verificationRepository.delete(verification);
+        // 인증 횟수 감소 및 경고 재동기화 대상이 되는 라운드 기록
+        RoundRecord roundRecord = verification.getRoundRecord();
+
+        // hard delete -> soft delete 로 전환
+        verification.softDelete(LocalDateTime.now());
+
+        // 삭제된 인증글만큼 현재 라운드 인증 횟수 감소
+        roundRecord.decreaseVerificationCount();
+
+        // 삭제 결과 로깅
+        //   같은 날 재인증이 불가해지는 지점이라, CS 문의 대응을 위해 삭제 시각과 대상을 남긴다.
+        log.info("[deleteVerification] 인증글 삭제(soft delete)를 완료했습니다. verificationId={}, userId={}, roundRecordId={}, verificationCount={}",
+                verificationId, currentUserId, roundRecord.getId(), roundRecord.getVerificationCount());
     }
 
     @Override
@@ -674,6 +729,13 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     private void validateVerificationPostAccess(Verification verification, User author, Long currentUserId) {
+
+        // 삭제된 인증글은 존재하지 않는 것으로 처리
+        //   상세 조회 / 좋아요 / 스크랩 등 이 검증을 거치는 모든 경로가 함께 차단된다.
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         // 차단된 게시글 접근 시 예외 발생
         if (verification.getStatus() == VerificationStatus.BLOCKED) {
             throw new GlobalException(ErrorCode.ACCESS_DENIED_REPORTED_POST);

@@ -230,6 +230,13 @@ public class PointServiceImpl implements PointService {
             return;
         }
 
+        // soft delete된 인증글에는 포인트를 지급하지 않는다.
+        if (verification.isDeleted()) {
+            log.info("[awardVerificationTriggeredPoints] 지급 대상 인증글이 삭제되어 포인트 지급을 건너뜁니다. verificationId={}",
+                    verificationId);
+            return;
+        }
+
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
         User user = userChallenge.getUser();

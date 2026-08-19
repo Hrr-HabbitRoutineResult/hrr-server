@@ -52,6 +52,12 @@ public class CommentServiceImpl implements CommentService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        // 삭제된 인증글에는 댓글을 달 수 없음
+        //   soft delete로 행이 남아있으므로 명시적으로 걸러야 함
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
 
@@ -142,6 +148,11 @@ public class CommentServiceImpl implements CommentService {
 
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
+
+        // 삭제된 인증글의 댓글은 조회할 수 없음
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
 
         // 조회하는 사용자 정보 가져오기
         User currentUser = userRepository.findById(userId)
@@ -237,6 +248,11 @@ public class CommentServiceImpl implements CommentService {
 
         if (comment.isDeleted()) {
             throw new GlobalException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        // 삭제된 인증글의 댓글은 수정할 수 없음
+        if (comment.getVerification().isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
         }
 
         if (!comment.getUser().getId().equals(userId)) {
