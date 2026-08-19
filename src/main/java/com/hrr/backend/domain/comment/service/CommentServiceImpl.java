@@ -250,6 +250,11 @@ public class CommentServiceImpl implements CommentService {
             throw new GlobalException(ErrorCode.COMMENT_NOT_FOUND);
         }
 
+        // 삭제된 인증글의 댓글은 수정할 수 없음
+        if (comment.getVerification().isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         if (!comment.getUser().getId().equals(userId)) {
 
             throw new GlobalException(ErrorCode.COMMENT_UNAUTHORIZED);

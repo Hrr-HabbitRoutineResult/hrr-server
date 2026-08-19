@@ -485,6 +485,11 @@ public class VerificationServiceImpl implements VerificationService {
         Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND));
 
+        // 삭제된 인증글에서는 댓글을 채택할 수 없음
+        if (verification.isDeleted()) {
+            throw new GlobalException(ErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
         // 작성자(질문 올린 유저) 확인
         RoundRecord roundRecord = verification.getRoundRecord();
         UserChallenge userChallenge = roundRecord.getUserChallenge();
