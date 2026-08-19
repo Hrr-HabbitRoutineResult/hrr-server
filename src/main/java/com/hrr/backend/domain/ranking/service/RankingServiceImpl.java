@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.ranking.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,6 +86,28 @@ public class RankingServiceImpl implements RankingService {
         return rankingConverter.toBoardDto(
                 user, topRankers, mySnapshot, myRank, totalUserCount, topPercent, rankChange, rankChangeMessage);
     }
+
+    // ensureWeeklySnapshot - 주간 랭킹 스냅샷 catch-up 로직
+    // 존재 확인 후 없을 때만 INSERT  ->  그 주 최초 1회만 값이 확정됨 (월요일 고정값 보장)
+    @Override
+    @Transactional
+    public int ensureWeeklySnapshot(LocalDate snapshotDate) {
+        // 이미 이번 주 스냅샷이 있으면 아무것도 하지 않는다.
+        if (userRankSnapshotRepository.existsBySnapshotDate(snapshotDate)) {
+            return 0;
+        }
+
+        // 컷오프 = 스냅샷일 00:00:00 (미만)
+        LocalDateTime cutoff = snapshotDate.atStartOfDay();
+
+        int created = userRankSnapshotRepository.insertWeeklySnapshot(snapshotDate, cutoff);
+
+        log.info("[ensureWeeklySnapshot] 주간 랭킹 snapshot을 생성했습니다. snapshotDate={}, cutoff={}, createdCount={}",
+                snapshotDate, cutoff, created);
+
+        return created;
+    }
+
     // rankChange 값을 기반으로 문구 생성 (이전 데이터 없으면 null)
     private String buildRankChangeMessage(Integer rankChange) {
         if (rankChange == null) {
