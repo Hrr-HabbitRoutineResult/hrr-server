@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -623,6 +624,27 @@ class NotificationIntegrationTest {
                     .isEqualTo(NotificationTypeName.FOLLOW_CREATED);
         });
         assertThat(countPayloadEvents(FcmPushSendEvent.class)).isZero();
+    }
+
+    @Test
+    @DisplayName("14. 팔로우 알림: 후속 처리 실패 시 이벤트만 단독으로 커밋되지 않는다")
+    void followCreated_RollbackDoesNotLeaveEventOnly_Test() {
+        // given
+        User actor = createUser("rollback_actor", true);
+        User receiverWithoutSetting = userRepository.save(User.builder()
+                .name("rollback_recv")
+                .nickname("rollback_recv_nick")
+                .profileImage("rollback_receiver-profile-image")
+                .isPublic(true)
+                .build());
+
+        // when & then
+        assertThatThrownBy(() -> notificationCommandService.sendFollowCreatedNotification(
+                new FollowCreatedEvent(actor, receiverWithoutSetting)))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThat(notificationEventRepository.findAll()).isEmpty();
+        assertThat(notificationRepository.findAll()).isEmpty();
     }
 
     private User createUser(String name, boolean enabled) {

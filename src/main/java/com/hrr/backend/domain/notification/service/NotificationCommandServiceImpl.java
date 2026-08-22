@@ -510,10 +510,10 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 () -> createFollowEvent(actor, type, today)
         );
 
-        NotificationEvent mergedEvent = eventRepository.findById(notificationEvent.getId()).orElseThrow();
+        NotificationEvent eventReference = eventRepository.getReferenceById(notificationEvent.getId());
 
         NotificationDelivery delivery = NotificationDelivery.builder()
-                .event(mergedEvent)
+                .event(eventReference)
                 .receiver(receiver)
                 .isRead(false)
                 .build();
@@ -521,10 +521,10 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
         notificationRepository.save(delivery);
 
         if (receiver.getNotificationSetting().isFollowEnabled()) {
-            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), mergedEvent));
+            eventPublisher.publishEvent(new FcmPushSendEvent(List.of(delivery), notificationEvent));
         }
         log.info("[sendFollowCreatedNotification] 팔로우 알림 생성을 완료했습니다. eventId={}, deliveryCount=1, actorId={}, receiverId={}",
-                mergedEvent.getId(), actor.getId(), receiver.getId());
+                notificationEvent.getId(), actor.getId(), receiver.getId());
     }
 
     private NotificationEvent createFollowEvent(User actor, NotificationType type, LocalDate createdDate) {
