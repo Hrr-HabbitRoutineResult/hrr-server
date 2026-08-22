@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-public interface NotificationEventRepository extends JpaRepository<NotificationEvent, Long> {
+public interface NotificationEventRepository extends JpaRepository<NotificationEvent, Long>, NotificationEventUpsertRepository {
 
     // 특정 리소스 + 특정 알림 타입 + 특정 날짜로 이벤트가 이미 생성됐는지 확인
     boolean existsByContextTypeAndContextIdAndTypeTypeNameAndCreatedDate(

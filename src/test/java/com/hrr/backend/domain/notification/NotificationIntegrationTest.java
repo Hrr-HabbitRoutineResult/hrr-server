@@ -55,6 +55,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -627,7 +632,50 @@ class NotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("14. 팔로우 알림: 후속 처리 실패 시 이벤트만 단독으로 커밋되지 않는다")
+    @DisplayName("14. 팔로우 알림: 같은 actor의 두 수신자 동시 호출은 이벤트 하나와 수신 내역 두 개를 저장한다")
+    void followCreated_ConcurrentReceiversShareOneEvent_Test() throws Exception {
+        // given
+        User actor = createUser("conc_actor", true);
+        User receiver1 = createUser("conc_recv1", true);
+        User receiver2 = createUser("conc_recv2", true);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<?> first = executor.submit(() -> sendFollowCreatedAfterStart(actor, receiver1, ready, start));
+            Future<?> second = executor.submit(() -> sendFollowCreatedAfterStart(actor, receiver2, ready, start));
+
+            assertThat(ready.await(3, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            first.get(5, TimeUnit.SECONDS);
+            second.get(5, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        // then
+        transactionTemplate.executeWithoutResult(status -> {
+            List<NotificationEvent> events = notificationEventRepository.findAll();
+            List<NotificationDelivery> deliveries = notificationRepository.findAll();
+
+            assertThat(events).hasSize(1);
+            assertThat(events.get(0).getContextType()).isEqualTo(ResourceType.USER);
+            assertThat(events.get(0).getContextId()).isEqualTo(actor.getId());
+            assertThat(events.get(0).getType().getTypeName()).isEqualTo(NotificationTypeName.FOLLOW_CREATED);
+
+            assertThat(deliveries).hasSize(2);
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getEvent().getId())
+                    .containsOnly(events.get(0).getId());
+            assertThat(deliveries)
+                    .extracting(delivery -> delivery.getReceiver().getId())
+                    .containsExactlyInAnyOrder(receiver1.getId(), receiver2.getId());
+        });
+    }
+
+    @Test
+    @DisplayName("15. 팔로우 알림: 후속 처리 실패 시 이벤트만 단독으로 커밋되지 않는다")
     void followCreated_RollbackDoesNotLeaveEventOnly_Test() {
         // given
         User actor = createUser("rollback_actor", true);
@@ -645,6 +693,19 @@ class NotificationIntegrationTest {
 
         assertThat(notificationEventRepository.findAll()).isEmpty();
         assertThat(notificationRepository.findAll()).isEmpty();
+    }
+
+    private void sendFollowCreatedAfterStart(User actor, User receiver, CountDownLatch ready, CountDownLatch start) {
+        try {
+            ready.countDown();
+            if (!start.await(3, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Concurrent notification test did not start");
+            }
+            notificationCommandService.sendFollowCreatedNotification(new FollowCreatedEvent(actor, receiver));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     private User createUser(String name, boolean enabled) {

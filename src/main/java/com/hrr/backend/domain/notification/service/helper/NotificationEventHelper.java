@@ -16,7 +16,6 @@ public class NotificationEventHelper {
                                                     NotificationType type, String title,
                                                     String message, LocalDate date,
                                                     java.util.function.Supplier<NotificationEvent> creator) {
-        return eventReader.findIfExists(contextType, contextId, type.getTypeName(), date)
-                .orElseGet(() -> eventReader.tryCreate(creator.get()));
+        return eventReader.upsertAndFind(creator.get());
     }
 }
