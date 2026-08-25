@@ -8,6 +8,7 @@ import java.util.List;
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.global.common.BaseEntity;
 import com.hrr.backend.global.common.enums.Category;
+import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.common.enums.ChallengeStatus;
 import com.hrr.backend.global.common.enums.VerificationType;
 import com.hrr.backend.domain.recommendation.entity.RecommendationResult;
@@ -166,6 +167,21 @@ public class Challenge extends BaseEntity {
         this.verificationType = verificationType;
         this.category = category;
         this.imageKey = imageKey;
+    }
+
+    // 챌린지 수정 기능 - 인증 요일 전체 교체 메서드
+    // 중복 요일이 들어와도 저장되지 않도록 distinct() 적용
+    public void updateChallengeDays(List<ChallengeDays> daysOfWeek) {
+        this.challengeDays.clear();
+
+        daysOfWeek.stream()
+                .distinct()
+                .forEach(day -> this.challengeDays.add(
+                        ChallengeDayJoin.builder()
+                                .challenge(this)
+                                .dayOfWeek(day)
+                                .build()
+                ));
     }
 
 }
