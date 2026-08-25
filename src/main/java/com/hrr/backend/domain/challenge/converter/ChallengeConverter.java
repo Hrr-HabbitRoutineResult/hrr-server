@@ -54,7 +54,10 @@ public class ChallengeConverter {
                 .likeCount(0)
                 .build();
 
-        List<ChallengeDays> daysOfWeek = req.getDaysOfWeek();
+        // 중복 요일이 저장되지 않도록 distinct() 적용
+        List<ChallengeDays> daysOfWeek = req.getDaysOfWeek().stream()
+                .distinct()
+                .toList();
         for (ChallengeDays day : daysOfWeek) {
             ChallengeDayJoin join = ChallengeDayJoin.builder()
                     .challenge(challenge)
@@ -140,8 +143,10 @@ public class ChallengeConverter {
             ExtensionStatus extensionStatus
     ) {
         // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환
+        // 중복 요일이 응답에 그대로 노출되지 않도록 distinct() 방어 코드 적용
         List<ChallengeDays> targetDays = challenge.getChallengeDays().stream()
                 .map(ChallengeDayJoin::getDay)
+                .distinct()
                 .sorted()
                 .toList();
 
@@ -193,8 +198,10 @@ public class ChallengeConverter {
 
     public ChallengeResponseDto.EditInfoDto toEditInfoDto(Challenge challenge) {
         // Entity의 ChallengeDayJoin 리스트를 Enum 리스트로 변환 (toProfileDto와 동일한 방식)
+        // 중복 요일이 응답에 그대로 노출되지 않도록 distinct() 방어 코드 적용
         List<ChallengeDays> daysOfWeek = challenge.getChallengeDays().stream()
                 .map(ChallengeDayJoin::getDay)
+                .distinct()
                 .sorted()
                 .toList();
 
