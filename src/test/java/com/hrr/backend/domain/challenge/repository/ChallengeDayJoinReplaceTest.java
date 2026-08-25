@@ -13,11 +13,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-
+import org.springframework.test.context.ActiveProfiles;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -29,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 챌린지 인증 요일 교체(Challenge.updateChallengeDays) 검증 테스트
  */
 @DataJpaTest
+@ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DisplayName("챌린지 인증 요일 교체 - Challenge.updateChallengeDays()")
 class ChallengeDayJoinReplaceTest {
 
@@ -127,6 +130,7 @@ class ChallengeDayJoinReplaceTest {
         assertThat(countAllRows()).isEqualTo(2);
     }
 
+    // ===================== helper =====================
 
     private Challenge findWithDays() {
         return challengeRepository.findByIdWithDays(challengeId).orElseThrow();
