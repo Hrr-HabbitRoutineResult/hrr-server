@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationEventReader {
     private final NotificationEventRepository eventRepository;
 
+    // 호출자의 알림 트랜잭션 안에서 이벤트 생성/조회가 끝나야 delivery 저장과 함께 롤백
     @Transactional(propagation = Propagation.MANDATORY)
     public NotificationEvent upsertAndFind(NotificationEvent event) {
         eventRepository.upsert(event);

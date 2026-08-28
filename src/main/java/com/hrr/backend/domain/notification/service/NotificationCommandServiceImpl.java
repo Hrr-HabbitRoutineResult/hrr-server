@@ -510,6 +510,7 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
                 () -> createFollowEvent(actor, type, today)
         );
 
+        // 불필요한 재조회와 NoSuchElementException 경로를 피함
         NotificationEvent eventReference = eventRepository.getReferenceById(notificationEvent.getId());
 
         NotificationDelivery delivery = NotificationDelivery.builder()
