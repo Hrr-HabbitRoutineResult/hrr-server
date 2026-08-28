@@ -409,11 +409,15 @@ public class ChallengeServiceImpl implements ChallengeService {
 		List<ChallengeDayJoin> allDays = challengeDayJoinRepository.findByChallengeIdIn(challengeIds);
 
 		// 챌린지 아이디-요일 리스트 매핑
-		Map<Long, List<ChallengeDays>> daysMap = allDays.stream()
-				.collect(Collectors.groupingBy(
-						dayJoin -> dayJoin.getChallenge().getId(), // key: 챌린지 아이디
-						Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList()) // value: 요일 리스트
-				));
+        // 중복 요일이 응답에 그대로 노출되지 않도록 distinct() 방어 코드 적용
+        Map<Long, List<ChallengeDays>> daysMap = allDays.stream()
+                .collect(Collectors.groupingBy(
+                        dayJoin -> dayJoin.getChallenge().getId(), // key: 챌린지 아이디
+                        Collectors.collectingAndThen(
+                                Collectors.mapping(ChallengeDayJoin::getDayOfWeek, Collectors.toList()),
+                                dayList -> dayList.stream().distinct().toList() // value: 요일 리스트(중복 제거)
+                        )
+                ));
 
 		// Repository에서 조회해 온 dto 기반으로 결과 dto 필드 일부 채우기
 		return rawInfos.stream()
@@ -871,6 +875,12 @@ public class ChallengeServiceImpl implements ChallengeService {
             Long challengeId,
             ChallengeRequestDto.UpdateChallengeDto req
     ) {
+        // 동시 수정 방지 - 비관적 락으로 Challenge 행 선점
+        // 방장이 저장 버튼을 연속으로 누르는 등 동일 챌린지 수정 요청이 겹치면
+        // 두 트랜잭션이 같은 요일 행을 삭제 대상으로 잡고 각자 새 행을 INSERT하여 요일이 중복될 수 있음
+        // 컬렉션 fetch join 쿼리에 락을 거는 대신 Challenge 행만 선점하여 락 범위를 최소화함
+        findChallengeForUpdate(challengeId);
+
         // 챌린지 조회
         Challenge challenge = findChallengeWithDays(challengeId);
 
@@ -905,16 +915,7 @@ public class ChallengeServiceImpl implements ChallengeService {
                 req.getImageKey()
         );
 
-        // ChallengeDayJoin 전체 교체 (기존 삭제 후 새로 insert)
-        challengeDayJoinRepository.deleteAllByChallenge(challenge);
-        List<ChallengeDayJoin> newDays = req.getDaysOfWeek().stream()
-                .distinct()
-                .map(day -> ChallengeDayJoin.builder()
-                        .challenge(challenge)
-                        .dayOfWeek(day)
-                        .build())
-                .toList();
-        challengeDayJoinRepository.saveAll(newDays);
+        challenge.updateChallengeDays(req.getDaysOfWeek());
 
         // Round의 startDate / endDate도 갱신 (1라운드 시작일 변경)
         Round currentRound = challenge.getCurrentRound();
