@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.fcm.service;
 
 import com.google.firebase.messaging.*;
+import com.hrr.backend.domain.fcm.dto.FcmTokenTargetDto;
 import com.hrr.backend.domain.fcm.repository.FcmTokenRepository;
 import com.hrr.backend.domain.notification.entity.NotificationDelivery;
 import com.hrr.backend.domain.notification.entity.NotificationEvent;
@@ -82,7 +83,11 @@ class FcmPushServiceTest {
     void sendPushForDeliveries_success() throws FirebaseMessagingException {
         // given
         given(notificationSettingRepository.findAllByUserIn(anyList())).willReturn(List.of(settingEnabled()));
-        given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(List.of("token-1", "token-2"));
+        List<FcmTokenTargetDto> targets = List.of(
+                target(1L, "token-1"),
+                target(2L, "token-2")
+        );
+        given(fcmTokenRepository.findAllActiveTokenTargetsByUsers(anyList())).willReturn(targets);
 
         BatchResponse batchResponse = mock(BatchResponse.class);
         // MulticastMessage 전송 성공 시나리오 모킹
@@ -97,7 +102,7 @@ class FcmPushServiceTest {
             // then
             verify(firebaseMessaging, times(1)).sendEachForMulticast(any());
             // 비활성화 서비스가 호출되는지 확인 (에러 유무 상관없이 호출 로직 실행됨)
-            verify(fcmTokenDeactivationService, times(1)).handleFailedTokens(anyList(), any());
+            verify(fcmTokenDeactivationService, times(1)).handleFailedTokens(targets, batchResponse);
         }
     }
 
@@ -106,7 +111,8 @@ class FcmPushServiceTest {
     void sendPushForDeliveries_mandatory_ignoresSetting() throws FirebaseMessagingException {
         // given
         given(mockType.isMandatory()).willReturn(true);
-        given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(List.of("mandatory-token"));
+        given(fcmTokenRepository.findAllActiveTokenTargetsByUsers(anyList()))
+                .willReturn(List.of(target(3L, "mandatory-token")));
 
         BatchResponse batchResponse = mock(BatchResponse.class);
         try (MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
@@ -130,11 +136,11 @@ class FcmPushServiceTest {
         given(notificationSettingRepository.findAllByUserIn(anyList())).willReturn(List.of(settingEnabled()));
 
         // 501개의 토큰 생성
-        List<String> largeTokens = new ArrayList<>();
+        List<FcmTokenTargetDto> largeTargets = new ArrayList<>();
         for (int i = 0; i < 501; i++) {
-            largeTokens.add("token-" + i);
+            largeTargets.add(target((long) i + 10, "token-" + i));
         }
-        given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(largeTokens);
+        given(fcmTokenRepository.findAllActiveTokenTargetsByUsers(anyList())).willReturn(largeTargets);
 
         BatchResponse batchResponse = mock(BatchResponse.class);
         try (MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
@@ -157,7 +163,8 @@ class FcmPushServiceTest {
     void shouldCallDeactivationService_regardlessOfError() throws FirebaseMessagingException {
         // given
         given(notificationSettingRepository.findAllByUserIn(anyList())).willReturn(List.of(settingEnabled()));
-        given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(List.of("token-1"));
+        given(fcmTokenRepository.findAllActiveTokenTargetsByUsers(anyList()))
+                .willReturn(List.of(target(4L, "token-1")));
 
         BatchResponse batchResponse = mock(BatchResponse.class);
         try (MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
@@ -180,7 +187,8 @@ class FcmPushServiceTest {
     void sendPushForDeliveries_allowsWhenSettingIsNull() throws FirebaseMessagingException {
         // given
         given(notificationSettingRepository.findAllByUserIn(anyList())).willReturn(List.of());
-        given(fcmTokenRepository.findAllActiveTokensByUsers(anyList())).willReturn(List.of("default-token"));
+        given(fcmTokenRepository.findAllActiveTokenTargetsByUsers(anyList()))
+                .willReturn(List.of(target(5L, "default-token")));
 
         BatchResponse batchResponse = mock(BatchResponse.class);
         try (MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
@@ -205,5 +213,9 @@ class FcmPushServiceTest {
                 .isFollowEnabled(true)
                 .isBadgeEnabled(true)
                 .build();
+    }
+
+    private FcmTokenTargetDto target(Long fcmTokenId, String token) {
+        return new FcmTokenTargetDto(fcmTokenId, 1L, token);
     }
 }

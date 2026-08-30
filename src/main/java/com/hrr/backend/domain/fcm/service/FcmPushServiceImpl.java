@@ -1,6 +1,7 @@
 package com.hrr.backend.domain.fcm.service;
 
 import com.google.firebase.messaging.*;
+import com.hrr.backend.domain.fcm.dto.FcmTokenTargetDto;
 import com.hrr.backend.domain.fcm.repository.FcmTokenRepository;
 import com.hrr.backend.domain.notification.entity.NotificationDelivery;
 import com.hrr.backend.domain.notification.entity.NotificationEvent;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -91,29 +93,29 @@ public class FcmPushServiceImpl implements FcmPushService {
         }
 
         // 활성 토큰을 IN절로 한 번에 조회
-        List<String> allTokens = fcmTokenRepository.findAllActiveTokensByUsers(eligibleReceivers);
+        List<FcmTokenTargetDto> allTargets = fcmTokenRepository.findAllActiveTokenTargetsByUsers(eligibleReceivers);
 
-        if (allTokens.isEmpty()) {
+        if (allTargets.isEmpty()) {
             log.debug("[sendPushForDeliveries] 활성 FCM token이 없어 발송을 건너뜁니다. receiverCount={}",
                     eligibleReceivers.size());
             return;
         }
 
         // FCM 500개 제한에 맞춰 배치 분할 후 벌크 전송
-        List<List<String>> batches = partitionTokens(allTokens, FCM_MULTICAST_LIMIT);
+        List<List<FcmTokenTargetDto>> batches = partitionTargets(allTargets, FCM_MULTICAST_LIMIT);
         int failedBatchCount = 0;
-        FirebaseMessagingException firstFailure = null;
-        for (List<String> batch : batches) {
-            FirebaseMessagingException failure = sendMulticast(batch, event);
+        List<String> failedIncidentIds = new ArrayList<>();
+        for (List<FcmTokenTargetDto> batch : batches) {
+            BatchSendFailure failure = sendMulticast(batch, event);
             if (failure != null) {
                 failedBatchCount++;
-                if (firstFailure == null) firstFailure = failure;
+                failedIncidentIds.add(failure.incidentId());
             }
         }
         if (failedBatchCount > 0) {
-            log.error("[sendPushForDeliveries] FCM bulk 발송 batch 총 {}건 중 {}건을 실패했습니다. typeName={}, category={}, targetType={}, targetId={}",
-                    batches.size(), failedBatchCount, event.getType().getTypeName(), event.getCategory(),
-                    event.getTargetType(), event.getTargetId(), firstFailure);
+            log.error("[sendPushForDeliveries] FCM bulk 발송 batch 실패가 누적되었습니다. incidentIds={}, batchCount={}, failureCount={}, typeName={}, category={}",
+                    failedIncidentIds, batches.size(), failedBatchCount,
+                    event.getType().getTypeName(), event.getCategory());
         }
     }
 
@@ -138,16 +140,18 @@ public class FcmPushServiceImpl implements FcmPushService {
         };
     }
 
-    /** 토큰 리스트를 maxSize 단위로 분할 (FCM 500개 제한 대응) */
-    private List<List<String>> partitionTokens(List<String> tokens, int maxSize) {
-        List<List<String>> partitions = new ArrayList<>();
-        for (int i = 0; i < tokens.size(); i += maxSize) {
-            partitions.add(tokens.subList(i, Math.min(i + maxSize, tokens.size())));
+    /** 응답 순서와 내부 ID 매핑을 유지한 채 FCM 제한 단위로 분할한다. */
+    private List<List<FcmTokenTargetDto>> partitionTargets(List<FcmTokenTargetDto> targets, int maxSize) {
+        List<List<FcmTokenTargetDto>> partitions = new ArrayList<>();
+        for (int i = 0; i < targets.size(); i += maxSize) {
+            partitions.add(targets.subList(i, Math.min(i + maxSize, targets.size())));
         }
         return partitions;
     }
 
-    private FirebaseMessagingException sendMulticast(List<String> tokens, NotificationEvent event) {
+    private BatchSendFailure sendMulticast(List<FcmTokenTargetDto> targets, NotificationEvent event) {
+        List<String> tokens = targets.stream().map(FcmTokenTargetDto::token).toList();
+
         // iOS APNs 설정 추가
         ApnsConfig apnsConfig = ApnsConfig.builder()
                 .setAps(Aps.builder()
@@ -184,15 +188,25 @@ public class FcmPushServiceImpl implements FcmPushService {
         try {
             BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(message);
 
-            fcmTokenDeactivationService.handleFailedTokens(tokens, response);
+            fcmTokenDeactivationService.handleFailedTokens(targets, response);
             log.info("[sendMulticast] FCM bulk 발송을 완료했습니다. tokenCount={}, successCount={}, failedCount={}",
                     tokens.size(), response.getSuccessCount(), response.getFailureCount());
             return null;
 
         } catch (FirebaseMessagingException e) {
-            log.warn("[sendMulticast] FCM bulk 발송 batch 처리에 실패했습니다. tokenCount={}, exception={}",
-                    tokens.size(), e.getClass().getSimpleName());
-            return e;
+            String incidentId = UUID.randomUUID().toString();
+            String messagingCode = e.getMessagingErrorCode() != null ? e.getMessagingErrorCode().name() : "UNKNOWN";
+            String platformCode = e.getErrorCode() != null ? e.getErrorCode().name() : "UNKNOWN";
+            String httpStatus = e.getHttpResponse() != null
+                    ? Integer.toString(e.getHttpResponse().getStatusCode())
+                    : "UNKNOWN";
+            log.warn("[sendMulticast] FCM bulk 발송 batch 처리에 실패했습니다. incidentId={}, tokenCount={}, messagingCode={}, platformCode={}, httpStatus={}, exceptionType={}",
+                    incidentId, tokens.size(), messagingCode, platformCode, httpStatus,
+                    e.getClass().getSimpleName());
+            return new BatchSendFailure(incidentId);
         }
+    }
+
+    private record BatchSendFailure(String incidentId) {
     }
 }
