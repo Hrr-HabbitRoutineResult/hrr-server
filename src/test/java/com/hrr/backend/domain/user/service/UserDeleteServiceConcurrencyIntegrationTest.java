@@ -92,8 +92,7 @@ class UserDeleteServiceConcurrencyIntegrationTest {
 				try {
 					startLatch.await();
 
-					User user = userRepository.findById(userId).orElseThrow();
-					userDeleteService.processPermanentWithdrawal(user);
+					userDeleteService.processPermanentWithdrawal(userId);
 				} catch (Exception e) {
 					unexpectedErrors.add(e);
 				} finally {
