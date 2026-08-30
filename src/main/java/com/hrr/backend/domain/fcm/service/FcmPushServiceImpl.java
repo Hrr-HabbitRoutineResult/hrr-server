@@ -105,16 +105,19 @@ public class FcmPushServiceImpl implements FcmPushService {
         List<List<FcmTokenTargetDto>> batches = partitionTargets(allTargets, FCM_MULTICAST_LIMIT);
         int failedBatchCount = 0;
         List<String> failedIncidentIds = new ArrayList<>();
+        Map<String, Integer> failureBreakdown = new LinkedHashMap<>();
         for (List<FcmTokenTargetDto> batch : batches) {
             BatchSendFailure failure = sendMulticast(batch, event);
             if (failure != null) {
                 failedBatchCount++;
                 failedIncidentIds.add(failure.incidentId());
+                failureBreakdown.merge(failure.failureKey(), 1, Integer::sum);
             }
         }
         if (failedBatchCount > 0) {
-            log.error("[sendPushForDeliveries] FCM bulk 발송 batch 실패가 누적되었습니다. incidentIds={}, batchCount={}, failureCount={}, typeName={}, category={}",
+            log.error("[sendPushForDeliveries] FCM bulk 발송 batch 실패가 누적되었습니다. incidentIds={}, batchCount={}, failureCount={}, breakdown={}, typeName={}, category={}",
                     failedIncidentIds, batches.size(), failedBatchCount,
+                    failureBreakdown,
                     event.getType().getTypeName(), event.getCategory());
         }
     }
@@ -203,10 +206,11 @@ public class FcmPushServiceImpl implements FcmPushService {
             log.warn("[sendMulticast] FCM bulk 발송 batch 처리에 실패했습니다. incidentId={}, tokenCount={}, messagingCode={}, platformCode={}, httpStatus={}, exceptionType={}",
                     incidentId, tokens.size(), messagingCode, platformCode, httpStatus,
                     e.getClass().getSimpleName());
-            return new BatchSendFailure(incidentId);
+            String failureKey = "messaging=" + messagingCode + ",platform=" + platformCode + ",http=" + httpStatus;
+            return new BatchSendFailure(incidentId, failureKey);
         }
     }
 
-    private record BatchSendFailure(String incidentId) {
+    private record BatchSendFailure(String incidentId, String failureKey) {
     }
 }

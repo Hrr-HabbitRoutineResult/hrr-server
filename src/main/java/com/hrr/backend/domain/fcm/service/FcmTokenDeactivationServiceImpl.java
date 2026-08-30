@@ -72,7 +72,7 @@ public class FcmTokenDeactivationServiceImpl implements FcmTokenDeactivationServ
 
                     // 토큰 자체가 무효한 경우 비활성화 수행
                     fcmTokenRepository.deactivateAllByToken(target.token());
-                    log.info("[handleFailedTokens] 유효하지 않은 FCM token을 비활성화했습니다. incidentId={}, messagingCode={}, platformCode={}, httpStatus={}, responseIndex={}, fcmTokenId={}, userId={}",
+                    log.warn("[handleFailedTokens] 유효하지 않은 FCM token을 비활성화했습니다. incidentId={}, messagingCode={}, platformCode={}, httpStatus={}, responseIndex={}, fcmTokenId={}, userId={}",
                             incidentId, messagingCode, platformCode, httpStatus, i,
                             target.fcmTokenId(), target.userId());
                 } else {
