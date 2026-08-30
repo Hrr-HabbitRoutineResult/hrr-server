@@ -35,6 +35,7 @@ import com.hrr.backend.domain.verification.repository.VerificationAbsenceLogRepo
 import com.hrr.backend.domain.verification.repository.VerificationRepository;
 import com.hrr.backend.global.common.enums.ChallengeDays;
 import com.hrr.backend.global.response.SliceResponseDto;
+import com.hrr.backend.global.logging.SafeExceptionSummary;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -81,7 +82,6 @@ public class PointServiceImpl implements PointService {
         // 종료된 라운드에 속한 모든 RoundRecord 조회 (JOINED/DROPPED 대상)
         List<RoundRecord> records = roundRecordRepository.findAllByRoundIdWithUserAndChallenge(endedRound.getId());
         int failCount = 0;
-        Exception firstFailure = null;
 
         for (RoundRecord record : records) {
             try {
@@ -104,16 +104,15 @@ public class PointServiceImpl implements PointService {
 
                 awardPoint(user, PointType.FLAWLESS_ROUND, challenge, endedRound, null, null);
             } catch (Exception e) {
-                log.warn("[checkAndEarnFlawlessRoundPoints] 무결석 완주 포인트 지급에 실패했습니다. roundRecordId={}",
-                        record.getId(), e);
+                log.warn("[checkAndEarnFlawlessRoundPoints] 무결석 완주 포인트 지급에 실패했습니다. roundRecordId={}, failure={}",
+                        record.getId(), SafeExceptionSummary.summarize(e));
                 failCount++;
-                if (firstFailure == null) firstFailure = e;
             }
         }
 
         if (failCount > 0) {
-            log.error("[checkAndEarnFlawlessRoundPoints] 포인트 지급 대상 총 {}건 중 {}건을 실패했습니다. roundId={}",
-                    records.size(), failCount, endedRound.getId(), firstFailure);
+            log.error("[checkAndEarnFlawlessRoundPoints] 무결석 완주 포인트 지급 실패가 누적되었습니다. targetCount={}, failureCount={}",
+                    records.size(), failCount);
         }
     }
 

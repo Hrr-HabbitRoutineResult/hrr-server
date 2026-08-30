@@ -15,7 +15,7 @@ spring:
 
   #jpa
   jpa:
-    show-sql: true
+    show-sql: false
     open-in-view: false
     hibernate:
       ddl-auto: none
@@ -69,4 +69,3 @@ naver:
 discord:
   webhook:
     url: ${DISCORD_WEBHOOK_URL:}
-

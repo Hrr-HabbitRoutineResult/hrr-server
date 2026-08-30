@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.hrr.backend.domain.round.entity.Round;
 import com.hrr.backend.domain.round.repository.RoundRepository;
+import com.hrr.backend.global.logging.SafeExceptionSummary;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,20 +29,19 @@ public class RoundDropServiceImpl implements RoundDropService {
         // 각 Round는 독립 트랜잭션으로 처리
         // 한 Round 처리 중 예외가 발생해도 로그만 남기고 다음 Round 처리를 계속 진행
         int failCount = 0;
-        Exception firstFailure = null;
         for (Round round : rounds) {
             try {
                 roundDropProcessor.processRound(round);
             } catch (Exception e) {
-                log.warn("[dropNonContinuersAt] 드랍 처리에 실패했습니다. roundId={}", round.getId(), e);
+                log.warn("[dropNonContinuersAt] 드랍 처리에 실패했습니다. roundId={}, failure={}",
+                        round.getId(), SafeExceptionSummary.summarize(e));
                 failCount++;
-                if (firstFailure == null) firstFailure = e;
             }
         }
 
         if (failCount > 0) {
-            log.error("[dropNonContinuersAt] 드랍 처리 대상 총 {}건 중 {}건을 실패했습니다.",
-                    rounds.size(), failCount, firstFailure);
+            log.error("[dropNonContinuersAt] 드랍 처리 실패가 누적되었습니다. targetCount={}, failureCount={}",
+                    rounds.size(), failCount);
         }
         log.info("[dropNonContinuersAt] 라운드 미연장 참여자 드랍 처리를 완료했습니다. targetCount={}, failedCount={}",
                 rounds.size(), failCount);
