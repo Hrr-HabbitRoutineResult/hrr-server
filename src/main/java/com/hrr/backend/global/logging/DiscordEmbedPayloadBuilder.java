@@ -91,7 +91,7 @@ public class DiscordEmbedPayloadBuilder {
                 ? simpleName(throwableProxy.getClassName())
                 : simpleName(event.getLoggerName());
 
-        embed.put("title", truncate("🚨 에러 발생 [" + titleText + "]", 256, "..."));
+        embed.put("title", truncate("🚨 에러 발생 비이이이이상 [" + titleText + "]", 256, "..."));
 
         // ExceptionAdvice의 catch-all은 고정 문구만 로깅하므로,
         // 예외 메시지는 사용자 입력을 포함할 수 있어 클래스명만 안전하게 보여준다

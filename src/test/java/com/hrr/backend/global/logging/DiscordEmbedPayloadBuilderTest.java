@@ -30,7 +30,7 @@ class DiscordEmbedPayloadBuilderTest {
 
         JsonNode embed = objectMapper.readTree(payload).get("embeds").get(0);
         // 패키지 없이 클래스 단순명만 title에 노출
-        assertThat(embed.get("title").asText()).isEqualTo("🚨 에러 발생 [Sample]");
+        assertThat(embed.get("title").asText()).isEqualTo("🚨 에러 발생 비이이이이상 [Sample]");
         // description 맨 위엔 author/title(헤더)과 본문을 나누는 구분선이 붙고, 그 아래에 실제 메시지가 온다
         assertThat(embed.get("description").asText()).endsWith("\n테스트 에러 메시지");
         assertThat(embed.get("color").asInt()).isEqualTo(0xE74C3C);
@@ -189,7 +189,7 @@ class DiscordEmbedPayloadBuilderTest {
         JsonNode embed = objectMapper.readTree(payload).get("embeds").get(0);
 
         // 예외가 있을 때는 title이 로거명이 아니라 예외 클래스 단순명으로 뜬다
-        assertThat(embed.get("title").asText()).isEqualTo("🚨 에러 발생 [RuntimeException]");
+        assertThat(embed.get("title").asText()).isEqualTo("🚨 에러 발생 비이이이이상 [RuntimeException]");
 
         JsonNode stackTraceField = findField(embed.get("fields"), "📜 Stack Trace");
         assertThat(stackTraceField).isNotNull();

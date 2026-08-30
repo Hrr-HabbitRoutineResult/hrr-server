@@ -12,6 +12,7 @@ import com.hrr.backend.domain.round.repository.RoundRecordRepository;
 import com.hrr.backend.domain.round.repository.RoundRepository;
 import com.hrr.backend.domain.user.entity.enums.ChallengeJoinStatus;
 import com.hrr.backend.global.common.enums.ChallengeDays;
+import com.hrr.backend.global.logging.SafeExceptionSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -52,21 +53,19 @@ public class NotificationScheduler {
             }
 
             int failCount = 0;
-            Exception firstFailure = null;
             for (Challenge challenge : targetChallenges) {
                 try {
                     eventPublisher.publishEvent(new ChallengeStartEvent(challenge.getId()));
                 } catch (Exception e) {
-                    log.warn("[scheduleChallengeStartNotifications] 이벤트 발행에 실패했습니다. challengeId={}",
-                            challenge.getId(), e);
+                    log.warn("[scheduleChallengeStartNotifications] 이벤트 발행에 실패했습니다. challengeId={}, failure={}",
+                            challenge.getId(), SafeExceptionSummary.summarize(e));
                     failCount++;
-                    if (firstFailure == null) firstFailure = e;
                 }
             }
 
             if (failCount > 0) {
-                log.error("[scheduleChallengeStartNotifications] 알림 이벤트 발행 대상 총 {}건 중 {}건을 실패했습니다.",
-                        targetChallenges.size(), failCount, firstFailure);
+                log.error("[scheduleChallengeStartNotifications] 알림 이벤트 발행 실패가 누적되었습니다. targetCount={}, failureCount={}",
+                        targetChallenges.size(), failCount);
             }
             log.info("[scheduleChallengeStartNotifications] 챌린지 시작 알림 이벤트 발행을 완료했습니다. targetDate={}, targetCount={}, failedCount={}",
                     targetDate, targetChallenges.size(), failCount);
@@ -92,22 +91,20 @@ public class NotificationScheduler {
             }
 
             int failCount = 0;
-            Exception firstFailure = null;
             for (Round round : targetRounds) {
                 try {
                     eventPublisher.publishEvent(new ChallengeExtensionEvent(round.getId()));
                 } catch (Exception e) {
                     // 개별 라운드 처리 중 예외 발생 시 경고 로깅
-                    log.warn("[scheduleChallengeExtensionNotifications] 이벤트 발행에 실패했습니다. roundId={}",
-                            round.getId(), e);
+                    log.warn("[scheduleChallengeExtensionNotifications] 이벤트 발행에 실패했습니다. roundId={}, failure={}",
+                            round.getId(), SafeExceptionSummary.summarize(e));
                     failCount++;
-                    if (firstFailure == null) firstFailure = e;
                 }
             }
 
             if (failCount > 0) {
-                log.error("[scheduleChallengeExtensionNotifications] 알림 이벤트 발행 대상 총 {}건 중 {}건을 실패했습니다.",
-                        targetRounds.size(), failCount, firstFailure);
+                log.error("[scheduleChallengeExtensionNotifications] 알림 이벤트 발행 실패가 누적되었습니다. targetCount={}, failureCount={}",
+                        targetRounds.size(), failCount);
             }
             log.info("[scheduleChallengeExtensionNotifications] 챌린지 연장 알림 이벤트 발행을 완료했습니다. targetDate={}, targetCount={}, failedCount={}",
                     targetDate, targetRounds.size(), failCount);
@@ -138,7 +135,6 @@ public class NotificationScheduler {
         }
 
         int failCount = 0;
-        Exception firstFailure = null;
         for (Round round : targetRounds) {
             try {
                 Challenge challenge = round.getChallenge();
@@ -171,16 +167,15 @@ public class NotificationScheduler {
                     }
                 }
             } catch (Exception e) {
-                log.warn("[checkAndSendVerificationDeadlineNotifications] 인증 마감 알림 처리에 실패했습니다. roundId={}",
-                        round.getId(), e);
+                log.warn("[checkAndSendVerificationDeadlineNotifications] 인증 마감 알림 처리에 실패했습니다. roundId={}, failure={}",
+                        round.getId(), SafeExceptionSummary.summarize(e));
                 failCount++;
-                if (firstFailure == null) firstFailure = e;
             }
         }
 
         if (failCount > 0) {
-            log.error("[checkAndSendVerificationDeadlineNotifications] 알림 처리 대상 총 {}건 중 {}건을 실패했습니다.",
-                    targetRounds.size(), failCount, firstFailure);
+            log.error("[checkAndSendVerificationDeadlineNotifications] 인증 마감 알림 처리 실패가 누적되었습니다. targetCount={}, failureCount={}",
+                    targetRounds.size(), failCount);
         }
     }
 

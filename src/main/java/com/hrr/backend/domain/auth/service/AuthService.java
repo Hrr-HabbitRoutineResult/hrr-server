@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -315,8 +316,8 @@ public class AuthService {
         jwtService.deleteRefreshToken(userId);
     }
 
-    @Transactional
-    // 소셜 로그인 연결 해제
+    // 외부 연동 실패가 영구탈퇴의 내부 데이터 정리 트랜잭션까지 rollback시키지 않도록 분리한다.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void revoke(Long userId) {
         // 현재 트랜잭션 안에서 유저를 다시 조회 (영속화)
         User user = userRepository.findById(userId)

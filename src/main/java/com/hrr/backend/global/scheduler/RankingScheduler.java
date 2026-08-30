@@ -76,7 +76,7 @@ public class RankingScheduler {
 
         if (failureCount == FAILURE_ALERT_THRESHOLD || failureCount % FAILURE_ALERT_INTERVAL == 0) {
             log.error("[takeWeeklyRankSnapshot] 주간 랭킹 snapshot 생성의 연속 실패가 누적되었습니다. snapshotDate={}, consecutiveFailureCount={}",
-                    snapshotDate, failureCount, e);
+                    snapshotDate, failureCount);
         }
     }
 }

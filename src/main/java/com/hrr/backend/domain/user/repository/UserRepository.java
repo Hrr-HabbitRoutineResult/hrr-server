@@ -18,8 +18,8 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
     boolean existsByNickname(String nickname);
 
 	// 탈퇴 후 30일이 경과된, 즉 정보 정리 대상 사용자 조회
-	@Query("SELECT u FROM User u WHERE u.deletedAt <= :deleteThreshold AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.INACTIVE")
-	List<User> findUserToDelete(LocalDateTime deleteThreshold);
+	@Query("SELECT u.id FROM User u WHERE u.deletedAt <= :deleteThreshold AND u.userStatus = com.hrr.backend.domain.user.entity.enums.UserStatus.INACTIVE")
+	List<Long> findUserIdsToDelete(@Param("deleteThreshold") LocalDateTime deleteThreshold);
 
     // 팔로워 카운트 벌크 감소
     @Modifying

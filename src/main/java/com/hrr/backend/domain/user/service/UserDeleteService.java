@@ -46,17 +46,20 @@ public class UserDeleteService {
 
 	/**
 	 * 탈퇴 30일 후 완전한 탈퇴 처리
-	 * @param user 탈퇴 대상 유저
+	 * @param userId 탈퇴 대상 유저 ID
 	 */
 	@Transactional
-	public void processPermanentWithdrawal(User user) {
+	public void processPermanentWithdrawal(Long userId) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+
 		// 소셜 로그인 연결 해제
 		try {
-			authService.revoke(user.getId());
+			authService.revoke(userId);
 		} catch (Exception ignored) {
 			// 외부 연동 해제 실패가 내부 개인정보 정리를 막지 않도록 계속 진행하되 결과는 추적한다.
 			log.warn("[processPermanentWithdrawal] 소셜 연결 해제 실패 후 내부 데이터 정리를 계속합니다. userId={}",
-				user.getId());
+				userId);
 		}
 
 		// Social Auth 정보 삭제
@@ -90,8 +93,6 @@ public class UserDeleteService {
 			}
 		}
 
-		Long userId = user.getId();
-
 		// 1. 내가 팔로우하던 사람들의 ID를 가져옴
 		List<Long> followingIds = followRepository.findAllByFollowerIdAndStatus(userId, FollowStatus.APPROVED)
 				.stream().map(f -> f.getFollowing().getId()).toList();
@@ -107,9 +108,10 @@ public class UserDeleteService {
 		followingIds.forEach(followCountService::syncCounts);
 		followerIds.forEach(followCountService::syncCounts);
 
-		// 유저 정보 마스킹 및 상태 변경
-		user.completeWithdrawal();
-
-		userRepository.save(user);
+		// 벌크 삭제가 영속성 컨텍스트를 비우므로 사용자를 다시 조회한다.
+		// 삭제된 SocialAuth를 들고 있는 이전 User 인스턴스를 merge하면 stale entity 오류가 발생할 수 있다.
+		User managedUser = userRepository.findById(userId)
+				.orElseThrow(() -> new GlobalException(ErrorCode.USER_NOT_FOUND));
+		managedUser.completeWithdrawal();
 	}
 }

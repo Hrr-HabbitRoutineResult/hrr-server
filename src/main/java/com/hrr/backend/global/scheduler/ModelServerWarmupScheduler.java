@@ -46,7 +46,7 @@ public class ModelServerWarmupScheduler {
 				e.getClass().getSimpleName());
 			if (failureCount == 3 || failureCount % 12 == 0) {
 				log.error("[warmUpModelServer] Model 서버 warmup 요청의 연속 실패가 누적되었습니다. consecutiveFailureCount={}",
-					failureCount, e);
+					failureCount);
 			}
 		}
 	}

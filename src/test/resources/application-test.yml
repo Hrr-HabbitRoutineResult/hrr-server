@@ -3,6 +3,7 @@ spring:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;CASE_INSENSITIVE_IDENTIFIERS=TRUE;INIT=CREATE DOMAIN IF NOT EXISTS TEXT AS CLOB\;CREATE DOMAIN IF NOT EXISTS LONGBLOB AS BLOB
     driver-class-name: org.h2.Driver
   jpa:
+    show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop # 테스트 후 삭제

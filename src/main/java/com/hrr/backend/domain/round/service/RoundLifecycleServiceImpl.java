@@ -6,6 +6,7 @@ import java.util.List;
 import com.hrr.backend.domain.challenge.event.ChallengeParticipantsChangedEvent;
 import com.hrr.backend.global.exception.GlobalException;
 import com.hrr.backend.global.response.ErrorCode;
+import com.hrr.backend.global.logging.SafeExceptionSummary;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,6 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
         List<Round> endedRounds = roundRepository.findAllByEndDate(endDate);
 
         int failCount = 0;
-        Exception firstFailure = null;
         for (Round endedRound : endedRounds) {
             Long endedRoundId = endedRound.getId();
 
@@ -60,15 +60,15 @@ public class RoundLifecycleServiceImpl implements RoundLifecycleService {
                     processSingleEndedRound(managedEndedRound);
                 });
             } catch (Exception e) {
-                log.warn("[processRoundsEndedAt] 라운드 종료 처리에 실패했습니다. roundId={}", endedRoundId, e);
+                log.warn("[processRoundsEndedAt] 라운드 종료 처리에 실패했습니다. roundId={}, failure={}",
+                        endedRoundId, SafeExceptionSummary.summarize(e));
                 failCount++;
-                if (firstFailure == null) firstFailure = e;
             }
         }
 
         if (failCount > 0) {
-            log.error("[processRoundsEndedAt] 라운드 종료 처리 대상 총 {}건 중 {}건을 실패했습니다.",
-                    endedRounds.size(), failCount, firstFailure);
+            log.error("[processRoundsEndedAt] 라운드 종료 처리 실패가 누적되었습니다. targetCount={}, failureCount={}",
+                    endedRounds.size(), failCount);
         }
         log.info("[processRoundsEndedAt] 종료 라운드 처리를 완료했습니다. targetCount={}, failedCount={}",
                 endedRounds.size(), failCount);
