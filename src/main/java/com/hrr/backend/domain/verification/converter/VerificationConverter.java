@@ -230,25 +230,27 @@ public class VerificationConverter {
                 .build();
     }
 
-    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification) {
-        return toScrapResponseDto(verification, true);
+    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification, long scrapCount) {
+        return toScrapResponseDto(verification, true, scrapCount);
     }
 
-    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification, boolean isScrapped) {
+    public VerificationResponseDto.ScrapResponseDto toScrapResponseDto(Verification verification, boolean isScrapped, long scrapCount) {
         return VerificationResponseDto.ScrapResponseDto.builder()
                 .verificationId(verification.getId())
                 .isScrapped(isScrapped)
+                .scrapCount(scrapCount)
                 .build();
     }
 
-    public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification) {
-        return toLikeResponseDto(verification, true);
+    public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification, long likeCount) {
+        return toLikeResponseDto(verification, true, likeCount);
     }
 
-    public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification, boolean isLiked) {
+    public VerificationResponseDto.LikeResponseDto toLikeResponseDto(Verification verification, boolean isLiked, long likeCount) {
         return VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verification.getId())
                 .isLiked(isLiked)
+                .likeCount(likeCount)
                 .build();
     }
 
