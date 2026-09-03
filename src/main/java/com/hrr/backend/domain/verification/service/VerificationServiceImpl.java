@@ -681,8 +681,9 @@ public class VerificationServiceImpl implements VerificationService {
         validateVerificationPostAccess(verification, currentUser.getId());
 
         verificationScrapRepository.insertIgnore(currentUser.getId(), verificationId);
+        long scrapCount = verificationScrapRepository.countByVerificationId(verificationId);
 
-        return verificationConverter.toScrapResponseDto(verification);
+        return verificationConverter.toScrapResponseDto(verification, scrapCount);
     }
 
     @Override
@@ -695,8 +696,9 @@ public class VerificationServiceImpl implements VerificationService {
         validateVerificationPostAccess(verification, currentUser.getId());
 
         verificationScrapRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+        long scrapCount = verificationScrapRepository.countByVerificationId(verificationId);
 
-        return verificationConverter.toScrapResponseDto(verification, false);
+        return verificationConverter.toScrapResponseDto(verification, false, scrapCount);
     }
 
     @Override
@@ -709,8 +711,9 @@ public class VerificationServiceImpl implements VerificationService {
         validateVerificationPostAccess(verification, currentUser.getId());
 
         verificationLikeRepository.insertIgnore(currentUser.getId(), verificationId);
+        long likeCount = verificationLikeRepository.countByVerificationId(verificationId);
 
-        return verificationConverter.toLikeResponseDto(verification);
+        return verificationConverter.toLikeResponseDto(verification, likeCount);
     }
 
     @Override
@@ -723,8 +726,9 @@ public class VerificationServiceImpl implements VerificationService {
         validateVerificationPostAccess(verification, currentUser.getId());
 
         verificationLikeRepository.deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+        long likeCount = verificationLikeRepository.countByVerificationId(verificationId);
 
-        return verificationConverter.toLikeResponseDto(verification, false);
+        return verificationConverter.toLikeResponseDto(verification, false, likeCount);
     }
 
     private void validateVerificationRoundParticipation(Verification verification, User currentUser) {

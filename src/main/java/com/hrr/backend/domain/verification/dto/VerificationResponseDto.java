@@ -215,6 +215,9 @@ public class VerificationResponseDto {
 
         @Schema(description = "스크랩 여부", example = "true")
         private Boolean isScrapped;
+
+        @Schema(description = "현재 스크랩 수", example = "12")
+        private Long scrapCount;
     }
 
     @Getter
@@ -229,5 +232,8 @@ public class VerificationResponseDto {
 
         @Schema(description = "좋아요 여부", example = "true")
         private Boolean isLiked;
+
+        @Schema(description = "현재 좋아요 수", example = "34")
+        private Long likeCount;
     }
 }

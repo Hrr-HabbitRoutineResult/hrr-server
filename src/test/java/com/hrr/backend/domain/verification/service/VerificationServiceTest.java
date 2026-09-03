@@ -516,6 +516,7 @@ class VerificationServiceTest {
         VerificationResponseDto.ScrapResponseDto expected = VerificationResponseDto.ScrapResponseDto.builder()
                 .verificationId(verificationId)
                 .isScrapped(true)
+                .scrapCount(3L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
@@ -523,7 +524,8 @@ class VerificationServiceTest {
                 .willReturn(Optional.of(userChallenge));
         given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
                 .willReturn(Optional.of(userRoundRecord));
-        given(verificationConverter.toScrapResponseDto(verification)).willReturn(expected);
+        given(verificationScrapRepository.countByVerificationId(verificationId)).willReturn(3L);
+        given(verificationConverter.toScrapResponseDto(verification, 3L)).willReturn(expected);
 
         // when
         VerificationResponseDto.ScrapResponseDto result = verificationService.scrapVerification(verificationId, currentUser);
@@ -531,7 +533,9 @@ class VerificationServiceTest {
         // then
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.getIsScrapped()).isTrue();
+        assertThat(result.getScrapCount()).isEqualTo(3L);
         Mockito.verify(verificationScrapRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationScrapRepository, times(1)).countByVerificationId(verificationId);
         Mockito.verify(verificationScrapRepository, Mockito.never()).save(any(VerificationScrap.class));
         Mockito.verify(verificationScrapRepository, Mockito.never()).flush();
     }
@@ -603,11 +607,13 @@ class VerificationServiceTest {
         VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verificationId)
                 .isLiked(true)
+                .likeCount(7L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         givenRoundParticipation(verification, currentUser);
-        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+        given(verificationLikeRepository.countByVerificationId(verificationId)).willReturn(7L);
+        given(verificationConverter.toLikeResponseDto(verification, 7L)).willReturn(expected);
 
         // when
         VerificationResponseDto.LikeResponseDto result = verificationService.likeVerification(verificationId, currentUser);
@@ -615,7 +621,9 @@ class VerificationServiceTest {
         // then
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.getIsLiked()).isTrue();
+        assertThat(result.getLikeCount()).isEqualTo(7L);
         Mockito.verify(verificationLikeRepository, times(1)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, times(1)).countByVerificationId(verificationId);
         Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
         Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
     }
@@ -686,11 +694,13 @@ class VerificationServiceTest {
         VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verificationId)
                 .isLiked(true)
+                .likeCount(7L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         givenRoundParticipation(verification, currentUser);
-        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+        given(verificationLikeRepository.countByVerificationId(verificationId)).willReturn(7L);
+        given(verificationConverter.toLikeResponseDto(verification, 7L)).willReturn(expected);
 
         // when
         VerificationResponseDto.LikeResponseDto firstResult = verificationService.likeVerification(verificationId, currentUser);
@@ -699,7 +709,10 @@ class VerificationServiceTest {
         // then
         assertThat(firstResult.getIsLiked()).isTrue();
         assertThat(secondResult.getIsLiked()).isTrue();
+        assertThat(firstResult.getLikeCount()).isEqualTo(7L);
+        assertThat(secondResult.getLikeCount()).isEqualTo(7L);
         Mockito.verify(verificationLikeRepository, times(2)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, times(2)).countByVerificationId(verificationId);
         Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
         Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
     }
@@ -758,11 +771,13 @@ class VerificationServiceTest {
         VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verificationId)
                 .isLiked(true)
+                .likeCount(7L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         givenRoundParticipation(verification, currentUser);
-        given(verificationConverter.toLikeResponseDto(verification)).willReturn(expected);
+        given(verificationLikeRepository.countByVerificationId(verificationId)).willReturn(7L);
+        given(verificationConverter.toLikeResponseDto(verification, 7L)).willReturn(expected);
 
         // when
         verificationService.likeVerification(verificationId, currentUser);
@@ -770,6 +785,7 @@ class VerificationServiceTest {
 
         // then
         Mockito.verify(verificationLikeRepository, times(2)).insertIgnore(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, times(2)).countByVerificationId(verificationId);
         Mockito.verify(verificationLikeRepository, Mockito.never()).save(any(VerificationLike.class));
         Mockito.verify(verificationLikeRepository, Mockito.never()).flush();
     }
@@ -784,11 +800,13 @@ class VerificationServiceTest {
         VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verificationId)
                 .isLiked(false)
+                .likeCount(6L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         givenRoundParticipation(verification, currentUser);
-        given(verificationConverter.toLikeResponseDto(verification, false)).willReturn(expected);
+        given(verificationLikeRepository.countByVerificationId(verificationId)).willReturn(6L);
+        given(verificationConverter.toLikeResponseDto(verification, false, 6L)).willReturn(expected);
 
         // when
         VerificationResponseDto.LikeResponseDto result = verificationService.unlikeVerification(verificationId, currentUser);
@@ -796,8 +814,10 @@ class VerificationServiceTest {
         // then
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.getIsLiked()).isFalse();
+        assertThat(result.getLikeCount()).isEqualTo(6L);
         Mockito.verify(verificationLikeRepository, times(1))
                 .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, times(1)).countByVerificationId(verificationId);
     }
 
     @Test
@@ -810,11 +830,13 @@ class VerificationServiceTest {
         VerificationResponseDto.LikeResponseDto expected = VerificationResponseDto.LikeResponseDto.builder()
                 .verificationId(verificationId)
                 .isLiked(false)
+                .likeCount(6L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
         givenRoundParticipation(verification, currentUser);
-        given(verificationConverter.toLikeResponseDto(verification, false)).willReturn(expected);
+        given(verificationLikeRepository.countByVerificationId(verificationId)).willReturn(6L);
+        given(verificationConverter.toLikeResponseDto(verification, false, 6L)).willReturn(expected);
 
         // when
         VerificationResponseDto.LikeResponseDto result = verificationService.unlikeVerification(verificationId, currentUser);
@@ -822,8 +844,10 @@ class VerificationServiceTest {
         // then
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.getIsLiked()).isFalse();
+        assertThat(result.getLikeCount()).isEqualTo(6L);
         Mockito.verify(verificationLikeRepository, times(1))
                 .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+        Mockito.verify(verificationLikeRepository, times(1)).countByVerificationId(verificationId);
     }
 
     @Test
@@ -912,6 +936,7 @@ class VerificationServiceTest {
         VerificationResponseDto.ScrapResponseDto expected = VerificationResponseDto.ScrapResponseDto.builder()
                 .verificationId(verificationId)
                 .isScrapped(false)
+                .scrapCount(2L)
                 .build();
 
         given(verificationRepository.findById(verificationId)).willReturn(Optional.of(verification));
@@ -919,7 +944,8 @@ class VerificationServiceTest {
                 .willReturn(Optional.of(userChallenge));
         given(roundRecordRepository.findByUserChallengeAndRoundId(userChallenge, postRound.getId()))
                 .willReturn(Optional.of(userRoundRecord));
-        given(verificationConverter.toScrapResponseDto(verification, false)).willReturn(expected);
+        given(verificationScrapRepository.countByVerificationId(verificationId)).willReturn(2L);
+        given(verificationConverter.toScrapResponseDto(verification, false, 2L)).willReturn(expected);
 
         // when
         VerificationResponseDto.ScrapResponseDto result = verificationService.unscrapVerification(verificationId, currentUser);
@@ -927,7 +953,9 @@ class VerificationServiceTest {
         // then
         assertThat(result.getVerificationId()).isEqualTo(verificationId);
         assertThat(result.getIsScrapped()).isFalse();
+        assertThat(result.getScrapCount()).isEqualTo(2L);
         Mockito.verify(verificationScrapRepository, times(1))
                 .deleteByUserIdAndVerificationId(currentUser.getId(), verificationId);
+        Mockito.verify(verificationScrapRepository, times(1)).countByVerificationId(verificationId);
     }
 }
